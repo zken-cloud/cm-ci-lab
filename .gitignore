@@ -1,0 +1,8 @@
+# CodeMender binary — sensitive (baked-in credential); never commit
+cm-linux
+container/cm-linux
+# generated artifact variant
+webapp/artifact.body.html
+# local CM state / logs
+**/.codemender/
+*.log

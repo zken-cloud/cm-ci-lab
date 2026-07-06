@@ -1,0 +1,4 @@
+# Minimal build context: only the binary and the Dockerfile.
+*
+!cm-linux
+!Dockerfile

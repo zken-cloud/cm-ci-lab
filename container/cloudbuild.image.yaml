@@ -1,0 +1,33 @@
+# Build the CodeMender CI image and push it to Artifact Registry.
+# Run by the LAB AUTHOR from the container/ directory (which must contain the
+# cm-linux binary). No local Docker needed — Cloud Build does the build.
+#
+#   gcloud builds submit container/ \
+#     --config container/cloudbuild.image.yaml \
+#     --substitutions=_LOCATION=us-central1,_REPO=codemender,_IMAGE=codemender-ci,_TAG=v0.1.0
+#
+# Produces:
+#   ${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:${_TAG}
+#   ${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest
+substitutions:
+  _LOCATION: us-central1
+  _REPO: codemender
+  _IMAGE: codemender-ci
+  _TAG: v0.1.0
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:${_TAG}
+      - -t
+      - ${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest
+      - .
+
+images:
+  - ${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:${_TAG}
+  - ${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

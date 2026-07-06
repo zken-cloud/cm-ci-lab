@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CodeMender CI Lab &mdash; Build a Remediation Pipeline</title>
+<style>
+/* ============================ Design tokens ============================ */
+:root{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b;
+  --code-ink:#dbe7e6; --code-muted:#7f9a99; --code-add:#7fdcae; --code-del:#f09195;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+  --maxw:820px;
+  --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+    --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+    --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+    --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be;
+    --code-ink:#d6e5e3; --code-muted:#6f8a89; --code-add:#7fdcae; --code-del:#f09195;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b; --code-ink:#dbe7e6; --code-muted:#7f9a99;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+}
+:root[data-theme="dark"]{
+  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+  --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+  --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+  --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be; --code-ink:#d6e5e3; --code-muted:#6f8a89;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ============================ Layout ============================ */
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:1.6rem 1.1rem 2rem;border-right:1px solid var(--hair)}
+.main{min-width:0;padding:0 clamp(1.1rem,4vw,3rem) 6rem}
+.col{max-width:var(--maxw)}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--hair)}
+  .rail-scroll{max-height:none}
+}
+
+/* ============================ Rail nav ============================ */
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.2rem}
+.brand svg{width:22px;height:22px;flex:none}
+.brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.railnav{margin-top:1.4rem;font-size:.86rem}
+.railnav a{display:block;color:var(--ink-2);padding:.28rem .5rem;border-radius:7px;
+  border-left:2px solid transparent}
+.railnav a:hover{background:var(--surface-2);text-decoration:none}
+.railnav a.active{color:var(--accent-ink);border-left-color:var(--accent);background:var(--surface-2);font-weight:600}
+.railnav .grp{margin:1rem .5rem .3rem;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.railnav a .n{display:inline-block;width:1.5em;color:var(--muted);font-variant-numeric:tabular-nums}
+.themebtn{margin-top:1.5rem;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2);
+  border-radius:8px;padding:.4rem .7rem;font:inherit;font-size:.8rem;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.themebtn:hover{border-color:var(--accent)}
+
+/* ============================ Hero ============================ */
+.hero{padding:2.6rem 0 1.4rem}
+.eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+h1{font-size:clamp(1.9rem,4.4vw,2.75rem);line-height:1.08;letter-spacing:-.025em;
+  margin:.5rem 0 .4rem;text-wrap:balance;font-weight:750}
+.lede{font-size:1.12rem;color:var(--ink-2);max-width:60ch;margin:.2rem 0 1.3rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem}
+.pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:500;
+  padding:.3rem .7rem;border-radius:999px;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2)}
+.pill b{color:var(--ink);font-weight:650}
+
+/* ============================ Diagram ============================ */
+.diagram{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:1.1rem;
+  margin:1.4rem 0;box-shadow:var(--shadow);overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:640px;height:auto}
+
+/* ============================ Sections ============================ */
+section{padding:1.7rem 0;border-top:1px solid var(--hair)}
+section:first-of-type{border-top:none}
+h2{font-size:1.5rem;letter-spacing:-.02em;margin:.2rem 0 .3rem;font-weight:700;scroll-margin-top:1rem}
+h2 .kicker{display:block;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:.35rem}
+h3{font-size:1.08rem;margin:1.6rem 0 .4rem;letter-spacing:-.01em}
+p{margin:.6rem 0}
+ul,ol{margin:.6rem 0;padding-left:1.3rem}
+li{margin:.3rem 0}
+.small{font-size:.9rem;color:var(--muted)}
+
+/* Step header */
+.step{display:flex;gap:.8rem;align-items:baseline;margin:0 0 .2rem}
+.step .num{flex:none;width:2rem;height:2rem;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:700;font-size:.95rem;font-variant-numeric:tabular-nums;transform:translateY(.25rem)}
+.step h2{margin:0}
+
+/* ============================ Code blocks ============================ */
+figure.code{margin:1rem 0;border:1px solid var(--hair-strong);border-radius:11px;overflow:hidden;background:var(--code-bg)}
+figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.5rem .5rem .5rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07)}
+figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;color:var(--code-muted);text-transform:uppercase}
+.copy{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--code-ink);
+  font:inherit;font-size:.74rem;padding:.28rem .6rem;border-radius:7px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
+figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
+pre .c{color:var(--code-muted)}      /* comment */
+pre .k{color:#7fd7c8}                 /* keyword/cmd */
+pre .v{color:#e9c17a}                 /* value/string */
+pre .p{color:#c99be0}                 /* placeholder */
+pre .add{color:var(--code-add)}
+pre .del{color:var(--code-del)}
+code.inline{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);
+  border:1px solid var(--hair);padding:.08em .38em;border-radius:5px;color:var(--ink);word-break:break-word}
+
+/* ============================ Callouts ============================ */
+.callout{margin:1.1rem 0;padding:.85rem 1rem .85rem 1.05rem;border-radius:10px;border:1px solid var(--hair);
+  background:var(--surface);border-left:3px solid var(--muted);box-shadow:var(--shadow)}
+.callout .ct{font-weight:650;font-size:.82rem;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem}
+.callout p{margin:.2rem 0}
+.callout.note{border-left-color:var(--accent)}
+.callout.note .ct{color:var(--accent-ink)}
+.callout.warn{border-left-color:var(--high)}
+.callout.warn .ct{color:var(--high)}
+.callout.sec{border-left-color:var(--crit);background:linear-gradient(0deg,var(--surface),var(--surface))}
+.callout.sec .ct{color:var(--crit)}
+.callout.chal{border-left-color:var(--accent);background:var(--accent-soft)}
+:root[data-theme="dark"] .callout.chal,@media (prefers-color-scheme:dark){.callout.chal{background:var(--accent-soft)}}
+.callout.chal .ct{color:var(--accent-ink)}
+.callout.chal .ct::before{content:"◆"}
+
+/* ============================ Chips / table ============================ */
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:650;padding:.12rem .5rem;
+  border-radius:6px;letter-spacing:.02em;text-transform:uppercase;font-family:var(--f-mono)}
+.chip.crit{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}
+.chip.high{background:color-mix(in srgb,var(--high) 18%,transparent);color:var(--high)}
+.chip.med{background:color-mix(in srgb,var(--med) 20%,transparent);color:var(--med)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;overflow-x:auto;display:block}
+.tbl thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--hair-strong);padding:.5rem .6rem;font-weight:600}
+.tbl td{padding:.5rem .6rem;border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl code{font-family:var(--f-mono);font-size:.85em}
+
+/* Collapsible facilitator */
+details.fac{border:1px solid var(--hair-strong);border-radius:12px;background:var(--surface);margin:1rem 0;box-shadow:var(--shadow)}
+details.fac>summary{cursor:pointer;list-style:none;padding:1rem 1.1rem;font-weight:650;display:flex;align-items:center;gap:.6rem}
+details.fac>summary::-webkit-details-marker{display:none}
+details.fac>summary .tw{margin-left:auto;color:var(--muted);transition:transform .2s}
+details.fac[open]>summary .tw{transform:rotate(90deg)}
+details.fac .body{padding:0 1.1rem 1.1rem}
+
+/* progress checkbox */
+.done-toggle{display:inline-flex;align-items:center;gap:.5rem;margin:.6rem 0 0;font-size:.85rem;color:var(--muted);cursor:pointer;user-select:none}
+.done-toggle input{accent-color:var(--accent);width:1.05em;height:1.05em}
+
+footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
+.kbd{font-family:var(--f-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--hair-strong);
+  border-bottom-width:2px;border-radius:5px;padding:.05em .4em}
+hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
+      <div>CodeMender Lab<small>CE Enablement</small></div>
+    </div>
+    <nav class="railnav" aria-label="Lab contents">
+      <a href="#overview"><span class="n">&#9670;</span>Overview</a>
+      <a href="#flow"><span class="n">&#9670;</span>How it works</a>
+      <a href="#design"><span class="n">&#9670;</span>Design decisions</a>
+      <a href="#prereq"><span class="n">&#9670;</span>Prerequisites</a>
+      <a href="#image"><span class="n">&#9670;</span>The CodeMender image</a>
+      <div class="grp">The lab</div>
+      <a href="#s1"><span class="n">1</span>Fork &amp; clone Juice Shop</a>
+      <a href="#s2"><span class="n">2</span>Configure git &amp; GitHub</a>
+      <a href="#s3"><span class="n">3</span>Prepare your GCP project</a>
+      <a href="#s4"><span class="n">4</span>Create the state bucket</a>
+      <a href="#s5"><span class="n">5</span>Store a GitHub token</a>
+      <a href="#s6"><span class="n">6</span>Grant Cloud Build access</a>
+      <a href="#s7"><span class="n">7</span>Write the phase scripts</a>
+      <a href="#s8"><span class="n">8</span>Write the pipeline</a>
+      <a href="#s9"><span class="n">9</span>Run the pipeline</a>
+      <a href="#s10"><span class="n">10</span>Review the fix &amp; PR</a>
+      <a href="#s11"><span class="n">11</span>Approve &amp; merge</a>
+      <a href="#s12"><span class="n">12</span>Confirm remediation</a>
+      <div class="grp">Reference</div>
+      <a href="#challenges"><span class="n">&#9670;</span>Bonus challenges</a>
+      <a href="#cheatsheet"><span class="n">&#9670;</span>cm cheat sheet</a>
+      <a href="#trouble"><span class="n">&#9670;</span>Troubleshooting</a>
+      <a href="#production"><span class="n">&#9670;</span>Production &amp; EAP notes</a>
+      <a href="#cleanup"><span class="n">&#9670;</span>Cleanup</a>
+</nav>
+    <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span id="themelbl">Theme</span>
+    </button>
+  </aside>
+  <main class="main"><div class="col">
+
+    <header class="hero" id="overview">
+      <div class="eyebrow">Internal Customer Engineer Enablement</div>
+      <h1>Build a CodeMender remediation pipeline on Cloud Build</h1>
+      <p class="lede">You'll package CodeMender into a container, wire up GCS-backed state, and hand-write a Cloud Build pipeline that scans OWASP Juice&nbsp;Shop, <em>verifies</em> a real vulnerability, <em>fixes</em> it, and opens a Pull Request on your own fork &mdash; which you review, approve, and merge.</p>
+      <div class="meta">
+        <span class="pill">&#9201; <b>~60&nbsp;min</b></span>
+        <span class="pill">&#9670; <b>Intermediate</b></span>
+        <span class="pill">&#9729; <b>GCP</b> &middot; Cloud Build &middot; Artifact Registry &middot; GCS</span>
+        <span class="pill">&#9095; <b>GitHub</b></span>
+      </div>
+      <div class="diagram" role="img" aria-label="Four Cloud Build steps share CodeMender state in a gcsfuse-mounted GCS bucket and open a PR on the GitHub fork.">
+        <svg viewBox="0 0 720 320" font-family="var(--f-sans)">
+          <defs>
+            <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
+            <marker id="ara" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
+          </defs>
+          <rect x="14" y="120" width="150" height="72" rx="9" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="26" y="146" font-size="11" font-weight="700" fill="var(--ink)">GCS state bucket</text>
+          <text x="26" y="164" font-size="10.5" fill="var(--ink-2)">config &middot; identity</text>
+          <text x="26" y="179" font-size="10.5" fill="var(--ink-2)">findings state.db</text>
+          <rect x="196" y="40" width="360" height="250" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="216" y="66" font-size="12" font-weight="700" fill="var(--accent-ink)">Cloud Build &mdash; your GCP project</text>
+          <g font-size="11" text-anchor="middle">
+            <g><rect x="216" y="80" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="99" fill="var(--ink)">0 &middot; clone your fork</text></g>
+            <g><rect x="216" y="116" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="135" fill="var(--ink)">1 &middot; cm find  (scan)</text></g>
+            <g><rect x="216" y="152" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="171" fill="var(--ink)">2 &middot; cm find verify  (reproduce)</text></g>
+            <g><rect x="216" y="188" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="207" fill="var(--ink)">3 &middot; cm fix  (apply patch)</text></g>
+            <g><rect x="216" y="224" width="320" height="30" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="376" y="243" fill="var(--accent-ink)" font-weight="650">4 &middot; push branch + open PR</text></g>
+          </g>
+          <rect x="588" y="120" width="124" height="72" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="602" y="146" font-size="12" font-weight="700" fill="var(--ink)">GitHub fork</text>
+          <text x="602" y="165" font-size="10.5" fill="var(--ink-2)">Pull Request</text>
+          <text x="602" y="180" font-size="10.5" fill="var(--ink-2)">review &rarr; merge</text>
+          <line x1="164" y1="140" x2="212" y2="128" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+          <line x1="164" y1="172" x2="212" y2="200" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+          <text x="90" y="112" font-size="9.5" fill="var(--muted)" text-anchor="middle">gcsfuse mount</text>
+          <line x1="556" y1="240" x2="586" y2="170" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ara)"/>
+        </svg>
+      </div>
+    </header>
+
+    <section id="flow">
+      <h2><span class="kicker">The big picture</span>What you are building</h2>
+      <p>CodeMender (<code class="inline">cm</code>) is an AI security agent: a thin client that streams a codebase to a hardened backend which reasons about vulnerabilities and generates <em>validated</em> patches. You'll drive it from CI as four discrete Cloud Build steps:</p>
+      <ul>
+        <li><b>find</b> &mdash; <code class="inline">cm find</code> scans a file and records vulnerabilities (severity, CWE, analysis).</li>
+        <li><b>verify</b> &mdash; <code class="inline">cm find verify</code> <em>reproduces</em> the top finding (it may build &amp; run the app) to confirm it's real. This is why the image ships with node/npm.</li>
+        <li><b>fix</b> &mdash; <code class="inline">cm fix</code> generates the patch; your script applies it deterministically.</li>
+        <li><b>open-pr</b> &mdash; commit to a branch, push to your fork, open a PR whose body is CodeMender's own analysis.</li>
+      </ul>
+      <div class="callout note"><div class="ct">&#128452;&#65039; Why a GCS bucket for state?</div>
+        <p>Each Cloud Build step is a <em>fresh container</em>. CodeMender keeps its config, identity key, and findings database (SQLite) under <code class="inline">~/.codemender</code> &mdash; which would vanish between steps. You'll mount a GCS bucket with <b>gcsfuse</b> and point <code class="inline">$HOME</code> there, so <code class="inline">cm init</code> in the find step and the findings it records are still available to verify and fix.</p></div>
+      <div class="callout note"><div class="ct">&#128273; No CodeMender secret to manage</div>
+        <p>The CodeMender server endpoint and credential are baked into the <code class="inline">cm</code> binary. The only secret <em>you</em> create is a GitHub token so the pipeline can push and open a PR.</p></div>
+    </section>
+
+
+    <section id="design">
+      <h2><span class="kicker">Why it's built this way</span>Design decisions</h2>
+      <p>The architecture diagram above shows the flow: four Cloud Build steps that share CodeMender state through a gcsfuse-mounted GCS bucket, ending in a Pull Request you approve. The choices behind it:</p>
+      <table class="tbl"><thead><tr><th>Decision</th><th>Why</th></tr></thead><tbody>
+        <tr><td><b>Separate steps</b> for find / verify / fix / open-pr</td><td>Each phase is visible and independently retryable in the build log; mirrors how you'd stage a real security pipeline.</td></tr>
+        <tr><td><b>GCS + gcsfuse</b> for CodeMender state</td><td>Every Cloud Build step is a fresh container. Mounting a bucket at <code class="inline">$HOME</code> persists <code class="inline">cm init</code>'s config, identity, and the findings <code class="inline">state.db</code> across steps.</td></tr>
+        <tr><td><b>Full verification</b>, not skipped</td><td>CodeMender reproduces the exploit (it builds &amp; runs the app), so a fix targets a <em>confirmed</em> bug. This is why the image ships node/npm and why verify is the slow step.</td></tr>
+        <tr><td><b>Deterministic patch apply</b></td><td>The fix step applies CodeMender's <em>stored</em> patch rather than trusting the working tree, so the result is identical every run.</td></tr>
+        <tr><td><b>Human-in-the-loop PR</b></td><td>The pipeline never writes to <code class="inline">master</code>. CodeMender proposes; you review, approve, and merge &mdash; the approval gate stays with a person.</td></tr>
+        <tr><td><b>Minimal toolbox image</b></td><td>The image carries only <code class="inline">cm</code> + build tools; you author the orchestration. Nothing is hidden, so you learn the CLI and can adapt it.</td></tr>
+        <tr><td><b>Single-file scan target</b></td><td>Because the checkout lives in <code class="inline">/workspace</code> (not <code class="inline">/tmp</code>), a one-file target keeps CodeMender's sandbox scoped to that file &mdash; fast and deterministic for the lab.</td></tr>
+      </tbody></table>
+    </section>
+
+    <section id="prereq">
+      <h2><span class="kicker">Before you start</span>Prerequisites</h2>
+      <p>You'll drive the whole lab from your <b>laptop</b> — the CLIs submit builds to Cloud Build in your GCP project. (Prefer zero install? <a href="https://shell.cloud.google.com" target="_blank" rel="noopener">Cloud Shell</a> has gcloud, git, and gh preinstalled.)</p>
+      <table class="tbl"><thead><tr><th>You need</th><th>Notes</th></tr></thead><tbody>
+        <tr><td>A <b>GitHub account</b></td><td>You'll fork Juice Shop into it.</td></tr>
+        <tr><td>A <b>GCP project</b> with billing</td><td>Cloud Build, Artifact Registry, GCS, and Secret Manager run here. <code class="inline">Owner</code> or <code class="inline">Editor</code> on the project is simplest.</td></tr>
+        <tr><td><b>gcloud</b>, <b>git</b>, <b>gh</b> on your laptop</td><td>Install &amp; authenticate below.</td></tr>
+        <tr><td>The <b>CodeMender image URL</b></td><td>Provided by your facilitator (see the next section). Access is granted org-wide, so there's nothing for you to request.</td></tr>
+      </tbody></table>
+      <figure class="code"><figcaption><span class="lbl">bash · on your laptop (once)</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Install: gcloud  https://cloud.google.com/sdk/docs/install</span>
+<span class="c">#          gh      https://cli.github.com     git  https://git-scm.com</span>
+gcloud auth login
+gh auth login              <span class="c"># GitHub.com -> HTTPS -> grant the 'repo' scope</span>
+git --version && gh --version && gcloud --version | head -1</pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; Use a throwaway lab project</div><p>Juice Shop is <em>deliberately vulnerable</em>. Keep it in an isolated fork and a lab GCP project; never expose it publicly.</p></div>
+    </section>
+
+    <section id="image">
+      <h2><span class="kicker">Provided for you</span>The CodeMender image</h2>
+      <div class="callout note"><div class="ct">&#128230; Your facilitator provides the image &mdash; you don't build it</div>
+        <p>The facilitator publishes the container to Artifact Registry and grants your organization read access. You'll get a URL like <code class="inline">REGION-docker.pkg.dev/CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0</code> to paste into <code class="inline">_CM_IMAGE</code> in Step&nbsp;9. Your Cloud Build pulls it automatically.</p></div>
+      <p>For reference, this is exactly how that image is built &mdash; a deliberately minimal toolbox: the <code class="inline">cm</code> client plus the build/runtime tools the pipeline needs (node/npm so <code class="inline">cm find verify</code> can build &amp; run Juice Shop, git, jq, and gcsfuse for state).</p>
+      <details class="fac"><summary>Dockerfile &mdash; reference only <span class="tw">&#9656;</span></summary><div class="body"><figure class="code"><figcaption><span class="lbl">container/Dockerfile</span><button class="copy" type="button">Copy</button></figcaption><pre># CodeMender CI toolbox image.
+#
+# A deliberately MINIMAL image: the CodeMender client plus the build/runtime
+# tools needed to (a) scan and remediate a Node.js project and (b) let
+# `cm find verify` actually build &amp; run OWASP Juice Shop to reproduce an
+# exploit. It carries NO orchestration logic — participants author the find /
+# verify / fix scripts and the Cloud Build pipeline themselves during the lab.
+#
+# Base: Debian-based Node.js (glibc). Required because:
+#   • `cm` is dynamically linked against glibc, and
+#   • Juice Shop builds and runs on Node 22 (npm, node-gyp, etc.).
+FROM node:22-bookworm-slim
+
+# Build &amp; runtime dependencies:
+#   git, ca-certificates      clone/commit/push; TLS to the CM server &amp; GitHub
+#   curl, jq                  GitHub REST API; parse `cm report` JSON output
+#   build-essential, python3  node-gyp / native npm modules used by Juice Shop
+#   fuse3, gcsfuse            mount a GCS bucket for CodeMender state (see lab)
+RUN apt-get update \
+ &amp;&amp; apt-get install -y --no-install-recommends \
+      git ca-certificates curl jq gnupg build-essential python3 fuse3 \
+ &amp;&amp; curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+      | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+ &amp;&amp; echo &quot;deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt gcsfuse-bookworm main&quot; \
+      &gt; /etc/apt/sources.list.d/gcsfuse.list \
+ &amp;&amp; apt-get update \
+ &amp;&amp; apt-get install -y --no-install-recommends gcsfuse \
+ &amp;&amp; rm -rf /var/lib/apt/lists/*
+
+# The CodeMender client. Build context must contain the `cm-linux` binary.
+COPY cm-linux /usr/local/bin/cm
+RUN chmod 0755 /usr/local/bin/cm
+
+# Sanity checks: the toolbox has everything the lab relies on.
+RUN cm --version &amp;&amp; node --version &amp;&amp; npm --version \
+ &amp;&amp; git --version &amp;&amp; jq --version &amp;&amp; gcsfuse --version
+
+WORKDIR /workspace
+</pre></figure></div></details>
+    </section>
+
+    <section id="s1">
+      <div class="step"><span class="num">1</span><h2>Fork &amp; clone Juice Shop</h2></div>
+      <p>Fork into <em>your</em> account so all branches, commits, and PRs stay yours.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo fork juice-shop/juice-shop --clone --fork-name juice-shop
+cd juice-shop
+git remote -v      <span class="c"># origin -> your fork; upstream -> juice-shop</span></pre></figure>
+      <div class="callout note"><div class="ct">&#8505; Default branch is <code class="inline">master</code></div><p>Juice Shop's default branch is <code class="inline">master</code>, not <code class="inline">main</code> &mdash; remember that for <code class="inline">_BASE_BRANCH</code>.</p></div>
+      <label class="done-toggle"><input type="checkbox" data-step="1"> Mark step complete</label>
+    </section>
+
+    <section id="s2">
+      <div class="step"><span class="num">2</span><h2>Configure git &amp; GitHub auth</h2></div><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh auth status
+git config --global user.name  "<span class="p">Your Name</span>"
+git config --global user.email "<span class="p">you@example.com</span>"</pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="2"> Mark step complete</label>
+    </section>
+
+    <section id="s3">
+      <div class="step"><span class="num">3</span><h2>Prepare your GCP project</h2></div><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export PROJECT_ID=<span class="p">your-gcp-project</span>
+export REGION=us-central1
+gcloud config set project "$PROJECT_ID"
+
+<span class="c"># Cloud Build runs the pipeline; Secret Manager holds the token; GCS holds CM state</span>
+gcloud services enable \
+  cloudbuild.googleapis.com secretmanager.googleapis.com storage.googleapis.com</pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="3"> Mark step complete</label>
+    </section>
+
+    <section id="s4">
+      <div class="step"><span class="num">4</span><h2>Create the CodeMender state bucket</h2></div>
+      <p>This GCS bucket holds CodeMender's config, identity key, and findings database so they survive between the separate pipeline steps. Bucket names are globally unique &mdash; prefix with your project id.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export CM_STATE_BUCKET="${PROJECT_ID}-cm-state"
+gcloud storage buckets create "gs://$CM_STATE_BUCKET" \
+  --location="$REGION" --uniform-bucket-level-access</pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="4"> Mark step complete</label>
+    </section>
+
+    <section id="s5">
+      <div class="step"><span class="num">5</span><h2>Store a GitHub token in Secret Manager</h2></div>
+      <p>The pipeline pushes a branch and opens a PR, so it needs a GitHub token with write access. Pick <b>one</b> method; both end with the same <code class="inline">gh-pat</code> secret.</p>
+      <h3>Option A &mdash; Fine-grained PAT <span class="chip ok">recommended</span></h3>
+      <ol>
+        <li>GitHub &rarr; <b>Settings &rarr; Developer settings &rarr; Personal access tokens &rarr; Fine-grained tokens &rarr; Generate new token</b>.</li>
+        <li><b>Repository access &rarr; Only select repositories &rarr;</b> your <code class="inline">juice-shop</code> fork.</li>
+        <li><b>Repository permissions:</b> <b>Contents &rarr; Read and write</b>, <b>Pull requests &rarr; Read and write</b>.</li>
+        <li>Generate and copy the token (<code class="inline">github_pat_&hellip;</code>).</li>
+      </ol><figure class="code"><figcaption><span class="lbl">bash · input hidden, kept out of shell history</span><button class="copy" type="button">Copy</button></figcaption><pre>read -rs GH_PAT
+printf '%s' "$GH_PAT" | gcloud secrets create gh-pat --data-file=-
+unset GH_PAT</pre></figure>
+      <h3>Option B &mdash; Reuse the <code class="inline">gh</code> CLI token</h3>
+      <p>Quicker if you already use the GitHub CLI; the token is broader-scoped, so delete the secret when done.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh auth login            <span class="c"># GitHub.com -> HTTPS -> grant 'repo' scope</span>
+gh auth status           <span class="c"># confirm the account that owns your fork is active</span>
+gh auth token | gcloud secrets create gh-pat --data-file=-</pre></figure>
+      <div class="callout note"><div class="ct">&#8505; Updating the secret later</div><p>If <code class="inline">gh-pat</code> exists, add a version instead:<br><code class="inline">gh auth token | gcloud secrets versions add gh-pat --data-file=-</code></p></div>
+      <div class="callout sec"><div class="ct">&#128274; The token lives only in Secret Manager</div><p>The pipeline reads it at run time via <code class="inline">availableSecrets</code>; the scripts strip any trailing newline and redact it from logs. Delete it in <a href="#cleanup">Cleanup</a>.</p></div>
+      <label class="done-toggle"><input type="checkbox" data-step="5"> Mark step complete</label>
+    </section>
+
+    <section id="s6">
+      <div class="step"><span class="num">6</span><h2>Grant Cloud Build access</h2></div>
+      <p>Cloud Build runs as a <b>service account</b> that needs to read your <code class="inline">gh-pat</code> secret and read/write the state bucket. (Image access is already granted org-wide by your facilitator &mdash; nothing to request.)</p>
+      <div class="callout note"><div class="ct">&#8505; Two possible service accounts &mdash; grant both</div>
+        <p>Depending on how your project was created, Cloud Build uses the legacy <code class="inline">PROJECT_NUMBER@cloudbuild.gserviceaccount.com</code> <em>or</em> the Compute Engine <code class="inline">PROJECT_NUMBER-compute@developer.gserviceaccount.com</code>. The commands below grant <b>both</b>, so it works either way.</p></div><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+export CB_LEGACY="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+export CB_COMPUTE="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+for SA in "$CB_LEGACY" "$CB_COMPUTE"; do
+  <span class="c"># read the GitHub token</span>
+  gcloud secrets add-iam-policy-binding gh-pat \
+    --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor"
+  <span class="c"># read/write CodeMender state in the bucket</span>
+  gcloud storage buckets add-iam-policy-binding "gs://$CM_STATE_BUCKET" \
+    --member="serviceAccount:$SA" --role="roles/storage.objectAdmin"
+done
+<span class="c"># Image access is already granted org-wide by your facilitator - nothing to send.</span></pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="6"> Mark step complete</label>
+    </section>
+
+    <section id="s7">
+      <div class="step"><span class="num">7</span><h2>Write the phase scripts</h2></div>
+      <p>In an empty working directory, create a <code class="inline">scripts/</code> folder with the five files below. These are the heart of the lab: they orchestrate CodeMender and glue the phases together by parsing (<em>grepping</em>) the findings.</p>
+      <h3><code class="inline">scripts/cm-env.sh</code> &mdash; state &amp; the finding-selector</h3>
+      <p>Sourced by the others. It mounts the state bucket with gcsfuse, points <code class="inline">$HOME</code> at a per-run folder, initialises CodeMender once, and defines <code class="inline">top_finding_id</code> &mdash; the parser that reads <code class="inline">cm report</code> and returns the highest-severity finding.</p>
+      <figure class="code"><figcaption><span class="lbl">scripts/cm-env.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# cm-env.sh — shared setup, sourced by find.sh / verify.sh / fix.sh.
+#
+# CodeMender keeps its state (config, Ed25519 identity, findings SQLite DB,
+# session logs, generated patches) under $HOME/.codemender. In this pipeline
+# each phase runs as a SEPARATE Cloud Build step — a fresh container — so that
+# state would normally be lost between find, verify, and fix.
+#
+# To persist it we mount a GCS bucket with gcsfuse and point $HOME at a
+# per-run folder inside it. `cm init` writes there once; every later step
+# re-mounts the same bucket and finds the identity + findings DB already there.
+set -euo pipefail
+
+: &quot;${CM_STATE_BUCKET:?set CM_STATE_BUCKET (GCS bucket for CodeMender state)}&quot;
+: &quot;${STATE_ID:?set STATE_ID (per-run isolation, e.g. the Cloud Build \$BUILD_ID)}&quot;
+
+export WORKSPACE=&quot;${WORKSPACE:-/workspace}&quot;
+export REPO_DIR=&quot;${REPO_DIR:-$WORKSPACE/repo}&quot;
+export HOME=&quot;/mnt/cmstate/${STATE_ID}&quot;          # cm writes ~/.codemender here
+
+# --- Mount the state bucket (once per step/container) ------------------------
+mkdir -p /mnt/cmstate
+if ! mount | grep -q &#x27; /mnt/cmstate &#x27;; then
+  echo &quot;🗄️  mounting gs://${CM_STATE_BUCKET} at /mnt/cmstate (gcsfuse)&quot;
+  gcsfuse --implicit-dirs &quot;${CM_STATE_BUCKET}&quot; /mnt/cmstate
+fi
+mkdir -p &quot;$HOME&quot;
+
+# --- One-time CodeMender init for this run ----------------------------------
+if [[ ! -f &quot;$HOME/.codemender/config.yaml&quot; ]]; then
+  echo &quot;⚙️  cm init (state → gs://${CM_STATE_BUCKET}/${STATE_ID})&quot;
+  cm init
+  # CI-friendly config: git VCS, no interactive prompts, fresh scans.
+  cat &gt; &quot;$HOME/.codemender/config.yaml&quot; &lt;&lt;&#x27;YAML&#x27;
+server: {}
+scan:
+  extensions:
+    include: [&quot;.ts&quot;, &quot;.js&quot;]
+    exclude: [&quot;.min.js&quot;, &quot;.spec.ts&quot;, &quot;.test.ts&quot;]
+  incremental: false
+output:
+  format: table
+tools:
+  confirm_commands: false
+  confirm_writes: false
+vcs:
+  type: git
+build:
+  command: &quot;&quot;
+YAML
+fi
+
+# --- Helper: highest-severity finding UUID from `cm report` (empty if none) --
+# This is the &quot;grep the results for the next command&quot; glue: parse the findings
+# CodeMender stored and hand the top one to verify / fix.
+top_finding_id() {
+  cm report -f json 2&gt;/dev/null | jq -r &#x27;
+    (if type==&quot;array&quot; then . else [] end)
+    | sort_by({CRITICAL:4, HIGH:3, MEDIUM:2, LOW:1}[(.Severity|ascii_upcase)] // 0)
+    | reverse | (.[0].FindingID // &quot;&quot;)&#x27;
+}
+</pre></figure>
+      <h3><code class="inline">scripts/find.sh</code> &mdash; scan</h3><figure class="code"><figcaption><span class="lbl">scripts/find.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# find.sh — STEP 1: scan one file with CodeMender and record the findings.
+# State (findings DB) is written to the gcsfuse-mounted bucket so the verify
+# and fix steps can read it.
+source &quot;$(dirname &quot;$0&quot;)/cm-env.sh&quot;
+
+: &quot;${SCAN_PATH:?set SCAN_PATH (file to scan, relative to the repo)}&quot;
+cd &quot;$REPO_DIR&quot;
+
+echo &quot;🔍 cm find ${SCAN_PATH}&quot;
+cm find &quot;${SCAN_PATH}&quot; -y
+
+echo &quot;── findings ──────────────────────────────────────────&quot;
+cm report                                   # human-readable table in the log
+cm report -f json &gt; &quot;$WORKSPACE/cm-findings.json&quot; || echo &#x27;null&#x27; &gt; &quot;$WORKSPACE/cm-findings.json&quot;
+
+FID=$(top_finding_id)
+if [[ -z &quot;$FID&quot; ]]; then
+  echo &quot;No findings — the verify/fix steps will no-op.&quot;
+else
+  echo &quot;Top finding selected for verify/fix: $FID&quot;
+fi
+</pre></figure>
+      <h3><code class="inline">scripts/verify.sh</code> &mdash; verify (may take minutes)</h3>
+      <p>Runs CodeMender's <em>full</em> verification. We deliberately don't short-circuit it: a verified finding is a stronger signal than a raw scan hit.</p><figure class="code"><figcaption><span class="lbl">scripts/verify.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# verify.sh — STEP 2: verify the highest-severity finding.
+#
+# This runs CodeMender&#x27;s FULL verification: it may build and run the target
+# app to reproduce the exploit, so it can take several minutes. That is exactly
+# why the CI image ships with node/npm and build tools. We do NOT short-circuit
+# it — a verified finding is a stronger signal than a raw scan hit.
+source &quot;$(dirname &quot;$0&quot;)/cm-env.sh&quot;
+cd &quot;$REPO_DIR&quot;
+
+FID=$(top_finding_id)
+if [[ -z &quot;$FID&quot; ]]; then
+  echo &quot;No findings to verify.&quot;; exit 0
+fi
+
+echo &quot;🔬 cm find verify ${FID}&quot;
+cm find verify &quot;${FID}&quot;
+
+echo &quot;── status after verification ─────────────────────────&quot;
+cm report
+</pre></figure>
+      <h3><code class="inline">scripts/fix.sh</code> &mdash; fix &amp; apply deterministically</h3>
+      <p>Generates the patch, then applies CodeMender's <em>stored</em> patch (from <code class="inline">cm report --patches</code>) so the result is deterministic even when the fix agent resets the tree after testing its own patch.</p><figure class="code"><figcaption><span class="lbl">scripts/fix.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# fix.sh — STEP 3: generate the fix for the highest-severity finding, then apply
+# CodeMender&#x27;s stored patch deterministically and leave metadata for open-pr.
+source &quot;$(dirname &quot;$0&quot;)/cm-env.sh&quot;
+cd &quot;$REPO_DIR&quot;
+
+FID=$(top_finding_id)
+if [[ -z &quot;$FID&quot; ]]; then
+  echo &quot;No findings to fix.&quot;; echo &quot;NONE&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;; exit 0
+fi
+
+# Grab finding metadata for the PR body NOW (before cm fix touches the tree).
+cm report -f json | jq --arg id &quot;$FID&quot; &#x27;.[]|select(.FindingID==$id)&#x27; &gt; &quot;$WORKSPACE/cm-finding.json&quot;
+STATUS=$(jq -r &#x27;.Status&#x27; &quot;$WORKSPACE/cm-finding.json&quot;)
+FILE=$(jq -r &#x27;.FilePath&#x27; &quot;$WORKSPACE/cm-finding.json&quot; | sed &quot;s#^$REPO_DIR/##&quot;)
+if [[ &quot;$STATUS&quot; == &quot;DISMISSED&quot; ]]; then
+  echo &quot;Finding $FID was DISMISSED during verification — not fixing.&quot;
+  echo &quot;DISMISSED&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;; exit 0
+fi
+
+echo &quot;🩹 cm fix ${FID} --auto-apply -y&quot;
+cm fix &quot;${FID}&quot; --auto-apply -y 2&gt;&amp;1 | tee &quot;$WORKSPACE/cm-fix.out&quot;
+
+# CodeMender prints a one-line headline tagged [Summary]; capture the last one.
+SUMMARY=$(grep -aoE &#x27;\[Summary\][[:space:]]+.*&#x27; &quot;$WORKSPACE/cm-fix.out&quot; | tail -1 | sed -E &#x27;s/^\[Summary\][[:space:]]+//&#x27;)
+[[ -z &quot;$SUMMARY&quot; ]] &amp;&amp; SUMMARY=&quot;Applied CodeMender remediation for finding ${FID}.&quot;
+printf &#x27;%s\n&#x27; &quot;$SUMMARY&quot; &gt; &quot;$WORKSPACE/cm-summary.txt&quot;
+
+# The fix agent may or may not leave its patch applied (it sometimes builds/runs
+# the app to test the fix and then resets the tree). To be deterministic we
+# reset the tree to HEAD and apply CodeMender&#x27;s STORED patch as the single
+# source of truth, extracted from `cm report --patches`.
+git checkout -- . 2&gt;/dev/null || true
+rm -rf &quot;$REPO_DIR&quot;/.exploit &quot;$REPO_DIR&quot;/.cm_project &quot;$REPO_DIR&quot;/routes/.exploit 2&gt;/dev/null || true
+
+cm report --patches 2&gt;/dev/null | awk &#x27;
+  /^  diff --git /{cap=1}
+  cap &amp;&amp; /^  /{print; next}
+  cap &amp;&amp; !/^  /{cap=0}
+&#x27; | sed &#x27;s/^  //&#x27; &gt; &quot;$WORKSPACE/cm.patch&quot;
+sed -i -e :a -e &#x27;/^[[:space:]]*$/{$d;N;ba}&#x27; &quot;$WORKSPACE/cm.patch&quot;   # trim trailing blanks
+
+if [[ ! -s &quot;$WORKSPACE/cm.patch&quot; ]]; then
+  echo &quot;❌ CodeMender produced no patch.&quot;; echo &quot;NO_PATCH&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;; exit 1
+fi
+git apply --whitespace=nowarn &quot;$WORKSPACE/cm.patch&quot;
+
+if git diff --quiet -- &quot;$FILE&quot;; then
+  echo &quot;❌ patch did not change ${FILE}.&quot;; echo &quot;NO_CHANGE&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;; exit 1
+fi
+
+echo &quot;FIXED&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;
+echo &quot;✅ Fix applied to ${FILE}&quot;
+git --no-pager diff -- &quot;$FILE&quot;
+</pre></figure>
+      <h3><code class="inline">scripts/open-pr.sh</code> &mdash; commit, push, open PR</h3><figure class="code"><figcaption><span class="lbl">scripts/open-pr.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# open-pr.sh — STEP 4: commit CodeMender&#x27;s fix to a branch, push it to the
+# fork, and open a Pull Request whose body is CodeMender&#x27;s own analysis.
+#
+# Does NOT touch CodeMender state — only git + the GitHub API — so it needs no
+# gcsfuse mount. Reads the metadata that fix.sh left in $WORKSPACE.
+set -euo pipefail
+
+WORKSPACE=&quot;${WORKSPACE:-/workspace}&quot;
+REPO_DIR=&quot;${REPO_DIR:-$WORKSPACE/repo}&quot;
+BASE_BRANCH=&quot;${BASE_BRANCH:-master}&quot;
+GIT_AUTHOR_NAME=&quot;${GIT_AUTHOR_NAME:-codemender-bot}&quot;
+GIT_AUTHOR_EMAIL=&quot;${GIT_AUTHOR_EMAIL:-codemender-bot@users.noreply.github.com}&quot;
+
+: &quot;${GH_OWNER:?set GH_OWNER}&quot;; : &quot;${GH_REPO:?set GH_REPO}&quot;; : &quot;${GH_TOKEN:?set GH_TOKEN (from Secret Manager)}&quot;
+# Secret values often carry a trailing newline; strip all whitespace so it
+# can&#x27;t corrupt the push URL or the auth header.
+GH_TOKEN=$(printf &#x27;%s&#x27; &quot;$GH_TOKEN&quot; | tr -d &#x27;[:space:]&#x27;)
+
+STATUS=$(cat &quot;$WORKSPACE/cm-status.txt&quot; 2&gt;/dev/null || echo UNKNOWN)
+if [[ &quot;$STATUS&quot; != &quot;FIXED&quot; ]]; then
+  echo &quot;cm-status is &#x27;$STATUS&#x27; (not FIXED) — nothing to open a PR for.&quot;; exit 0
+fi
+
+# --- Read the finding metadata ----------------------------------------------
+F=&quot;$WORKSPACE/cm-finding.json&quot;
+FID=$(jq -r &#x27;.FindingID&#x27; &quot;$F&quot;)
+TITLE=$(jq -r &#x27;.Title&#x27; &quot;$F&quot;)
+SEV=$(jq -r &#x27;.Severity|ascii_upcase&#x27; &quot;$F&quot;)
+CWE=$(jq -r &#x27;.VulnID // &quot;CWE-unknown&quot;&#x27; &quot;$F&quot;)
+VTYPE=$(jq -r &#x27;.VulnType // &quot;Vulnerability&quot;&#x27; &quot;$F&quot;)
+CONF=$(jq -r &#x27;.Confidence // 0&#x27; &quot;$F&quot;)
+FILE=$(jq -r &#x27;.FilePath&#x27; &quot;$F&quot; | sed &quot;s#^$REPO_DIR/##&quot;)
+ANALYSIS=$(jq -r &#x27;.Analysis // &quot;&quot;&#x27; &quot;$F&quot;)
+SUMMARY=$(cat &quot;$WORKSPACE/cm-summary.txt&quot;)
+
+SHORT=&quot;${FID:0:8}&quot;
+CWE_SLUG=$(echo &quot;$CWE&quot; | tr &#x27;A-Z&#x27; &#x27;a-z&#x27; | tr -cd &#x27;a-z0-9-&#x27;)
+BRANCH=&quot;codemender/${CWE_SLUG}-${SHORT}&quot;
+PR_TITLE=&quot;security: fix ${VTYPE} in ${FILE} (${CWE})&quot;
+
+# --- Commit ------------------------------------------------------------------
+cd &quot;$REPO_DIR&quot;
+git config user.name  &quot;$GIT_AUTHOR_NAME&quot;
+git config user.email &quot;$GIT_AUTHOR_EMAIL&quot;
+git checkout -b &quot;$BRANCH&quot;
+git add -u                                   # tracked modifications only
+git commit -F - &lt;&lt;EOF
+${PR_TITLE}
+
+${SUMMARY}
+
+Finding:  ${TITLE}
+Severity: ${SEV}   Confidence: ${CONF}%   ${CWE}
+Detected &amp; remediated by CodeMender (finding ${FID}).
+EOF
+
+# --- Push (token redacted from any output) ----------------------------------
+PUSH_URL=&quot;https://x-access-token:${GH_TOKEN}@github.com/${GH_OWNER}/${GH_REPO}.git&quot;
+set +e
+PUSH_OUT=$(git push &quot;$PUSH_URL&quot; &quot;$BRANCH&quot; 2&gt;&amp;1); PUSH_RC=$?
+set -e
+echo &quot;${PUSH_OUT//${GH_TOKEN}/***}&quot;
+[[ $PUSH_RC -eq 0 ]] || { echo &quot;❌ git push failed&quot;; exit 1; }
+
+# --- Compose the PR body -----------------------------------------------------
+{
+  echo &quot;## 🛡️ CodeMender automated security fix&quot;
+  echo
+  echo &quot;&gt; ${SUMMARY}&quot;
+  echo
+  echo &quot;| | |&quot;
+  echo &quot;|---|---|&quot;
+  echo &quot;| **Finding** | ${TITLE} |&quot;
+  echo &quot;| **Severity** | ${SEV} |&quot;
+  echo &quot;| **Type** | ${VTYPE} (${CWE}) |&quot;
+  echo &quot;| **Confidence** | ${CONF}% |&quot;
+  echo &quot;| **File** | \`${FILE}\` |&quot;
+  echo
+  echo &quot;### Analysis&quot;
+  echo
+  echo &quot;${ANALYSIS}&quot;
+  echo
+  echo &quot;### Change&quot;
+  echo &#x27;```diff&#x27;
+  git --no-pager diff &quot;${BASE_BRANCH}..${BRANCH}&quot; -- &quot;$FILE&quot;
+  echo &#x27;```&#x27;
+  echo
+  echo &quot;---&quot;
+  echo &quot;_Generated by CodeMender. Review the diff before approving; merging applies the fix to \`${BASE_BRANCH}\`._&quot;
+} &gt; &quot;$WORKSPACE/cm-pr-body.md&quot;
+
+# --- Open the PR -------------------------------------------------------------
+jq -n --arg t &quot;$PR_TITLE&quot; --arg h &quot;$BRANCH&quot; --arg b &quot;$BASE_BRANCH&quot; \
+      --rawfile body &quot;$WORKSPACE/cm-pr-body.md&quot; \
+      &#x27;{title:$t, head:$h, base:$b, body:$body, maintainer_can_modify:true}&#x27; &gt; &quot;$WORKSPACE/pr-request.json&quot;
+
+HTTP=$(curl -sS -o &quot;$WORKSPACE/pr-response.json&quot; -w &#x27;%{http_code}&#x27; -X POST \
+  -H &quot;Authorization: Bearer ${GH_TOKEN}&quot; \
+  -H &quot;Accept: application/vnd.github+json&quot; \
+  -H &quot;X-GitHub-Api-Version: 2022-11-28&quot; \
+  &quot;https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/pulls&quot; \
+  -d @&quot;$WORKSPACE/pr-request.json&quot;)
+
+if [[ &quot;$HTTP&quot; == &quot;201&quot; ]]; then
+  echo &quot;✅ Pull Request opened: $(jq -r &#x27;.html_url&#x27; &quot;$WORKSPACE/pr-response.json&quot;)&quot;
+elif [[ &quot;$HTTP&quot; == &quot;422&quot; ]]; then
+  echo &quot;ℹ️  A PR for this branch already exists (HTTP 422):&quot;
+  jq -r &#x27;.errors[]?.message // .message&#x27; &quot;$WORKSPACE/pr-response.json&quot;
+else
+  echo &quot;❌ GitHub API returned HTTP $HTTP&quot;
+  jq -r &#x27;.message&#x27; &quot;$WORKSPACE/pr-response.json&quot; 2&gt;/dev/null || cat &quot;$WORKSPACE/pr-response.json&quot;
+  exit 1
+fi
+</pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="7"> Mark step complete</label>
+    </section>
+
+    <section id="s8">
+      <div class="step"><span class="num">8</span><h2>Write the Cloud Build pipeline</h2></div>
+      <p>Alongside <code class="inline">scripts/</code>, create <code class="inline">cloudbuild.yaml</code>. It runs the five stages as separate steps; the CodeMender steps share state through the gcsfuse-mounted bucket, and <code class="inline">open-pr</code> reads the token from Secret Manager.</p>
+      <figure class="code"><figcaption><span class="lbl">cloudbuild.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre># CodeMender remediation pipeline — SEPARATE find / verify / fix / open-pr steps.
+#
+# Run from a working directory that contains this file and the scripts/ folder
+# (the source is uploaded, so the steps can run scripts/*.sh):
+#
+#   gcloud builds submit . \
+#     --config cloudbuild.yaml \
+#     --substitutions=\
+#   _CM_IMAGE=us-central1-docker.pkg.dev/CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0,\
+#   _CM_STATE_BUCKET=YOUR_PROJECT-cm-state,\
+#   _GH_OWNER=YOUR_GITHUB_USERNAME,_GH_REPO=juice-shop,_BASE_BRANCH=master,\
+#   _SCAN_PATH=routes/login.ts
+#
+# CodeMender state (config, identity, findings SQLite DB) is persisted across
+# the separate steps in a GCS bucket mounted with gcsfuse (see scripts/cm-env.sh).
+# The GitHub token comes from Secret Manager (secret name: gh-pat).
+#
+# Set _CM_IMAGE, _CM_STATE_BUCKET and _GH_OWNER (on the command line in Step 9,
+# or here). The rest have working defaults for this lab.
+substitutions:
+  _CM_IMAGE: &quot;&quot;              # ◀ SET: CodeMender image URL from your facilitator
+  _CM_STATE_BUCKET: &quot;&quot;       # ◀ SET: the GCS state bucket you created (Step 4)
+  _GH_OWNER: &quot;&quot;              # ◀ SET: your GitHub username (owner of the fork)
+  _GH_REPO: juice-shop
+  _BASE_BRANCH: master
+  _SCAN_PATH: routes/login.ts
+
+steps:
+  # 0 · Clone your fork into the shared /workspace (scripts/ stays alongside).
+  - id: clone
+    name: gcr.io/cloud-builders/git
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        rm -rf /workspace/repo
+        git clone --depth 1 --branch &quot;${_BASE_BRANCH}&quot; \
+          &quot;https://github.com/${_GH_OWNER}/${_GH_REPO}.git&quot; /workspace/repo
+
+  # 1 · Scan (writes findings to the gcsfuse-mounted state bucket).
+  - id: find
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: [&quot;scripts/find.sh&quot;]
+    env: &amp;cmenv
+      - CM_STATE_BUCKET=${_CM_STATE_BUCKET}
+      - STATE_ID=${BUILD_ID}
+      - WORKSPACE=/workspace
+      - REPO_DIR=/workspace/repo
+      - SCAN_PATH=${_SCAN_PATH}
+
+  # 2 · Verify the top finding (full verification — may take several minutes).
+  - id: verify
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: [&quot;scripts/verify.sh&quot;]
+    env: *cmenv
+
+  # 3 · Fix the top finding and stage commit/PR metadata.
+  - id: fix
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: [&quot;scripts/fix.sh&quot;]
+    env: *cmenv
+
+  # 4 · Commit, push the branch, and open the Pull Request.
+  - id: open-pr
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: [&quot;scripts/open-pr.sh&quot;]
+    secretEnv: [&quot;GH_TOKEN&quot;]
+    env:
+      - WORKSPACE=/workspace
+      - REPO_DIR=/workspace/repo
+      - GH_OWNER=${_GH_OWNER}
+      - GH_REPO=${_GH_REPO}
+      - BASE_BRANCH=${_BASE_BRANCH}
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/gh-pat/versions/latest
+      env: GH_TOKEN
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 3600s      # verify can build &amp; run the app to reproduce the exploit
+</pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="8"> Mark step complete</label>
+    </section>
+
+    <section id="s9">
+      <div class="step"><span class="num">9</span><h2>Run the pipeline</h2></div>
+      <div class="callout note"><div class="ct">&#8505; Set three values</div><p>Paste your <b>image URL</b> (<code class="inline">_CM_IMAGE</code>, from Step&nbsp;/ your facilitator), <b>state bucket</b> (<code class="inline">_CM_STATE_BUCKET</code>, Step&nbsp;4), and <b>GitHub username</b> (<code class="inline">_GH_OWNER</code>) into the command below. The rest have working defaults.</p></div>
+      <p>Run this from the directory containing <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (the source is uploaded so the steps can run <code class="inline">scripts/*.sh</code>):</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export CM_IMAGE="<span class="p">...from your facilitator.../codemender-ci:v0.2.0</span>"
+
+gcloud builds submit . \
+  --config cloudbuild.yaml \
+  --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER=<span class="p">YOUR_GITHUB_USERNAME</span>,_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
+      <div class="callout note"><div class="ct">&#9201; verify is the long pole</div><p>Expect <b>15&ndash;20 minutes</b> total. The verify step builds &amp; runs Juice Shop to reproduce the exploit &mdash; that's the point, and why the image carries node/npm.</p></div>
+      <label class="done-toggle"><input type="checkbox" data-step="9"> Mark step complete</label>
+    </section>
+
+    <section id="s10">
+      <div class="step"><span class="num">10</span><h2>Review the fix &amp; the PR</h2></div>
+      <p>CodeMender flags the classic Juice Shop login SQL injection and fixes it with a parameterized query:</p>
+      <table class="tbl"><thead><tr><th>Severity</th><th>Type</th><th>File</th></tr></thead><tbody>
+        <tr><td><span class="chip crit">Critical</span></td><td>SQL Injection &middot; CWE-89</td><td><code>routes/login.ts</code></td></tr>
+      </tbody></table><figure class="code"><figcaption><span class="lbl">routes/login.ts · CodeMender patch</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="del">- models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}'</span>
+<span class="del">-   AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`,</span>
+<span class="del">-   { model: UserModel, plain: true })</span>
+<span class="add">+ models.sequelize.query('SELECT * FROM Users WHERE email = ? AND password = ?</span>
+<span class="add">+   AND deletedAt IS NULL',</span>
+<span class="add">+   { replacements: [req.body.email || '', security.hash(req.body.password || '')],</span>
+<span class="add">+     model: UserModel, plain: true })</pre></figure>
+      <p>The PR body is CodeMender's own write-up &mdash; summary, severity, CWE, and full analysis. Find it in the build log (<code class="inline">Pull Request opened: &hellip;</code>) or with <code class="inline">gh pr list</code>.</p>
+      <label class="done-toggle"><input type="checkbox" data-step="10"> Mark step complete</label>
+    </section>
+
+    <section id="s11">
+      <div class="step"><span class="num">11</span><h2>Approve &amp; merge the Pull Request</h2></div>
+      <p>You are the human in the loop. Read the diff, then approve and merge &mdash; merging is what lands the fix on <code class="inline">master</code>.</p><figure class="code"><figcaption><span class="lbl">bash · or use the GitHub UI</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr view <span class="p">N</span>  --repo <span class="p">YOUR_GITHUB_USERNAME</span>/juice-shop --web
+gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME</span>/juice-shop --squash</pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="11"> Mark step complete</label>
+    </section>
+
+    <section id="s12">
+      <div class="step"><span class="num">12</span><h2>Confirm the remediation</h2></div>
+      <p>Prove it worked: run the pipeline again against the now-merged <code class="inline">master</code>. The parameterized query is no longer injectable, so there's no Critical SQL injection to fix &mdash; the fix step finds nothing to do and opens no PR.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud builds submit . --config cloudbuild.yaml \
+  --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER=<span class="p">YOUR_GITHUB_USERNAME</span>,_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
+      <div class="callout note"><div class="ct">&#9989; You closed the loop</div><p>Package &rarr; find &rarr; verify &rarr; fix &rarr; PR &rarr; human approval &rarr; merge &rarr; re-scan clean. A complete AI-assisted remediation workflow, with the approval gate intact.</p></div>
+      <label class="done-toggle"><input type="checkbox" data-step="12"> Mark step complete</label>
+    </section>
+
+    <section id="challenges">
+      <h2><span class="kicker">Go further</span>Bonus challenges</h2>
+      <ol>
+        <li><b>Remediate a second bug.</b> Set <code class="inline">_SCAN_PATH=routes/search.ts</code> and rerun &mdash; CodeMender finds and fixes a UNION-based SQL injection.</li>
+        <li><b>Inspect the state.</b> After a run, browse <code class="inline">gs://$CM_STATE_BUCKET/&lt;build-id&gt;/.codemender/</code> &mdash; you'll see <code class="inline">state.db</code>, <code class="inline">identity.key</code>, and session logs that gcsfuse persisted between steps.</li>
+        <li><b>Enforce build-after-fix.</b> Set <code class="inline">build.command</code> in <code class="inline">cm-env.sh</code>'s config so <code class="inline">cm build</code> compiles the project after a fix.</li>
+        <li><b>Add a trigger.</b> Replace the manual submit with a Cloud Build trigger on a schedule or push.</li>
+      </ol>
+    </section>
+
+    <section id="cheatsheet">
+      <h2><span class="kicker">Reference</span>CodeMender command cheat sheet</h2>
+      <table class="tbl"><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>
+        <tr><td><code>cm init</code></td><td>Create <code class="inline">~/.codemender/</code> (config, state DB, identity key)</td></tr>
+        <tr><td><code>cm find &lt;path&gt;</code></td><td>Scan for vulnerabilities</td></tr>
+        <tr><td><code>cm find verify &lt;id&gt;</code></td><td>Reproduce/triage a finding &rarr; Verified / Dismissed</td></tr>
+        <tr><td><code>cm fix &lt;id&gt; --auto-apply -y</code></td><td>Generate + apply a patch, print a summary</td></tr>
+        <tr><td><code>cm report -f json&#124;sarif</code></td><td>List findings; <code class="inline">--patches</code> shows the diffs</td></tr>
+        <tr><td><code>cm vcs diff / status</code></td><td>Show workspace changes</td></tr>
+      </tbody></table>
+    </section>
+
+    <section id="trouble">
+      <h2><span class="kicker">When something breaks</span>Troubleshooting</h2>
+      <table class="tbl"><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody>
+        <tr><td><code>denied &hellip; artifactregistry</code> pulling the image</td><td>Facilitator must grant your CB SA(s) <code class="inline">artifactregistry.reader</code> (Part A3).</td></tr>
+        <tr><td><code>PermissionDenied: Secret &hellip; gh-pat</code></td><td>Grant <code class="inline">secretmanager.secretAccessor</code> to your CB SA(s) (Step 6).</td></tr>
+        <tr><td>gcsfuse mount / bucket permission error</td><td>Grant <code class="inline">storage.objectAdmin</code> on the bucket to your CB SA(s) (Step 6).</td></tr>
+        <tr><td>Build fails with a service-account / logging error</td><td>Grant <code class="inline">roles/logging.logWriter</code> (and, if required, <code class="inline">roles/cloudbuild.builds.builder</code>) to the CB SA.</td></tr>
+        <tr><td>PR step returns <code>HTTP 422</code></td><td>A PR for that branch already exists &mdash; merge/close it, then rerun.</td></tr>
+        <tr><td>Pipeline says <code>No findings</code></td><td>Target already fixed, or wrong path. Confirm <code class="inline">_SCAN_PATH</code> exists on <code class="inline">_BASE_BRANCH</code>.</td></tr>
+      </tbody></table>
+    </section>
+
+
+    <section id="production">
+      <h2><span class="kicker">Beyond the lab</span>Production hardening &amp; EAP caveats</h2>
+      <div class="callout warn"><div class="ct">&#9888; This CodeMender build is Early Access (EAP)</div>
+        <p>A few rough edges are worked around in the scripts and will smooth out as the product matures &mdash; don't treat them as permanent design.</p></div>
+      <ul>
+        <li><b><code class="inline">cm fix --export</code> is not implemented</b>, and the fix agent's exploit-testing path can reset the working tree &mdash; so <code class="inline">fix.sh</code> re-applies the patch it reads back from <code class="inline">cm report --patches</code>. Expect to delete that block once fix reliably leaves or exports the patch.</li>
+        <li><b>Verification is the long pole</b> (~10&ndash;15 min): it builds and runs the whole app. Budget for it, or cache <code class="inline">node_modules</code> / the built app to speed reruns.</li>
+        <li><b>Exit codes are still stabilising</b>, so the scripts re-read <code class="inline">cm report</code> between phases instead of trusting a phase's exit status.</li>
+        <li><b>The credential is baked into the binary</b>, so the image is sensitive &mdash; keep it in an IAM-gated registry, never public.</li>
+      </ul>
+      <h3>Best practices for a real deployment</h3>
+      <ul>
+        <li><b>Feed a standard sink.</b> Emit <code class="inline">cm report -f sarif</code> into Security Command Center or GitHub code scanning instead of parsing tables &mdash; findings become trackable, not just log output.</li>
+        <li><b>Trigger, don't submit.</b> Wire a Cloud Build trigger to the fork so scans run automatically on push/PR and Cloud Build checks out the source for you (no clone step).</li>
+        <li><b>Gate on a build.</b> Set <code class="inline">build.command</code> so <code class="inline">cm build</code> compiles &amp; tests after a fix and rejects patches that don't build.</li>
+        <li><b>Harden identity &amp; secrets.</b> Pin the image by <em>digest</em>, use least-privilege service accounts, rotate the GitHub token, and prefer a fine-grained PAT (or a GitHub App) over a broad token.</li>
+        <li><b>Structure the orchestration.</b> Once you outgrow the lab, replace the bash glue with a small typed orchestrator (e.g. Python) for retries and structured error handling.</li>
+        <li><b>Widen coverage.</b> Scan directories or the whole service, and schedule periodic runs rather than one file on demand.</li>
+      </ul>
+    </section>
+
+    <section id="cleanup">
+      <h2><span class="kicker">Leave it tidy</span>Cleanup</h2><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud secrets delete gh-pat --quiet
+gcloud storage rm -r "gs://$CM_STATE_BUCKET" --quiet     <span class="c"># optional: delete CM state</span>
+gh pr list --repo <span class="p">YOUR_GITHUB_USERNAME</span>/juice-shop     <span class="c"># close any leftover PRs</span></pre></figure>
+      <p class="small">Facilitators: keep the Artifact Registry image for the next cohort, or delete it with <code class="inline">gcloud artifacts repositories delete codemender --location=$REGION</code>.</p>
+    </section>
+
+    <footer>
+      <p><b>CodeMender CI Lab</b> &middot; Internal CE enablement. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for training only.</p>
+      <p class="small">No secrets appear in this guide. Tokens live in Secret Manager; the CodeMender credential is baked into the IAM-gated image. Replace every <code class="inline" style="color:var(--muted)">placeholder</code> with your own values.</p>
+    </footer>
+   </div></main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var root=document.documentElement, btn=document.getElementById('themebtn'), lbl=document.getElementById('themelbl');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('cm-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function curDark(){var t=root.getAttribute('data-theme');return t?t==='dark':sysDark();}
+  function syncLbl(){lbl.textContent=curDark()?'Light':'Dark';}
+  syncLbl();
+  btn.addEventListener('click',function(){var next=curDark()?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('cm-theme',next);}catch(e){}syncLbl();});
+  document.querySelectorAll('figure.code').forEach(function(fig){
+    var b=fig.querySelector('.copy'), pre=fig.querySelector('pre'); if(!b||!pre)return;
+    b.addEventListener('click',function(){navigator.clipboard.writeText(pre.innerText).then(function(){var o=b.textContent;b.textContent='Copied';b.classList.add('done');setTimeout(function(){b.textContent=o;b.classList.remove('done');},1400);}).catch(function(){});});
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('.railnav a')), map={};
+  links.forEach(function(a){var id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)map[id]=a;});
+  var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
+  Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
+  document.querySelectorAll('.done-toggle input').forEach(function(cb){var k='cm-step-'+cb.getAttribute('data-step');try{if(localStorage.getItem(k)==='1')cb.checked=true;}catch(e){}cb.addEventListener('change',function(){try{localStorage.setItem(k,cb.checked?'1':'0');}catch(e){}});});
+})();
+</script>
+
+</body>
+</html>

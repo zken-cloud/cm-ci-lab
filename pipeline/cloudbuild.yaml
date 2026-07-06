@@ -1,0 +1,87 @@
+# CodeMender remediation pipeline — SEPARATE find / verify / fix / open-pr steps.
+#
+# Run from a working directory that contains this file and the scripts/ folder
+# (the source is uploaded, so the steps can run scripts/*.sh):
+#
+#   gcloud builds submit . \
+#     --config cloudbuild.yaml \
+#     --substitutions=\
+#   _CM_IMAGE=us-central1-docker.pkg.dev/CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0,\
+#   _CM_STATE_BUCKET=YOUR_PROJECT-cm-state,\
+#   _GH_OWNER=YOUR_GITHUB_USERNAME,_GH_REPO=juice-shop,_BASE_BRANCH=master,\
+#   _SCAN_PATH=routes/login.ts
+#
+# CodeMender state (config, identity, findings SQLite DB) is persisted across
+# the separate steps in a GCS bucket mounted with gcsfuse (see scripts/cm-env.sh).
+# The GitHub token comes from Secret Manager (secret name: gh-pat).
+#
+# Set _CM_IMAGE, _CM_STATE_BUCKET and _GH_OWNER (on the command line in Step 9,
+# or here). The rest have working defaults for this lab.
+substitutions:
+  _CM_IMAGE: ""              # ◀ SET: CodeMender image URL from your facilitator
+  _CM_STATE_BUCKET: ""       # ◀ SET: the GCS state bucket you created (Step 4)
+  _GH_OWNER: ""              # ◀ SET: your GitHub username (owner of the fork)
+  _GH_REPO: juice-shop
+  _BASE_BRANCH: master
+  _SCAN_PATH: routes/login.ts
+
+steps:
+  # 0 · Clone your fork into the shared /workspace (scripts/ stays alongside).
+  - id: clone
+    name: gcr.io/cloud-builders/git
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        rm -rf /workspace/repo
+        git clone --depth 1 --branch "${_BASE_BRANCH}" \
+          "https://github.com/${_GH_OWNER}/${_GH_REPO}.git" /workspace/repo
+
+  # 1 · Scan (writes findings to the gcsfuse-mounted state bucket).
+  - id: find
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: ["scripts/find.sh"]
+    env: &cmenv
+      - CM_STATE_BUCKET=${_CM_STATE_BUCKET}
+      - STATE_ID=${BUILD_ID}
+      - WORKSPACE=/workspace
+      - REPO_DIR=/workspace/repo
+      - SCAN_PATH=${_SCAN_PATH}
+
+  # 2 · Verify the top finding (full verification — may take several minutes).
+  - id: verify
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: ["scripts/verify.sh"]
+    env: *cmenv
+
+  # 3 · Fix the top finding and stage commit/PR metadata.
+  - id: fix
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: ["scripts/fix.sh"]
+    env: *cmenv
+
+  # 4 · Commit, push the branch, and open the Pull Request.
+  - id: open-pr
+    name: ${_CM_IMAGE}
+    entrypoint: bash
+    args: ["scripts/open-pr.sh"]
+    secretEnv: ["GH_TOKEN"]
+    env:
+      - WORKSPACE=/workspace
+      - REPO_DIR=/workspace/repo
+      - GH_OWNER=${_GH_OWNER}
+      - GH_REPO=${_GH_REPO}
+      - BASE_BRANCH=${_BASE_BRANCH}
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/gh-pat/versions/latest
+      env: GH_TOKEN
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 3600s      # verify can build & run the app to reproduce the exploit
