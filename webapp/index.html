@@ -282,10 +282,12 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <tr><td><b>Separate steps</b> for find / verify / fix / open-pr</td><td>Each phase is visible and independently retryable in the build log; mirrors how you'd stage a real security pipeline.</td></tr>
         <tr><td><b>GCS + gcsfuse</b> for CodeMender state</td><td>Every Cloud Build step is a fresh container. Mounting a bucket at <code class="inline">$HOME</code> persists <code class="inline">cm init</code>'s config, identity, and the findings <code class="inline">state.db</code> across steps.</td></tr>
         <tr><td><b>Full verification</b>, not skipped</td><td>CodeMender reproduces the exploit (it builds &amp; runs the app), so a fix targets a <em>confirmed</em> bug. This is why the image ships node/npm and why verify is the slow step.</td></tr>
+        <tr><td><b>15-min verify cap + PR flag</b></td><td><code class="inline">cm find verify</code> is thorough but <em>variable</em> — usually minutes, occasionally 40+ as the agent retries to stand up the app. We cap it at <b>15 min</b> so the pipeline always finishes; if it doesn't conclude, we still generate the fix and <b>flag the PR as UNVERIFIED</b>. Automated verification assists the human gate &mdash; it never replaces it.</td></tr>
         <tr><td><b>Deterministic patch apply</b></td><td>The fix step applies CodeMender's <em>stored</em> patch rather than trusting the working tree, so the result is identical every run.</td></tr>
         <tr><td><b>Human-in-the-loop PR</b></td><td>The pipeline never writes to <code class="inline">master</code>. CodeMender proposes; you review, approve, and merge &mdash; the approval gate stays with a person.</td></tr>
         <tr><td><b>Minimal toolbox image</b></td><td>The image carries only <code class="inline">cm</code> + build tools; you author the orchestration. Nothing is hidden, so you learn the CLI and can adapt it.</td></tr>
         <tr><td><b>Single-file scan target</b></td><td>Because the checkout lives in <code class="inline">/workspace</code> (not <code class="inline">/tmp</code>), a one-file target keeps CodeMender's sandbox scoped to that file &mdash; fast and deterministic for the lab.</td></tr>
+        <tr><td><b>Severity gate</b> (<code class="inline">_MIN_SEVERITY</code>, default CRITICAL)</td><td>Only findings at/above the threshold are auto-remediated. Lower-severity findings are reported but don't open PRs &mdash; so the Step&nbsp;12 confirm re-run opens no PR once the CRITICAL is fixed.</td></tr>
       </tbody></table>
     </section>
 
@@ -298,8 +300,22 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <tr><td><b>gcloud</b>, <b>git</b>, <b>gh</b> on your laptop</td><td>Install &amp; authenticate below.</td></tr>
         <tr><td>The <b>CodeMender image URL</b></td><td>Provided by your facilitator (see the next section). Access is granted org-wide, so there's nothing for you to request.</td></tr>
       </tbody></table>
-      <figure class="code"><figcaption><span class="lbl">bash · on your laptop (once)</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Install: gcloud  https://cloud.google.com/sdk/docs/install</span>
-<span class="c">#          gh      https://cli.github.com     git  https://git-scm.com</span>
+      <figure class="code"><figcaption><span class="lbl">bash · on your laptop (once)</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Easiest: Google Cloud Shell has gcloud, git and gh preinstalled -></span>
+<span class="c">#          https://shell.cloud.google.com  (skip the installs below)</span>
+
+<span class="c"># --- macOS (Homebrew) ---</span>
+brew install --cask google-cloud-sdk
+brew install git gh
+
+<span class="c"># --- Debian / Ubuntu ---</span>
+sudo apt-get update && sudo apt-get install -y git
+<span class="c"># gcloud: https://cloud.google.com/sdk/docs/install-sdk#deb</span>
+sudo mkdir -p -m 755 /etc/apt/keyrings
+wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
+sudo apt-get update && sudo apt-get install -y gh
+
+<span class="c"># --- Then authenticate (all platforms) ---</span>
 gcloud auth login
 gh auth login              <span class="c"># GitHub.com -> HTTPS -> grant the 'repo' scope</span>
 git --version && gh --version && gcloud --version | head -1</pre></figure>
@@ -486,14 +502,23 @@ build:
 YAML
 fi
 
+# Only act on findings at or above this severity (default CRITICAL). This scopes
+# the lab and makes the &quot;confirm remediation&quot; re-run open no PR once the CRITICAL
+# is fixed (lower-severity findings are reported but not auto-remediated).
+case &quot;${MIN_SEVERITY:-CRITICAL}&quot; in
+  CRITICAL) export SEV_RANK=4;; HIGH) export SEV_RANK=3;;
+  MEDIUM)   export SEV_RANK=2;; *)    export SEV_RANK=1;;
+esac
+
 # --- Helper: highest-severity finding UUID from `cm report` (empty if none) --
 # This is the &quot;grep the results for the next command&quot; glue: parse the findings
-# CodeMender stored and hand the top one to verify / fix.
+# CodeMender stored, keep only those &gt;= MIN_SEVERITY, and hand the top one on.
 top_finding_id() {
-  cm report -f json 2&gt;/dev/null | jq -r &#x27;
+  cm report -f json 2&gt;/dev/null | jq -r --argjson min &quot;${SEV_RANK:-4}&quot; &#x27;
+    def rank: {CRITICAL:4, HIGH:3, MEDIUM:2, LOW:1}[(.Severity|ascii_upcase)] // 0;
     (if type==&quot;array&quot; then . else [] end)
-    | sort_by({CRITICAL:4, HIGH:3, MEDIUM:2, LOW:1}[(.Severity|ascii_upcase)] // 0)
-    | reverse | (.[0].FindingID // &quot;&quot;)&#x27;
+    | map(select(rank &gt;= $min))
+    | sort_by(rank) | reverse | (.[0].FindingID // &quot;&quot;)&#x27;
 }
 </pre></figure>
       <h3><code class="inline">scripts/find.sh</code> &mdash; scan</h3><figure class="code"><figcaption><span class="lbl">scripts/find.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
@@ -515,32 +540,49 @@ cm report -f json &gt; &quot;$WORKSPACE/cm-findings.json&quot; || echo &#x27;nul
 
 FID=$(top_finding_id)
 if [[ -z &quot;$FID&quot; ]]; then
-  echo &quot;No findings — the verify/fix steps will no-op.&quot;
+  echo &quot;No findings at or above ${MIN_SEVERITY:-CRITICAL} — the verify/fix steps will no-op.&quot;
 else
-  echo &quot;Top finding selected for verify/fix: $FID&quot;
+  echo &quot;Top finding (&gt;= ${MIN_SEVERITY:-CRITICAL}) selected for verify/fix: $FID&quot;
 fi
 </pre></figure>
-      <h3><code class="inline">scripts/verify.sh</code> &mdash; verify (may take minutes)</h3>
-      <p>Runs CodeMender's <em>full</em> verification. We deliberately don't short-circuit it: a verified finding is a stronger signal than a raw scan hit.</p><figure class="code"><figcaption><span class="lbl">scripts/verify.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+      <h3><code class="inline">scripts/verify.sh</code> &mdash; verify (capped at 15 min)</h3>
+      <p>Runs CodeMender's <em>full</em> verification &mdash; but capped at 15 minutes, because it's variable (it builds &amp; runs the app to reproduce the exploit and can occasionally loop for 40+ min). If it doesn't conclude in time, the pipeline still generates the fix and the PR is flagged <b>UNVERIFIED</b> for human review &mdash; verification assists the gate, it doesn't replace it.</p><figure class="code"><figcaption><span class="lbl">scripts/verify.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
 #
-# verify.sh — STEP 2: verify the highest-severity finding.
+# verify.sh — STEP 2: verify the highest-severity finding, capped at 15 minutes.
 #
-# This runs CodeMender&#x27;s FULL verification: it may build and run the target
-# app to reproduce the exploit, so it can take several minutes. That is exactly
-# why the CI image ships with node/npm and build tools. We do NOT short-circuit
-# it — a verified finding is a stronger signal than a raw scan hit.
+# cm find verify runs CodeMender&#x27;s FULL verification — it may build and run the
+# app to reproduce the exploit. That is powerful but VARIABLE: usually a few
+# minutes, occasionally 40+ as the agent keeps retrying to stand up the app.
+# We cap it so the pipeline always finishes. Hitting the cap does NOT skip the
+# fix — we proceed, record the verdict, and the open-pr step flags the PR as
+# UNVERIFIED so the human reviewer knows to scrutinise it (human-in-the-loop).
 source &quot;$(dirname &quot;$0&quot;)/cm-env.sh&quot;
 cd &quot;$REPO_DIR&quot;
 
 FID=$(top_finding_id)
-if [[ -z &quot;$FID&quot; ]]; then
-  echo &quot;No findings to verify.&quot;; exit 0
+if [[ -z &quot;$FID&quot; ]]; then echo &quot;No findings to verify.&quot;; exit 0; fi
+
+VERIFY_TIMEOUT=&quot;${VERIFY_TIMEOUT:-900}&quot;          # 15 minutes
+echo &quot;🔬 cm find verify ${FID}  (capped at ${VERIFY_TIMEOUT}s)&quot;
+if timeout &quot;${VERIFY_TIMEOUT}s&quot; cm find verify &quot;${FID}&quot;; then
+  echo &quot;✅ verification finished within the cap&quot;
+else
+  rc=$?
+  if [[ $rc -eq 124 ]]; then
+    echo &quot;⏱️  verification hit the ${VERIFY_TIMEOUT}s cap — proceeding to fix; the PR will be flagged UNVERIFIED for human review&quot;
+    # Cancel any session the cap interrupted so the fix session starts cleanly.
+    for s in $(cm session list 2&gt;/dev/null | awk &#x27;NR&gt;2 &amp;&amp; /RUNNING/ {print $1}&#x27;); do
+      cm session cancel &quot;$s&quot; &gt;/dev/null 2&gt;&amp;1 || true
+    done
+  else
+    echo &quot;verify exited ($rc) — proceeding&quot;
+  fi
 fi
 
-echo &quot;🔬 cm find verify ${FID}&quot;
-cm find verify &quot;${FID}&quot;
-
-echo &quot;── status after verification ─────────────────────────&quot;
+# Record the verdict for the PR body: VERIFIED / DISMISSED / OPEN (=not confirmed).
+STATUS=$(cm report -f json | jq -r --arg id &quot;$FID&quot; &#x27;.[]|select(.FindingID==$id)|.Status&#x27; 2&gt;/dev/null)
+echo &quot;${STATUS:-OPEN}&quot; &gt; &quot;$WORKSPACE/cm-verify-status.txt&quot;
+echo &quot;── status after verification (verdict: ${STATUS:-OPEN}) ──&quot;
 cm report
 </pre></figure>
       <h3><code class="inline">scripts/fix.sh</code> &mdash; fix &amp; apply deterministically</h3>
@@ -637,6 +679,16 @@ FILE=$(jq -r &#x27;.FilePath&#x27; &quot;$F&quot; | sed &quot;s#^$REPO_DIR/##&qu
 ANALYSIS=$(jq -r &#x27;.Analysis // &quot;&quot;&#x27; &quot;$F&quot;)
 SUMMARY=$(cat &quot;$WORKSPACE/cm-summary.txt&quot;)
 
+# Verification verdict recorded by verify.sh (VERIFIED / DISMISSED / OPEN).
+VSTATUS=$(cat &quot;$WORKSPACE/cm-verify-status.txt&quot; 2&gt;/dev/null || echo &quot;OPEN&quot;)
+if [[ &quot;$VSTATUS&quot; == &quot;VERIFIED&quot; ]]; then
+  VERIFY_LINE=&quot;✅ Reproduced &amp;amp; confirmed by CodeMender&quot;
+  VERIFY_BANNER=&quot;&quot;
+else
+  VERIFY_LINE=&quot;⚠️ NOT confirmed — verification did not complete within the 15-min cap&quot;
+  VERIFY_BANNER=$&#x27;&gt; [!WARNING]\n&gt; **Human review required.** Automated verification did not confirm this finding within the 15-minute cap, so treat it as **UNVERIFIED**. Confirm the vulnerability and the fix from the analysis and diff below before approving.\n&#x27;
+fi
+
 SHORT=&quot;${FID:0:8}&quot;
 CWE_SLUG=$(echo &quot;$CWE&quot; | tr &#x27;A-Z&#x27; &#x27;a-z&#x27; | tr -cd &#x27;a-z0-9-&#x27;)
 BRANCH=&quot;codemender/${CWE_SLUG}-${SHORT}&quot;
@@ -670,6 +722,7 @@ echo &quot;${PUSH_OUT//${GH_TOKEN}/***}&quot;
 {
   echo &quot;## 🛡️ CodeMender automated security fix&quot;
   echo
+  [[ -n &quot;$VERIFY_BANNER&quot; ]] &amp;&amp; { printf &#x27;%s\n&#x27; &quot;$VERIFY_BANNER&quot;; echo; }
   echo &quot;&gt; ${SUMMARY}&quot;
   echo
   echo &quot;| | |&quot;
@@ -678,6 +731,7 @@ echo &quot;${PUSH_OUT//${GH_TOKEN}/***}&quot;
   echo &quot;| **Severity** | ${SEV} |&quot;
   echo &quot;| **Type** | ${VTYPE} (${CWE}) |&quot;
   echo &quot;| **Confidence** | ${CONF}% |&quot;
+  echo &quot;| **Verification** | ${VERIFY_LINE} |&quot;
   echo &quot;| **File** | \`${FILE}\` |&quot;
   echo
   echo &quot;### Analysis&quot;
@@ -748,6 +802,7 @@ substitutions:
   _GH_REPO: juice-shop
   _BASE_BRANCH: master
   _SCAN_PATH: routes/login.ts
+  _MIN_SEVERITY: CRITICAL     # only auto-remediate findings at/above this severity
 
 steps:
   # 0 · Clone your fork into the shared /workspace (scripts/ stays alongside).
@@ -773,6 +828,7 @@ steps:
       - WORKSPACE=/workspace
       - REPO_DIR=/workspace/repo
       - SCAN_PATH=${_SCAN_PATH}
+      - MIN_SEVERITY=${_MIN_SEVERITY}
 
   # 2 · Verify the top finding (full verification — may take several minutes).
   - id: verify
@@ -821,7 +877,7 @@ timeout: 3600s      # verify can build &amp; run the app to reproduce the exploi
 gcloud builds submit . \
   --config cloudbuild.yaml \
   --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER=<span class="p">YOUR_GITHUB_USERNAME</span>,_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
-      <div class="callout note"><div class="ct">&#9201; verify is the long pole</div><p>Expect <b>15&ndash;20 minutes</b> total. The verify step builds &amp; runs Juice Shop to reproduce the exploit &mdash; that's the point, and why the image carries node/npm.</p></div>
+      <div class="callout note"><div class="ct">&#9201; Expect ~20&ndash;30 minutes</div><p>The verify step builds &amp; runs Juice Shop to reproduce the exploit; it is <b>capped at 15 minutes</b>, after which the pipeline proceeds and flags the PR for review. A full run is typically 20&ndash;30 min.</p></div>
       <label class="done-toggle"><input type="checkbox" data-step="9"> Mark step complete</label>
     </section>
 
@@ -850,9 +906,10 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
 
     <section id="s12">
       <div class="step"><span class="num">12</span><h2>Confirm the remediation</h2></div>
-      <p>Prove it worked: run the pipeline again against the now-merged <code class="inline">master</code>. The parameterized query is no longer injectable, so there's no Critical SQL injection to fix &mdash; the fix step finds nothing to do and opens no PR.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud builds submit . --config cloudbuild.yaml \
+      <p>Confirm the SQL injection is gone. The surest check is the merged code itself &mdash; <code class="inline">routes/login.ts</code> on <code class="inline">master</code> now uses a parameterized query (<code class="inline">WHERE email = ? AND password = ?</code>), so the injection vector is closed. You can also re-run the pipeline against <code class="inline">master</code>:</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud builds submit . --config cloudbuild.yaml \
   --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER=<span class="p">YOUR_GITHUB_USERNAME</span>,_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
-      <div class="callout note"><div class="ct">&#9989; You closed the loop</div><p>Package &rarr; find &rarr; verify &rarr; fix &rarr; PR &rarr; human approval &rarr; merge &rarr; re-scan clean. A complete AI-assisted remediation workflow, with the approval gate intact.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; Juice Shop's login route has more than one issue</div><p>The re-scan won't re-flag the fixed SQL injection, but <code class="inline">login.ts</code> also contains an <em>intentional</em> hardcoded-credentials issue (part of Juice Shop's challenges), which CodeMender may surface as the next finding and open a PR for &mdash; that's expected, not a failure. This lab focuses on the SQL injection; to stop there, confirm via the merged code above, or point <code class="inline">_SCAN_PATH</code> at a different file to keep going. (CodeMender's severities can also vary run-to-run &mdash; an EAP trait.)</p></div>
+      <div class="callout note"><div class="ct">&#9989; You closed the loop</div><p>Package &rarr; find &rarr; verify &rarr; fix &rarr; PR &rarr; human approval &rarr; merge &rarr; re-scan confirms the SQL injection is gone. A complete AI-assisted remediation workflow, with the approval gate intact.</p></div>
       <label class="done-toggle"><input type="checkbox" data-step="12"> Mark step complete</label>
     </section>
 
@@ -897,7 +954,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
         <p>A few rough edges are worked around in the scripts and will smooth out as the product matures &mdash; don't treat them as permanent design.</p></div>
       <ul>
         <li><b><code class="inline">cm fix --export</code> is not implemented</b>, and the fix agent's exploit-testing path can reset the working tree &mdash; so <code class="inline">fix.sh</code> re-applies the patch it reads back from <code class="inline">cm report --patches</code>. Expect to delete that block once fix reliably leaves or exports the patch.</li>
-        <li><b>Verification is the long pole</b> (~10&ndash;15 min): it builds and runs the whole app. Budget for it, or cache <code class="inline">node_modules</code> / the built app to speed reruns.</li>
+        <li><b>Verification is variable</b> (minutes to 40+): it builds &amp; runs the whole app, so the lab caps it at 15 min and flags unverified fixes for review. Cache <code class="inline">node_modules</code> / the prebuilt app, or pre-seed a running instance, to make it faster and more reliable.</li>
         <li><b>Exit codes are still stabilising</b>, so the scripts re-read <code class="inline">cm report</code> between phases instead of trusting a phase's exit status.</li>
         <li><b>The credential is baked into the binary</b>, so the image is sensitive &mdash; keep it in an IAM-gated registry, never public.</li>
       </ul>

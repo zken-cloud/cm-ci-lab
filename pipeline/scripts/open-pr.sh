@@ -35,6 +35,16 @@ FILE=$(jq -r '.FilePath' "$F" | sed "s#^$REPO_DIR/##")
 ANALYSIS=$(jq -r '.Analysis // ""' "$F")
 SUMMARY=$(cat "$WORKSPACE/cm-summary.txt")
 
+# Verification verdict recorded by verify.sh (VERIFIED / DISMISSED / OPEN).
+VSTATUS=$(cat "$WORKSPACE/cm-verify-status.txt" 2>/dev/null || echo "OPEN")
+if [[ "$VSTATUS" == "VERIFIED" ]]; then
+  VERIFY_LINE="✅ Reproduced &amp; confirmed by CodeMender"
+  VERIFY_BANNER=""
+else
+  VERIFY_LINE="⚠️ NOT confirmed — verification did not complete within the 15-min cap"
+  VERIFY_BANNER=$'> [!WARNING]\n> **Human review required.** Automated verification did not confirm this finding within the 15-minute cap, so treat it as **UNVERIFIED**. Confirm the vulnerability and the fix from the analysis and diff below before approving.\n'
+fi
+
 SHORT="${FID:0:8}"
 CWE_SLUG=$(echo "$CWE" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9-')
 BRANCH="codemender/${CWE_SLUG}-${SHORT}"
@@ -68,6 +78,7 @@ echo "${PUSH_OUT//${GH_TOKEN}/***}"
 {
   echo "## 🛡️ CodeMender automated security fix"
   echo
+  [[ -n "$VERIFY_BANNER" ]] && { printf '%s\n' "$VERIFY_BANNER"; echo; }
   echo "> ${SUMMARY}"
   echo
   echo "| | |"
@@ -76,6 +87,7 @@ echo "${PUSH_OUT//${GH_TOKEN}/***}"
   echo "| **Severity** | ${SEV} |"
   echo "| **Type** | ${VTYPE} (${CWE}) |"
   echo "| **Confidence** | ${CONF}% |"
+  echo "| **Verification** | ${VERIFY_LINE} |"
   echo "| **File** | \`${FILE}\` |"
   echo
   echo "### Analysis"

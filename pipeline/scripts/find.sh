@@ -17,7 +17,7 @@ cm report -f json > "$WORKSPACE/cm-findings.json" || echo 'null' > "$WORKSPACE/c
 
 FID=$(top_finding_id)
 if [[ -z "$FID" ]]; then
-  echo "No findings — the verify/fix steps will no-op."
+  echo "No findings at or above ${MIN_SEVERITY:-CRITICAL} — the verify/fix steps will no-op."
 else
-  echo "Top finding selected for verify/fix: $FID"
+  echo "Top finding (>= ${MIN_SEVERITY:-CRITICAL}) selected for verify/fix: $FID"
 fi

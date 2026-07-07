@@ -24,6 +24,7 @@ substitutions:
   _GH_REPO: juice-shop
   _BASE_BRANCH: master
   _SCAN_PATH: routes/login.ts
+  _MIN_SEVERITY: CRITICAL     # only auto-remediate findings at/above this severity
 
 steps:
   # 0 · Clone your fork into the shared /workspace (scripts/ stays alongside).
@@ -49,6 +50,7 @@ steps:
       - WORKSPACE=/workspace
       - REPO_DIR=/workspace/repo
       - SCAN_PATH=${_SCAN_PATH}
+      - MIN_SEVERITY=${_MIN_SEVERITY}
 
   # 2 · Verify the top finding (full verification — may take several minutes).
   - id: verify

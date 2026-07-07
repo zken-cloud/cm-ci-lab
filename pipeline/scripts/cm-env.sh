@@ -51,12 +51,21 @@ build:
 YAML
 fi
 
+# Only act on findings at or above this severity (default CRITICAL). This scopes
+# the lab and makes the "confirm remediation" re-run open no PR once the CRITICAL
+# is fixed (lower-severity findings are reported but not auto-remediated).
+case "${MIN_SEVERITY:-CRITICAL}" in
+  CRITICAL) export SEV_RANK=4;; HIGH) export SEV_RANK=3;;
+  MEDIUM)   export SEV_RANK=2;; *)    export SEV_RANK=1;;
+esac
+
 # --- Helper: highest-severity finding UUID from `cm report` (empty if none) --
 # This is the "grep the results for the next command" glue: parse the findings
-# CodeMender stored and hand the top one to verify / fix.
+# CodeMender stored, keep only those >= MIN_SEVERITY, and hand the top one on.
 top_finding_id() {
-  cm report -f json 2>/dev/null | jq -r '
+  cm report -f json 2>/dev/null | jq -r --argjson min "${SEV_RANK:-4}" '
+    def rank: {CRITICAL:4, HIGH:3, MEDIUM:2, LOW:1}[(.Severity|ascii_upcase)] // 0;
     (if type=="array" then . else [] end)
-    | sort_by({CRITICAL:4, HIGH:3, MEDIUM:2, LOW:1}[(.Severity|ascii_upcase)] // 0)
-    | reverse | (.[0].FindingID // "")'
+    | map(select(rank >= $min))
+    | sort_by(rank) | reverse | (.[0].FindingID // "")'
 }
