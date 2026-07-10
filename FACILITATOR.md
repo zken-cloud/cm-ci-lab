@@ -22,8 +22,8 @@ participant guide at **https://cm-ci-lab.cedemo.app**.
 ## What you provide to participants
 
 1. The **CodeMender image URL** (from Step 2 below).
-2. **One org-wide read grant** on the image (Step 3) — no per-participant
-   service accounts to collect.
+2. **Read access on the image** for each participant's Cloud Build service
+   account(s) (Step 3) — collect their project number, grant both SA variants.
 3. The lab URL: **https://cm-ci-lab.cedemo.app**
 
 That's it. Everything else — state bucket, tokens, scripts, pipeline — is the
@@ -49,6 +49,20 @@ orchestration; participants write the find/verify/fix scripts themselves.
 
 The build recipe is `container/Dockerfile` and `container/cloudbuild.image.yaml`
 in this repo.
+
+---
+
+## Who administers the image
+
+Repo administration is managed through a Google Group, not per-person bindings.
+A facilitator admin group (`cm-ci-lab-admin@<YOUR_ORG_DOMAIN>`) holds
+`roles/artifactregistry.admin` on the `codemender` repo (in the central project),
+so every facilitator in it can pull, push, delete, and manage IAM on the image.
+Add or remove a facilitator by changing group membership — no IAM edit needed.
+
+> Because the baked credential is extractable and cannot be rotated (see
+> **Security**), admin = ability to overwrite/delete the only copy of the image.
+> Keep membership to trusted facilitators.
 
 ---
 
@@ -81,46 +95,104 @@ Share this URL with participants (it goes in their `_CM_IMAGE` substitution):
 $REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0
 ```
 
-## Step 3 — Grant image read access **once, org-wide**
+## Step 3 — Grant image read access per participant
 
-Collecting a Cloud Build service account from every participant does not scale
-(each of the 100 projects has its own, and a `domain:` grant only covers *user*
-accounts, not the `gserviceaccount.com` build SAs). Instead, grant read access
-with a **single** binding that every participant's build inherits:
+The image is pulled **inside Cloud Build**, so it is pulled by each participant's
+**Cloud Build service account**, never by the person (they can't `docker pull` on
+their laptops). Grant reader to that SA. Because the image embeds a **sensitive
+EAP credential**, the default here is the **tight, per-participant grant** —
+scoped to exactly the SAs that need it — rather than a broad org-wide binding.
+
+You need each participant's **project number** — the two build-SA emails are
+fully derivable from it (`PROJNUM@cloudbuild…` and `PROJNUM-compute@developer…`),
+so you collect one short number, not two long emails.
+
+### 3a — Share a Google Sheet for participants to submit to
+
+Create a Google Sheet and share it with the cohort — **the participant guide's
+Step 6 tells them to paste their project number into it**, so put its link there.
+Ask for one column, **"GCP project number"** (name/email optional for tracking),
+and include this retrieval command in the header note so nobody submits a project
+*ID* by mistake:
 
 ```bash
-# One grant covers every participant's Cloud Build service account.
-gcloud artifacts repositories add-iam-policy-binding codemender \
-  --location="$REGION" \
-  --member="allAuthenticatedUsers" \
-  --role="roles/artifactregistry.reader"
+gcloud projects describe YOUR_PROJECT_ID --format='value(projectNumber)'
 ```
 
-Why this works and how to tighten it:
+The sheet is your single source of truth and pairs with the idempotent loop below
+so you can re-drain it as rows arrive. (A Google **Form** that feeds the sheet is
+cleaner at scale — participants can't see or overwrite each other's rows.)
 
-- `allAuthenticatedUsers` = any authenticated Google identity, which **includes
-  every participant's Cloud Build service account** — nothing to collect, and it
-  keeps working as more people join.
-- The image embeds a **sensitive EAP credential**, so treat the image path as
-  need-to-know and **rotate the credential after the cohort** (rebuild + repush
-  a new tag, delete the old one).
-- If your org enforces **Domain Restricted Sharing** (which blocks
-  `allUsers`/`allAuthenticatedUsers`), use one of these instead — still O(1):
-  - Grant reader to a **Google Group**, and have everyone run their builds with
-    a **single shared build service account** (created in your central project,
-    added to the group) via `gcloud builds submit --service-account=...`; or
-  - Have all participants run in **one shared build project** — one Cloud Build
-    SA, one grant.
+### 3b — Extract the submissions and grant both build SAs
+
+Pull the project-number column out of the sheet into `project-numbers.txt`, one
+number per line (File → Download → **CSV**, then keep that column — or just copy
+the column). Then run the grant loop below. `add-iam-policy-binding` is
+**idempotent** (re-adding a member is a no-op), so you can run it repeatedly —
+even on a `watch` during the lab — as new rows arrive, without tracking who's
+already done:
+
+```bash
+# project-numbers.txt: one project NUMBER per line
+while read -r PROJNUM; do
+  PROJNUM="${PROJNUM//[^0-9]/}"; [[ -z "$PROJNUM" ]] && continue   # skip blanks/IDs
+  for SA in "${PROJNUM}@cloudbuild.gserviceaccount.com" \
+            "${PROJNUM}-compute@developer.gserviceaccount.com"; do
+    gcloud artifacts repositories add-iam-policy-binding codemender \
+      --location="$REGION" --project="$CENTRAL_PROJECT" \
+      --member="serviceAccount:${SA}" --role="roles/artifactregistry.reader"
+  done
+done < project-numbers.txt
+```
+
+- Grant **both** SAs. A project builds as the legacy `@cloudbuild` SA *or* the
+  default `-compute@developer` SA; if you grant only one and the build uses the
+  other, the image pull fails with `denied` (the log shows which SA it used).
+- **Revoke after the cohort.** Because the baked key is extractable from the
+  image and you cannot rotate it yourself (see Security), the real post-lab
+  mitigation is to **remove these grants** — swap `add-iam-policy-binding` for
+  `remove-iam-policy-binding` in the loop.
+- *Optional automation:* an Apps Script / Cloud Function on form-submit could
+  apply the grant itself, but that needs a standing SA with
+  `artifactregistry.admin` on the repo — more attack surface than a one-off lab
+  warrants. Prefer the manual idempotent loop.
+
+**Fallback — `allAuthenticatedUsers` (avoid unless you must).** A single broad
+grant covers every build SA with nothing to collect — but the baked key is a
+**Google API key extractable from the image with `strings`**, and you **can't
+rotate it** (only the CM team can). So this grant effectively publishes a live,
+unrotatable credential to the entire authenticated internet. Use only if
+collecting numbers is truly impossible, and time-box it with an IAM Condition:
+
+```bash
+gcloud artifacts repositories add-iam-policy-binding codemender \
+  --location="$REGION" --member="allAuthenticatedUsers" \
+  --role="roles/artifactregistry.reader" \
+  --condition='expression=request.time < timestamp("2026-01-01T00:00:00Z"),title=lab-day-only'
+```
+
+If Domain Restricted Sharing blocks `allAuthenticatedUsers` too, run all builds
+in **one shared build project** (one SA, one grant) — but note that
+re-centralizes each participant's GitHub token and Cloud Build quota, so it's
+worse than per-SA at scale.
 
 ---
 
 ## Security
 
-- **The image is sensitive.** The CodeMender server endpoint and credential are
-  baked into `cm-linux`, so anyone who can pull the image can call the backend.
-  Distribute it **only** through this IAM-gated Artifact Registry repo — never a
-  public registry, and never commit `cm-linux` to a public repo (it is
-  git-ignored in this repository).
+- **The image is sensitive — and irreducibly so.** The CodeMender API key is a
+  Google API key baked into `cm-linux` at build time (a `-X …config.bakedAPIKey`
+  ldflag). It is **extractable from the image in one command**
+  (`strings /usr/local/bin/cm | grep AIza`) and sent as the `x-goog-api-key`
+  header, so anyone who can pull the image can call the CM backend *directly*,
+  image or not. There is **no runtime override** (config exposes only
+  `server.endpoint`, no `api_key` field), and **you cannot rotate the key
+  yourself** — re-keying requires Google's internal `build_cm.sh`. So access
+  control is the *only* protection: distribute the image **only** through this
+  IAM-gated repo, scope pulls to the collected build SAs, **revoke after the
+  cohort**, and never commit `cm-linux` to a public repo (it is git-ignored
+  here). To make the image non-sensitive, ask the CM team for a build that reads
+  the key at **runtime** (env / Secret Manager) or issues short-lived keys.
 - **The web guide is public** (GCS static site behind an HTTPS LB) but contains
   only placeholders — no project IDs, tokens, service-account emails, or keys.
 

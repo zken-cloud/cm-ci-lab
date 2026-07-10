@@ -1,6 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+wrote webapp/index.html: 74178 bytes
+d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>CodeMender CI Lab &mdash; Build a Remediation Pipeline</title>
@@ -298,7 +297,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <tr><td>A <b>GitHub account</b></td><td>You'll fork Juice Shop into it.</td></tr>
         <tr><td>A <b>GCP project</b> with billing</td><td>Cloud Build, Artifact Registry, GCS, and Secret Manager run here. <code class="inline">Owner</code> or <code class="inline">Editor</code> on the project is simplest.</td></tr>
         <tr><td><b>gcloud</b>, <b>git</b>, <b>gh</b> on your laptop</td><td>Install &amp; authenticate below.</td></tr>
-        <tr><td>The <b>CodeMender image URL</b></td><td>Provided by your facilitator (see the next section). Access is granted org-wide, so there's nothing for you to request.</td></tr>
+        <tr><td>The <b>CodeMender image URL</b> + access</td><td>Provided by your facilitator. To get pull access you submit your GCP <b>project number</b> to their tracking sheet in Step&nbsp;6.</td></tr>
       </tbody></table>
       <figure class="code"><figcaption><span class="lbl">bash · on your laptop (once)</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Easiest: Google Cloud Shell has gcloud, git and gh preinstalled -></span>
 <span class="c">#          https://shell.cloud.google.com  (skip the installs below)</span>
@@ -325,7 +324,7 @@ git --version && gh --version && gcloud --version | head -1</pre></figure>
     <section id="image">
       <h2><span class="kicker">Provided for you</span>The CodeMender image</h2>
       <div class="callout note"><div class="ct">&#128230; Your facilitator provides the image &mdash; you don't build it</div>
-        <p>The facilitator publishes the container to Artifact Registry and grants your organization read access. You'll get a URL like <code class="inline">REGION-docker.pkg.dev/CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0</code> to paste into <code class="inline">_CM_IMAGE</code> in Step&nbsp;9. Your Cloud Build pulls it automatically.</p></div>
+        <p>The facilitator publishes the container to Artifact Registry. To grant your project pull access they need your project's build service accounts &mdash; so in <b>Step&nbsp;6</b> you submit your <b>project number</b> to the tracking sheet they share. You'll also get a URL like <code class="inline">REGION-docker.pkg.dev/CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0</code> to paste into <code class="inline">_CM_IMAGE</code> in Step&nbsp;9. Your Cloud Build then pulls it automatically.</p></div>
       <p>For reference, this is exactly how that image is built &mdash; a deliberately minimal toolbox: the <code class="inline">cm</code> client plus the build/runtime tools the pipeline needs (node/npm so <code class="inline">cm find verify</code> can build &amp; run Juice Shop, git, jq, and gcsfuse for state).</p>
       <details class="fac"><summary>Dockerfile &mdash; reference only <span class="tw">&#9656;</span></summary><div class="body"><figure class="code"><figcaption><span class="lbl">container/Dockerfile</span><button class="copy" type="button">Copy</button></figcaption><pre># CodeMender CI toolbox image.
 #
@@ -426,7 +425,7 @@ gh auth token | gcloud secrets create gh-pat --data-file=-</pre></figure>
 
     <section id="s6">
       <div class="step"><span class="num">6</span><h2>Grant Cloud Build access</h2></div>
-      <p>Cloud Build runs as a <b>service account</b> that needs to read your <code class="inline">gh-pat</code> secret and read/write the state bucket. (Image access is already granted org-wide by your facilitator &mdash; nothing to request.)</p>
+      <p>Cloud Build runs as a <b>service account</b> that needs to read your <code class="inline">gh-pat</code> secret and read/write the state bucket &mdash; you grant those in <em>your own</em> project below. <b>Image</b> access is different: the image lives in the facilitator's project, so you submit your <b>project number</b> to their tracking sheet and they grant your build SAs read.</p>
       <div class="callout note"><div class="ct">&#8505; Two possible service accounts &mdash; grant both</div>
         <p>Depending on how your project was created, Cloud Build uses the legacy <code class="inline">PROJECT_NUMBER@cloudbuild.gserviceaccount.com</code> <em>or</em> the Compute Engine <code class="inline">PROJECT_NUMBER-compute@developer.gserviceaccount.com</code>. The commands below grant <b>both</b>, so it works either way.</p></div><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 export CB_LEGACY="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
@@ -440,7 +439,12 @@ for SA in "$CB_LEGACY" "$CB_COMPUTE"; do
   gcloud storage buckets add-iam-policy-binding "gs://$CM_STATE_BUCKET" \
     --member="serviceAccount:$SA" --role="roles/storage.objectAdmin"
 done
-<span class="c"># Image access is already granted org-wide by your facilitator - nothing to send.</span></pre></figure>
+
+<span class="c"># --- Image access: only the facilitator can grant this (image lives in their project) ---</span>
+echo "Submit to the facilitator's sheet  ->  project number: $PROJECT_NUMBER"
+<span class="c"># Wait for the facilitator to confirm access before running Step 9.</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#128203; Submit your project number to the facilitator's sheet</div>
+        <p>Paste your <b>project number</b> (printed by the command above) into the Google Sheet your facilitator shared &mdash; that's how they grant your Cloud Build service accounts read access to the image. <b>Wait for their confirmation before Step&nbsp;9</b>; until the grant lands, the pipeline's image pull fails with <code class="inline">denied</code>.</p></div>
       <label class="done-toggle"><input type="checkbox" data-step="6"> Mark step complete</label>
     </section>
 
