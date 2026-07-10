@@ -1,4 +1,4 @@
-wrote webapp/index.html: 80047 bytes
+wrote webapp/index.html: 80320 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -903,8 +903,12 @@ timeout: 3600s      # verify can build &amp; run the app to reproduce the exploi
     <section id="s9">
       <div class="step"><span class="num">9</span><h2>Run the pipeline</h2></div>
       <div class="callout note"><div class="ct">&#8505; Set three values &mdash; in the shell you submit from</div><p>Set your <b>image URL</b> (<code class="inline">_CM_IMAGE</code>, from your facilitator), <b>state bucket</b> (<code class="inline">_CM_STATE_BUCKET</code>, Step&nbsp;4), and <b>GitHub username</b> (<code class="inline">_GH_OWNER</code>) in the command below. Do it in the <em>current</em> shell &mdash; these <code class="inline">export</code>s don't survive a new shell or a Cloud Shell reconnect, and a blank <code class="inline">_CM_IMAGE</code> is what causes <code>could not parse reference</code>. The guard line catches that before the build is submitted.</p></div>
-      <p>Run this from the directory containing <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (the source is uploaded so the steps can run <code class="inline">scripts/*.sh</code>):</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Sanity: run from the folder that holds cloudbuild.yaml AND scripts/ -- both get uploaded.</span>
-ls cloudbuild.yaml scripts/*.sh    <span class="c"># must list 1 yaml + 5 .sh files; if not, you're in the wrong dir</span>
+      <p>Run this from the directory containing <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (the source is uploaded so the steps can run <code class="inline">scripts/*.sh</code>):</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Sanity: right folder AND right content (catches wrong-dir and copy/paste mix-ups).</span>
+ls cloudbuild.yaml scripts/*.sh    <span class="c"># must list 1 yaml + 5 .sh files; if not, wrong dir</span>
+grep -q 'cm find' scripts/find.sh && grep -q 'find verify' scripts/verify.sh &&
+grep -q 'cm fix' scripts/fix.sh && grep -q gcsfuse scripts/cm-env.sh &&
+grep -q /pulls scripts/open-pr.sh && echo "✅ scripts look right" ||
+echo "⚠️ a script has the wrong content -- re-copy that file from Step 7"
 
 <span class="c"># Set all three in THIS shell -- they don't survive a new shell / Cloud Shell reconnect.</span>
 export CM_IMAGE="<span class="p">PASTE_IMAGE_URL_FROM_FACILITATOR</span>"
