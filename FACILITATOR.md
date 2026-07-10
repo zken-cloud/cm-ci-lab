@@ -39,21 +39,19 @@ You're ready to deliver once all of these are true:
   export REGION=us-central1
   gcloud config set project "$CENTRAL_PROJECT"
   ```
-- **You can see the image** — this both confirms your access and gives you the
-  exact URL to share:
+- **You can see the image** — confirms your access (if this errors, you're likely
+  not in the group yet):
   ```bash
   gcloud artifacts docker images list \
-    "$REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender" --include-tags
+    "$REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender"
   ```
 
 ---
 
 ## What you provide to participants
 
-1. The **image URL** — the tagged path from the listing above, e.g.
-   `us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci:v0.2.0`
-   (goes in their `_CM_IMAGE`). A digest-pinned reference works too and is more
-   reproducible.
+1. The **image URL** (goes in their `_CM_IMAGE`) — generate the exact,
+   digest-pinned reference as shown in *Get the exact image URL to share* below.
 2. **Read access on the image** for each participant's Cloud Build service
    account(s) — collect their project number, grant both SA variants (below).
 3. The lab URL: **https://cm-ci-lab.cedemo.app**
@@ -65,6 +63,33 @@ own work in the guide.
 > node/npm (so `cm find verify` can build & run Juice Shop to reproduce an
 > exploit), git, jq, and gcsfuse for GCS-backed state. It bakes in **no**
 > orchestration; participants write the find/verify/fix scripts themselves.
+
+---
+
+## Get the exact image URL to share
+
+Generate the URL right before you announce it rather than hand-typing it. Hand out
+the **digest-pinned** form so every participant builds against the identical image
+even if a tag is later re-pushed:
+
+```bash
+gcloud artifacts docker images describe \
+  "$REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0" \
+  --format='value(image_summary.fully_qualified_digest)'
+# -> us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci@sha256:a1c470…
+```
+
+To see which tags exist first (e.g. after a rotation), list them with digests:
+
+```bash
+gcloud artifacts docker images list \
+  "$REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender" --include-tags \
+  --format='table(tags, version)'
+```
+
+Paste the digest-pinned URL into the sheet / your announcement as `_CM_IMAGE`. A
+plain tag like `:v0.2.0` also works, but a tag can be re-pushed to a different
+image — the digest can't.
 
 ---
 
@@ -134,6 +159,9 @@ done < project-numbers.txt
 - Grant **both** SAs. A project builds as the legacy `@cloudbuild` SA *or* the
   default `-compute@developer` SA; if you grant only one and the build uses the
   other, the image pull fails with `denied` (the log shows which SA it used).
+- **Repo-scoped, so rotation-proof.** These bindings are on the `codemender`
+  repo, not on a tag — they cover every current and future image version, so you
+  never re-grant when the image is rotated.
 - **Revoke after the cohort.** Because the baked key is extractable from the
   image and cannot be rotated (see Security), the real post-lab mitigation is to
   **remove these grants** — swap `add-iam-policy-binding` for
@@ -161,6 +189,23 @@ If Domain Restricted Sharing blocks `allAuthenticatedUsers` too, run all builds
 in **one shared build project** (one SA, one grant) — but note that
 re-centralizes each participant's GitHub token and Cloud Build quota, so it's
 worse than per-SA at scale.
+
+---
+
+## Rotating the image
+
+Publishing a new image version (new tag/digest) is the **lab owner's** job. When
+it happens, your only action is to re-share the URL:
+
+- **Re-share.** Re-run *Get the exact image URL to share* and post the new
+  digest-pinned reference; participants update `_CM_IMAGE`.
+- **No re-grant.** The reader bindings are repo-scoped, so they already cover the
+  new version.
+- **Not a security control.** The baked key is identical across every tag and
+  extractable from any of them, and you can't re-key it — so rotating the URL only
+  versions the toolbox, it does **not** re-secure the credential. The real
+  mitigation stays: scope access to the collected SAs and **revoke after the
+  cohort** (see Security).
 
 ---
 
