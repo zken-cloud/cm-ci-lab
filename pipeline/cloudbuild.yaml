@@ -31,7 +31,7 @@ steps:
   - id: clone
     name: gcr.io/cloud-builders/git
     entrypoint: bash
-    secretEnv: ['GH_TOKEN']
+    secretEnv: ["GH_TOKEN"]
     args:
       - -c
       - |
