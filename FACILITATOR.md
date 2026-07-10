@@ -35,14 +35,15 @@ You're ready to deliver once all of these are true:
   central project:
   ```bash
   gcloud auth login
-  gcloud config set project <CENTRAL_PROJECT>
+  export CENTRAL_PROJECT=<your-central-project>   # the project that hosts the codemender repo
   export REGION=us-central1
+  gcloud config set project "$CENTRAL_PROJECT"
   ```
 - **You can see the image** — this both confirms your access and gives you the
   exact URL to share:
   ```bash
   gcloud artifacts docker images list \
-    "$REGION-docker.pkg.dev/<CENTRAL_PROJECT>/codemender" --include-tags
+    "$REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender" --include-tags
   ```
 
 ---
@@ -124,7 +125,7 @@ while read -r PROJNUM; do
   for SA in "${PROJNUM}@cloudbuild.gserviceaccount.com" \
             "${PROJNUM}-compute@developer.gserviceaccount.com"; do
     gcloud artifacts repositories add-iam-policy-binding codemender \
-      --location="$REGION" --project="<CENTRAL_PROJECT>" \
+      --location="$REGION" --project="$CENTRAL_PROJECT" \
       --member="serviceAccount:${SA}" --role="roles/artifactregistry.reader"
   done
 done < project-numbers.txt
