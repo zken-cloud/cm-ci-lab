@@ -15,6 +15,10 @@ set -euo pipefail
 : "${CM_STATE_BUCKET:?set CM_STATE_BUCKET (GCS bucket for CodeMender state)}"
 : "${STATE_ID:?set STATE_ID (per-run isolation, e.g. the Cloud Build \$BUILD_ID)}"
 
+# Bucket names never contain whitespace; strip any stray spaces that slipped in
+# via the substitution (a leading space makes gcsfuse fail to mount the bucket).
+CM_STATE_BUCKET="${CM_STATE_BUCKET//[[:space:]]/}"
+
 export WORKSPACE="${WORKSPACE:-/workspace}"
 export REPO_DIR="${REPO_DIR:-$WORKSPACE/repo}"
 export HOME="/mnt/cmstate/${STATE_ID}"          # cm writes ~/.codemender here
