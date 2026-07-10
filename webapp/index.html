@@ -1,4 +1,4 @@
-wrote webapp/index.html: 74917 bytes
+wrote webapp/index.html: 75404 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -425,13 +425,16 @@ gh auth token | gcloud secrets create gh-pat --data-file=-</pre></figure>
 
     <section id="s6">
       <div class="step"><span class="num">6</span><h2>Grant Cloud Build access</h2></div>
-      <p>Cloud Build runs as a <b>service account</b> that needs to read your <code class="inline">gh-pat</code> secret and read/write the state bucket &mdash; you grant those in <em>your own</em> project below. <b>Image</b> access is different: the image lives in the facilitator's project, so you submit your <b>project number</b> to their tracking sheet and they grant your build SAs read.</p>
+      <p>Cloud Build runs as a <b>service account</b> that needs to <b>run builds</b> (read the source you upload, write logs), read your <code class="inline">gh-pat</code> secret, and read/write the state bucket &mdash; you grant those in <em>your own</em> project below. <b>Image</b> access is different: the image lives in the facilitator's project, so you submit your <b>project number</b> to their tracking sheet and they grant your build SAs read.</p>
       <div class="callout note"><div class="ct">&#8505; Two possible service accounts &mdash; grant both</div>
         <p>Depending on how your project was created, Cloud Build uses the legacy <code class="inline">PROJECT_NUMBER@cloudbuild.gserviceaccount.com</code> <em>or</em> the Compute Engine <code class="inline">PROJECT_NUMBER-compute@developer.gserviceaccount.com</code>. The commands below grant <b>both</b>, so it works either way.</p></div><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 export CB_LEGACY="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 export CB_COMPUTE="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
 for SA in "$CB_LEGACY" "$CB_COMPUTE"; do
+  <span class="c"># run builds: read the uploaded source + write logs (the compute default SA lacks this)</span>
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:$SA" --role="roles/cloudbuild.builds.builder"
   <span class="c"># read the GitHub token</span>
   gcloud secrets add-iam-policy-binding gh-pat \
     --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor"
@@ -946,7 +949,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
         <tr><td><code>denied &hellip; artifactregistry</code> pulling the image</td><td>Your facilitator hasn't granted your build SAs yet &mdash; confirm your project number is in their sheet (Step&nbsp;6) and wait for confirmation.</td></tr>
         <tr><td><code>PermissionDenied: Secret &hellip; gh-pat</code></td><td>Grant <code class="inline">secretmanager.secretAccessor</code> to your CB SA(s) (Step 6).</td></tr>
         <tr><td>gcsfuse mount / bucket permission error</td><td>Grant <code class="inline">storage.objectAdmin</code> on the bucket to your CB SA(s) (Step 6).</td></tr>
-        <tr><td>Build fails with a service-account / logging error</td><td>Grant <code class="inline">roles/logging.logWriter</code> (and, if required, <code class="inline">roles/cloudbuild.builds.builder</code>) to the CB SA.</td></tr>
+        <tr><td><code>storage.objects.get</code> denied on <code>&hellip;_cloudbuild/source/&hellip;.tgz</code> (or a service-account / logging error)</td><td>The build SA can't read the source it uploaded &mdash; grant <code class="inline">roles/cloudbuild.builds.builder</code> to <b>both</b> CB SAs (it's in Step&nbsp;6; the <code class="inline">-compute@developer</code> default SA needs it explicitly).</td></tr>
         <tr><td>PR step returns <code>HTTP 422</code></td><td>A PR for that branch already exists &mdash; merge/close it, then rerun.</td></tr>
         <tr><td>Pipeline says <code>No findings</code></td><td>Target already fixed, or wrong path. Confirm <code class="inline">_SCAN_PATH</code> exists on <code class="inline">_BASE_BRANCH</code>.</td></tr>
       </tbody></table>
