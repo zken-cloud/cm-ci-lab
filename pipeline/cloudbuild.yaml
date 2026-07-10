@@ -31,11 +31,15 @@ steps:
   - id: clone
     name: gcr.io/cloud-builders/git
     entrypoint: bash
+    secretEnv: ['GH_TOKEN']
     args:
       - -c
       - |
         set -e
         rm -rf /workspace/repo
+        # Authenticated clone so PRIVATE forks work too. The token is fed through a
+        # one-shot credential helper, so it never appears in the remote URL or logs.
+        git config --global credential.helper '!f() { echo username=x-access-token; echo "password=$$GH_TOKEN"; }; f'
         git clone --depth 1 --branch "${_BASE_BRANCH}" \
           "https://github.com/${_GH_OWNER}/${_GH_REPO}.git" /workspace/repo
 

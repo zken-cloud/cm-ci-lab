@@ -1,4 +1,4 @@
-wrote webapp/index.html: 75404 bytes
+wrote webapp/index.html: 76327 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -782,7 +782,7 @@ fi
 
     <section id="s8">
       <div class="step"><span class="num">8</span><h2>Write the Cloud Build pipeline</h2></div>
-      <p>Alongside <code class="inline">scripts/</code>, create <code class="inline">cloudbuild.yaml</code>. It runs the five stages as separate steps; the CodeMender steps share state through the gcsfuse-mounted bucket, and <code class="inline">open-pr</code> reads the token from Secret Manager.</p>
+      <p>Alongside <code class="inline">scripts/</code>, create <code class="inline">cloudbuild.yaml</code>. It runs the five stages as separate steps; the CodeMender steps share state through the gcsfuse-mounted bucket, and the <code class="inline">clone</code> and <code class="inline">open-pr</code> steps read your GitHub token from Secret Manager (so a <b>private</b> fork clones fine).</p>
       <figure class="code"><figcaption><span class="lbl">cloudbuild.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre># CodeMender remediation pipeline — SEPARATE find / verify / fix / open-pr steps.
 #
 # Run from a working directory that contains this file and the scripts/ folder
@@ -816,11 +816,15 @@ steps:
   - id: clone
     name: gcr.io/cloud-builders/git
     entrypoint: bash
+    secretEnv: [&#x27;GH_TOKEN&#x27;]
     args:
       - -c
       - |
         set -e
         rm -rf /workspace/repo
+        # Authenticated clone so PRIVATE forks work too. The token is fed through a
+        # one-shot credential helper, so it never appears in the remote URL or logs.
+        git config --global credential.helper &#x27;!f() { echo username=x-access-token; echo &quot;password=$$GH_TOKEN&quot;; }; f&#x27;
         git clone --depth 1 --branch &quot;${_BASE_BRANCH}&quot; \
           &quot;https://github.com/${_GH_OWNER}/${_GH_REPO}.git&quot; /workspace/repo
 
@@ -946,6 +950,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
     <section id="trouble">
       <h2><span class="kicker">When something breaks</span>Troubleshooting</h2>
       <table class="tbl"><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody>
+        <tr><td>Clone fails: <code>could not read Username for 'https://github.com'</code></td><td>GitHub demanded auth &mdash; the fork is <b>private</b> or the path is wrong. The pipeline clones with your <code class="inline">gh-pat</code>, so a private fork is fine; confirm <code class="inline">_GH_OWNER</code> is your GitHub username and <code class="inline">_GH_REPO</code> (default <code>juice-shop</code>) exists on branch <code class="inline">_BASE_BRANCH</code>.</td></tr>
         <tr><td><code>denied &hellip; artifactregistry</code> pulling the image</td><td>Your facilitator hasn't granted your build SAs yet &mdash; confirm your project number is in their sheet (Step&nbsp;6) and wait for confirmation.</td></tr>
         <tr><td><code>PermissionDenied: Secret &hellip; gh-pat</code></td><td>Grant <code class="inline">secretmanager.secretAccessor</code> to your CB SA(s) (Step 6).</td></tr>
         <tr><td>gcsfuse mount / bucket permission error</td><td>Grant <code class="inline">storage.objectAdmin</code> on the bucket to your CB SA(s) (Step 6).</td></tr>
