@@ -1,4 +1,4 @@
-wrote webapp/index.html: 77419 bytes
+wrote webapp/index.html: 78106 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -883,7 +883,10 @@ timeout: 3600s      # verify can build &amp; run the app to reproduce the exploi
     <section id="s9">
       <div class="step"><span class="num">9</span><h2>Run the pipeline</h2></div>
       <div class="callout note"><div class="ct">&#8505; Set three values &mdash; in the shell you submit from</div><p>Set your <b>image URL</b> (<code class="inline">_CM_IMAGE</code>, from your facilitator), <b>state bucket</b> (<code class="inline">_CM_STATE_BUCKET</code>, Step&nbsp;4), and <b>GitHub username</b> (<code class="inline">_GH_OWNER</code>) in the command below. Do it in the <em>current</em> shell &mdash; these <code class="inline">export</code>s don't survive a new shell or a Cloud Shell reconnect, and a blank <code class="inline">_CM_IMAGE</code> is what causes <code>could not parse reference</code>. The guard line catches that before the build is submitted.</p></div>
-      <p>Run this from the directory containing <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (the source is uploaded so the steps can run <code class="inline">scripts/*.sh</code>):</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Set all three in THIS shell -- they don't survive a new shell / Cloud Shell reconnect.</span>
+      <p>Run this from the directory containing <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (the source is uploaded so the steps can run <code class="inline">scripts/*.sh</code>):</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Sanity: run from the folder that holds cloudbuild.yaml AND scripts/ -- both get uploaded.</span>
+ls cloudbuild.yaml scripts/*.sh    <span class="c"># must list 1 yaml + 5 .sh files; if not, you're in the wrong dir</span>
+
+<span class="c"># Set all three in THIS shell -- they don't survive a new shell / Cloud Shell reconnect.</span>
 export CM_IMAGE="<span class="p">PASTE_IMAGE_URL_FROM_FACILITATOR</span>"
 export CM_STATE_BUCKET="<span class="p">YOUR_PROJECT</span>-cm-state"    <span class="c"># the bucket from Step 4</span>
 export GH_OWNER="<span class="p">YOUR_GITHUB_USERNAME</span>"
@@ -956,6 +959,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
       <h2><span class="kicker">When something breaks</span>Troubleshooting</h2>
       <table class="tbl"><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody>
         <tr><td><code>invalid build step name ""</code> / <code>could not parse reference</code> at submit</td><td>A substitution is empty &mdash; usually <code>_CM_IMAGE</code>. Re-run the <code>export</code> lines in Step&nbsp;9 in your current shell; env vars don't survive a new shell or a Cloud Shell reconnect.</td></tr>
+        <tr><td><code>scripts/find.sh: No such file or directory</code> in the find step</td><td>The <code>scripts/</code> folder wasn't uploaded. Submit from the folder holding <b>both</b> <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (use Step&nbsp;9's <code>ls</code> check first), and make sure no <code class="inline">.gcloudignore</code>/<code class="inline">.gitignore</code> excludes them.</td></tr>
         <tr><td>Clone fails: <code>could not read Username for 'https://github.com'</code></td><td>GitHub demanded auth &mdash; the fork is <b>private</b> or the path is wrong. The pipeline clones with your <code class="inline">gh-pat</code>, so a private fork is fine; confirm <code class="inline">_GH_OWNER</code> is your GitHub username and <code class="inline">_GH_REPO</code> (default <code>juice-shop</code>) exists on branch <code class="inline">_BASE_BRANCH</code>.</td></tr>
         <tr><td><code>denied &hellip; artifactregistry</code> pulling the image</td><td>Your facilitator hasn't granted your build SAs yet &mdash; confirm your project number is in their sheet (Step&nbsp;6) and wait for confirmation.</td></tr>
         <tr><td><code>PermissionDenied: Secret &hellip; gh-pat</code></td><td>Grant <code class="inline">secretmanager.secretAccessor</code> to your CB SA(s) (Step 6).</td></tr>
