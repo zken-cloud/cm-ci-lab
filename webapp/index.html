@@ -1,4 +1,4 @@
-wrote webapp/index.html: 78106 bytes
+wrote webapp/index.html: 78867 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -782,7 +782,17 @@ fi
 
     <section id="s8">
       <div class="step"><span class="num">8</span><h2>Write the Cloud Build pipeline</h2></div>
-      <p>Alongside <code class="inline">scripts/</code>, create <code class="inline">cloudbuild.yaml</code>. It runs the five stages as separate steps; the CodeMender steps share state through the gcsfuse-mounted bucket, and the <code class="inline">clone</code> and <code class="inline">open-pr</code> steps read your GitHub token from Secret Manager (so a <b>private</b> fork clones fine).</p>
+      <p>Create <code class="inline">cloudbuild.yaml</code> as a <b>sibling</b> of <code class="inline">scripts/</code> &mdash; in the parent folder, <b>not</b> inside <code class="inline">scripts/</code>. The pipeline refers to the scripts as <code class="inline">scripts/find.sh</code>, so this exact layout matters:</p>
+      <div class="callout warn"><div class="ct">&#128193; Required layout &mdash; <code class="inline">cloudbuild.yaml</code> sits next to <code class="inline">scripts/</code>, not in it</div>
+      <pre style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre;overflow-x:auto;margin:0">lab/                     &larr; run `gcloud builds submit .` from HERE
+├─ cloudbuild.yaml       &larr; here, NOT inside scripts/
+└─ scripts/
+   ├─ cm-env.sh
+   ├─ find.sh
+   ├─ verify.sh
+   ├─ fix.sh
+   └─ open-pr.sh</pre></div>
+      <p>It runs the five stages as separate steps; the CodeMender steps share state through the gcsfuse-mounted bucket, and the <code class="inline">clone</code> and <code class="inline">open-pr</code> steps read your GitHub token from Secret Manager (so a <b>private</b> fork clones fine).</p>
       <figure class="code"><figcaption><span class="lbl">cloudbuild.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre># CodeMender remediation pipeline — SEPARATE find / verify / fix / open-pr steps.
 #
 # Run from a working directory that contains this file and the scripts/ folder
