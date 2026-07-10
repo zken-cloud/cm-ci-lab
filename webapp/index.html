@@ -1,4 +1,4 @@
-wrote webapp/index.html: 74212 bytes
+wrote webapp/index.html: 74752 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -314,9 +314,9 @@ wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo t
 echo "deb [signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
 sudo apt-get update && sudo apt-get install -y gh
 
-<span class="c"># --- Then authenticate (all platforms) ---</span>
-gcloud auth login
-gh auth login              <span class="c"># GitHub.com -> HTTPS -> grant the 'repo' scope</span>
+<span class="c"># --- Then authenticate ---</span>
+gcloud auth login          <span class="c"># laptop only -- Cloud Shell is already signed in</span>
+gh auth login              <span class="c"># BOTH: Cloud Shell's gh is installed but NOT logged in ('repo' scope)</span>
 git --version && gh --version && gcloud --version | head -1</pre></figure>
       <div class="callout warn"><div class="ct">&#9888; Use a throwaway lab project</div><p>Juice Shop is <em>deliberately vulnerable</em>. Keep it in an isolated fork and a lab GCP project; never expose it publicly.</p></div>
     </section>
@@ -882,6 +882,7 @@ gcloud builds submit . \
   --config cloudbuild.yaml \
   --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER=<span class="p">YOUR_GITHUB_USERNAME</span>,_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
       <div class="callout note"><div class="ct">&#9201; Expect ~20&ndash;30 minutes</div><p>The verify step builds &amp; runs Juice Shop to reproduce the exploit; it is <b>capped at 15 minutes</b>, after which the pipeline proceeds and flags the PR for review. A full run is typically 20&ndash;30 min.</p></div>
+      <div class="callout note"><div class="ct">&#128172; On Cloud Shell? A disconnect won't kill the build</div><p>The build runs in <b>Cloud Build</b>, not your shell &mdash; if Cloud Shell idle-disconnects (~20&nbsp;min, close to the 15-min verify cap) while logs stream, the build keeps running server-side. Just reconnect and check it with <code class="inline">gcloud builds list</code> or in the console &mdash; <b>don't resubmit</b>.</p></div>
       <label class="done-toggle"><input type="checkbox" data-step="9"> Mark step complete</label>
     </section>
 
