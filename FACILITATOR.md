@@ -106,7 +106,7 @@ PROJNUM=739082641234   # ◀ the participant's project NUMBER
 for SA in "${PROJNUM}@cloudbuild.gserviceaccount.com" \
           "${PROJNUM}-compute@developer.gserviceaccount.com"; do
   gcloud artifacts repositories add-iam-policy-binding codemender \
-    --location="$REGION" --project="<CENTRAL_PROJECT>" \
+    --location="$REGION" --project="$CENTRAL_PROJECT" \
     --member="serviceAccount:${SA}" --role="roles/artifactregistry.reader"
 done
 ```
