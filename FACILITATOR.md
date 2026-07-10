@@ -35,7 +35,7 @@ You're ready to deliver once all of these are true:
   central project:
   ```bash
   gcloud auth login
-  export CENTRAL_PROJECT=<your-central-project>   # the project that hosts the codemender repo
+  export CENTRAL_PROJECT=zken-genai               # the project that hosts the codemender repo
   export REGION=us-central1
   gcloud config set project "$CENTRAL_PROJECT"
   ```
@@ -51,7 +51,7 @@ You're ready to deliver once all of these are true:
 ## What you provide to participants
 
 1. The **image URL** — the tagged path from the listing above, e.g.
-   `<REGION>-docker.pkg.dev/<CENTRAL_PROJECT>/codemender/codemender-ci:<TAG>`
+   `us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci:v0.2.0`
    (goes in their `_CM_IMAGE`). A digest-pinned reference works too and is more
    reproducible.
 2. **Read access on the image** for each participant's Cloud Build service
