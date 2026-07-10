@@ -27,24 +27,30 @@ SUMMARY=$(grep -aoE '\[Summary\][[:space:]]+.*' "$WORKSPACE/cm-fix.out" | tail -
 [[ -z "$SUMMARY" ]] && SUMMARY="Applied CodeMender remediation for finding ${FID}."
 printf '%s\n' "$SUMMARY" > "$WORKSPACE/cm-summary.txt"
 
-# The fix agent may or may not leave its patch applied (it sometimes builds/runs
-# the app to test the fix and then resets the tree). To be deterministic we
-# reset the tree to HEAD and apply CodeMender's STORED patch as the single
-# source of truth, extracted from `cm report --patches`.
-git checkout -- . 2>/dev/null || true
+# CodeMender's fix agent applies its patch to the working tree (often via
+# `git add -A`) and may leave exploit scaffolding behind from testing. Prefer the
+# change it actually made to the target file. Only if the tree is clean (the
+# agent reset it after testing) do we fall back to its STORED patch from
+# `cm report --patches`.
+git reset -q 2>/dev/null || true          # unstage anything cm staged; keep the working-tree edits
 rm -rf "$REPO_DIR"/.exploit "$REPO_DIR"/.cm_project "$REPO_DIR"/routes/.exploit 2>/dev/null || true
 
-cm report --patches 2>/dev/null | awk '
-  /^  diff --git /{cap=1}
-  cap && /^  /{print; next}
-  cap && !/^  /{cap=0}
-' | sed 's/^  //' > "$WORKSPACE/cm.patch"
-sed -i -e :a -e '/^[[:space:]]*$/{$d;N;ba}' "$WORKSPACE/cm.patch"   # trim trailing blanks
-
-if [[ ! -s "$WORKSPACE/cm.patch" ]]; then
-  echo "❌ CodeMender produced no patch."; echo "NO_PATCH" > "$WORKSPACE/cm-status.txt"; exit 1
+if git diff --quiet -- "$FILE"; then
+  echo "Tree clean for ${FILE} after cm fix — applying CodeMender's stored patch."
+  git checkout -- . 2>/dev/null || true
+  cm report --patches 2>/dev/null | awk '
+    /^  diff --git /{cap=1}
+    cap && /^  /{print; next}
+    cap && !/^  /{cap=0}
+  ' | sed 's/^  //' > "$WORKSPACE/cm.patch"
+  sed -i -e :a -e '/^[[:space:]]*$/{$d;N;ba}' "$WORKSPACE/cm.patch"   # trim trailing blanks
+  if [[ ! -s "$WORKSPACE/cm.patch" ]]; then
+    echo "❌ CodeMender produced no patch."; echo "NO_PATCH" > "$WORKSPACE/cm-status.txt"; exit 1
+  fi
+  git apply --whitespace=nowarn "$WORKSPACE/cm.patch"
+else
+  echo "✅ Using the fix CodeMender applied to ${FILE}."
 fi
-git apply --whitespace=nowarn "$WORKSPACE/cm.patch"
 
 if git diff --quiet -- "$FILE"; then
   echo "❌ patch did not change ${FILE}."; echo "NO_CHANGE" > "$WORKSPACE/cm-status.txt"; exit 1

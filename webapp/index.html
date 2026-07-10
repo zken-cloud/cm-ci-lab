@@ -1,4 +1,4 @@
-wrote webapp/index.html: 79366 bytes
+wrote webapp/index.html: 80047 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -626,24 +626,30 @@ SUMMARY=$(grep -aoE &#x27;\[Summary\][[:space:]]+.*&#x27; &quot;$WORKSPACE/cm-fi
 [[ -z &quot;$SUMMARY&quot; ]] &amp;&amp; SUMMARY=&quot;Applied CodeMender remediation for finding ${FID}.&quot;
 printf &#x27;%s\n&#x27; &quot;$SUMMARY&quot; &gt; &quot;$WORKSPACE/cm-summary.txt&quot;
 
-# The fix agent may or may not leave its patch applied (it sometimes builds/runs
-# the app to test the fix and then resets the tree). To be deterministic we
-# reset the tree to HEAD and apply CodeMender&#x27;s STORED patch as the single
-# source of truth, extracted from `cm report --patches`.
-git checkout -- . 2&gt;/dev/null || true
+# CodeMender&#x27;s fix agent applies its patch to the working tree (often via
+# `git add -A`) and may leave exploit scaffolding behind from testing. Prefer the
+# change it actually made to the target file. Only if the tree is clean (the
+# agent reset it after testing) do we fall back to its STORED patch from
+# `cm report --patches`.
+git reset -q 2&gt;/dev/null || true          # unstage anything cm staged; keep the working-tree edits
 rm -rf &quot;$REPO_DIR&quot;/.exploit &quot;$REPO_DIR&quot;/.cm_project &quot;$REPO_DIR&quot;/routes/.exploit 2&gt;/dev/null || true
 
-cm report --patches 2&gt;/dev/null | awk &#x27;
-  /^  diff --git /{cap=1}
-  cap &amp;&amp; /^  /{print; next}
-  cap &amp;&amp; !/^  /{cap=0}
-&#x27; | sed &#x27;s/^  //&#x27; &gt; &quot;$WORKSPACE/cm.patch&quot;
-sed -i -e :a -e &#x27;/^[[:space:]]*$/{$d;N;ba}&#x27; &quot;$WORKSPACE/cm.patch&quot;   # trim trailing blanks
-
-if [[ ! -s &quot;$WORKSPACE/cm.patch&quot; ]]; then
-  echo &quot;❌ CodeMender produced no patch.&quot;; echo &quot;NO_PATCH&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;; exit 1
+if git diff --quiet -- &quot;$FILE&quot;; then
+  echo &quot;Tree clean for ${FILE} after cm fix — applying CodeMender&#x27;s stored patch.&quot;
+  git checkout -- . 2&gt;/dev/null || true
+  cm report --patches 2&gt;/dev/null | awk &#x27;
+    /^  diff --git /{cap=1}
+    cap &amp;&amp; /^  /{print; next}
+    cap &amp;&amp; !/^  /{cap=0}
+  &#x27; | sed &#x27;s/^  //&#x27; &gt; &quot;$WORKSPACE/cm.patch&quot;
+  sed -i -e :a -e &#x27;/^[[:space:]]*$/{$d;N;ba}&#x27; &quot;$WORKSPACE/cm.patch&quot;   # trim trailing blanks
+  if [[ ! -s &quot;$WORKSPACE/cm.patch&quot; ]]; then
+    echo &quot;❌ CodeMender produced no patch.&quot;; echo &quot;NO_PATCH&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;; exit 1
+  fi
+  git apply --whitespace=nowarn &quot;$WORKSPACE/cm.patch&quot;
+else
+  echo &quot;✅ Using the fix CodeMender applied to ${FILE}.&quot;
 fi
-git apply --whitespace=nowarn &quot;$WORKSPACE/cm.patch&quot;
 
 if git diff --quiet -- &quot;$FILE&quot;; then
   echo &quot;❌ patch did not change ${FILE}.&quot;; echo &quot;NO_CHANGE&quot; &gt; &quot;$WORKSPACE/cm-status.txt&quot;; exit 1
@@ -981,6 +987,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
         <tr><td>gcsfuse mount / bucket permission error</td><td>Grant <code class="inline">storage.objectAdmin</code> on the bucket to your CB SA(s) (Step 6).</td></tr>
         <tr><td><code>storage.objects.get</code> denied on <code>&hellip;_cloudbuild/source/&hellip;.tgz</code> (or a service-account / logging error)</td><td>The build SA can't read the source it uploaded &mdash; grant <code class="inline">roles/cloudbuild.builds.builder</code> to <b>both</b> CB SAs (it's in Step&nbsp;6; the <code class="inline">-compute@developer</code> default SA needs it explicitly).</td></tr>
         <tr><td>PR step returns <code>HTTP 422</code></td><td>A PR for that branch already exists &mdash; merge/close it, then rerun.</td></tr>
+        <tr><td>fix step: <code>CodeMender produced no patch</code> (though <code>cm fix</code> printed a Summary)</td><td>Old <code class="inline">scripts/fix.sh</code> &mdash; re-copy the current version. It now uses the fix CodeMender applied to the tree, not only the stored patch.</td></tr>
         <tr><td>Pipeline says <code>No findings</code></td><td>Target already fixed, or wrong path. Confirm <code class="inline">_SCAN_PATH</code> exists on <code class="inline">_BASE_BRANCH</code>.</td></tr>
       </tbody></table>
     </section>
