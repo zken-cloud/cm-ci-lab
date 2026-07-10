@@ -1,4 +1,4 @@
-wrote webapp/index.html: 74178 bytes
+wrote webapp/index.html: 74212 bytes
 d>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -875,7 +875,7 @@ timeout: 3600s      # verify can build &amp; run the app to reproduce the exploi
 
     <section id="s9">
       <div class="step"><span class="num">9</span><h2>Run the pipeline</h2></div>
-      <div class="callout note"><div class="ct">&#8505; Set three values</div><p>Paste your <b>image URL</b> (<code class="inline">_CM_IMAGE</code>, from Step&nbsp;/ your facilitator), <b>state bucket</b> (<code class="inline">_CM_STATE_BUCKET</code>, Step&nbsp;4), and <b>GitHub username</b> (<code class="inline">_GH_OWNER</code>) into the command below. The rest have working defaults.</p></div>
+      <div class="callout note"><div class="ct">&#8505; Set three values</div><p>Paste your <b>image URL</b> (<code class="inline">_CM_IMAGE</code>, from your facilitator), <b>state bucket</b> (<code class="inline">_CM_STATE_BUCKET</code>, Step&nbsp;4), and <b>GitHub username</b> (<code class="inline">_GH_OWNER</code>) into the command below. The rest have working defaults.</p></div>
       <p>Run this from the directory containing <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (the source is uploaded so the steps can run <code class="inline">scripts/*.sh</code>):</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export CM_IMAGE="<span class="p">...from your facilitator.../codemender-ci:v0.2.0</span>"
 
 gcloud builds submit . \
@@ -942,7 +942,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
     <section id="trouble">
       <h2><span class="kicker">When something breaks</span>Troubleshooting</h2>
       <table class="tbl"><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody>
-        <tr><td><code>denied &hellip; artifactregistry</code> pulling the image</td><td>Facilitator must grant your CB SA(s) <code class="inline">artifactregistry.reader</code> (Part A3).</td></tr>
+        <tr><td><code>denied &hellip; artifactregistry</code> pulling the image</td><td>Your facilitator hasn't granted your build SAs yet &mdash; confirm your project number is in their sheet (Step&nbsp;6) and wait for confirmation.</td></tr>
         <tr><td><code>PermissionDenied: Secret &hellip; gh-pat</code></td><td>Grant <code class="inline">secretmanager.secretAccessor</code> to your CB SA(s) (Step 6).</td></tr>
         <tr><td>gcsfuse mount / bucket permission error</td><td>Grant <code class="inline">storage.objectAdmin</code> on the bucket to your CB SA(s) (Step 6).</td></tr>
         <tr><td>Build fails with a service-account / logging error</td><td>Grant <code class="inline">roles/logging.logWriter</code> (and, if required, <code class="inline">roles/cloudbuild.builds.builder</code>) to the CB SA.</td></tr>
