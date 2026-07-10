@@ -97,12 +97,25 @@ cleaner at scale — participants can't see or overwrite each other's rows.)
 
 ### 2 — Extract the submissions and grant both build SAs
 
-Pull the project-number column out of the sheet into `project-numbers.txt`, one
-number per line (File → Download → **CSV**, then keep that column — or just copy
-the column). Then run the grant loop below. `add-iam-policy-binding` is
-**idempotent** (re-adding a member is a no-op), so you can run it repeatedly —
-even on a `watch` during the lab — as new rows arrive, without tracking who's
-already done:
+**One participant (ad-hoc).** If you were just handed a single project number,
+grant its two build SAs directly:
+
+```bash
+PROJNUM=739082641234   # ◀ the participant's project NUMBER
+for SA in "${PROJNUM}@cloudbuild.gserviceaccount.com" \
+          "${PROJNUM}-compute@developer.gserviceaccount.com"; do
+  gcloud artifacts repositories add-iam-policy-binding codemender \
+    --location="$REGION" --project="<CENTRAL_PROJECT>" \
+    --member="serviceAccount:${SA}" --role="roles/artifactregistry.reader"
+done
+```
+
+**A cohort.** Pull the project-number column out of the sheet into
+`project-numbers.txt`, one number per line (File → Download → **CSV**, then keep
+that column — or just copy it). Then run the same grant over every row.
+`add-iam-policy-binding` is **idempotent** (re-adding a member is a no-op), so you
+can run it repeatedly — even on a `watch` during the lab — as new rows arrive,
+without tracking who's already done:
 
 ```bash
 # project-numbers.txt: one project NUMBER per line
