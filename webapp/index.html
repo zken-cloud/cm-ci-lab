@@ -1,5 +1,6 @@
-wrote webapp/index.html: 80320 bytes
-d>
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>CodeMender CI Lab &mdash; Build a Remediation Pipeline</title>
@@ -404,18 +405,18 @@ gcloud storage buckets create "gs://$CM_STATE_BUCKET" \
 
     <section id="s5">
       <div class="step"><span class="num">5</span><h2>Store a GitHub token in Secret Manager</h2></div>
-      <p>The pipeline pushes a branch and opens a PR, so it needs a GitHub token with write access. Pick <b>one</b> method; both end with the same <code class="inline">gh-pat</code> secret.</p>
+      <p>The pipeline <b>pushes a branch</b> (needs <b>Contents: Read and write</b>) and <b>opens a PR</b> (needs <b>Pull requests: Read and write</b>), so the token must grant write on <em>both</em> &mdash; a token with only Contents can push the branch but gets <code class="inline">HTTP 403</code> when it calls the API to open the PR. Pick <b>one</b> method; both end with the same <code class="inline">gh-pat</code> secret.</p>
       <h3>Option A &mdash; Fine-grained PAT <span class="chip ok">recommended</span></h3>
       <ol>
         <li>GitHub &rarr; <b>Settings &rarr; Developer settings &rarr; Personal access tokens &rarr; Fine-grained tokens &rarr; Generate new token</b>.</li>
         <li><b>Repository access &rarr; Only select repositories &rarr;</b> your <code class="inline">juice-shop</code> fork.</li>
-        <li><b>Repository permissions:</b> <b>Contents &rarr; Read and write</b>, <b>Pull requests &rarr; Read and write</b>.</li>
+        <li><b>Repository permissions</b> &mdash; grant <b>exactly these two</b>: <b>Contents &rarr; Read and write</b> (push the branch) and <b>Pull requests &rarr; Read and write</b> (open the PR). Leave everything else at <em>No access</em>.</li>
         <li>Generate and copy the token (<code class="inline">github_pat_&hellip;</code>).</li>
       </ol><figure class="code"><figcaption><span class="lbl">bash · input hidden, kept out of shell history</span><button class="copy" type="button">Copy</button></figcaption><pre>read -rs GH_PAT
 printf '%s' "$GH_PAT" | gcloud secrets create gh-pat --data-file=-
 unset GH_PAT</pre></figure>
       <h3>Option B &mdash; Reuse the <code class="inline">gh</code> CLI token</h3>
-      <p>Quicker if you already use the GitHub CLI; the token is broader-scoped, so delete the secret when done.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh auth login            <span class="c"># GitHub.com -> HTTPS -> grant 'repo' scope</span>
+      <p>Quicker if you already use the GitHub CLI; the token is broader-scoped, so delete the secret when done.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh auth login            <span class="c"># HTTPS; classic 'repo' scope = Contents + Pull requests (a broad superset)</span>
 gh auth status           <span class="c"># confirm the account that owns your fork is active</span>
 gh auth token | gcloud secrets create gh-pat --data-file=-</pre></figure>
       <div class="callout note"><div class="ct">&#8505; Updating the secret later</div><p>If <code class="inline">gh-pat</code> exists, add a version instead:<br><code class="inline">gh auth token | gcloud secrets versions add gh-pat --data-file=-</code></p></div>
@@ -990,6 +991,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
         <tr><td>gcsfuse: <code>Invalid storage layout name</code> / mount fails on <code>gs:// name</code></td><td>Your <code>_CM_STATE_BUCKET</code> has a stray <b>space</b> (bucket names can't). Check the substitution value; the scripts also strip whitespace now.</td></tr>
         <tr><td>gcsfuse mount / bucket permission error</td><td>Grant <code class="inline">storage.objectAdmin</code> on the bucket to your CB SA(s) (Step 6).</td></tr>
         <tr><td><code>storage.objects.get</code> denied on <code>&hellip;_cloudbuild/source/&hellip;.tgz</code> (or a service-account / logging error)</td><td>The build SA can't read the source it uploaded &mdash; grant <code class="inline">roles/cloudbuild.builds.builder</code> to <b>both</b> CB SAs (it's in Step&nbsp;6; the <code class="inline">-compute@developer</code> default SA needs it explicitly).</td></tr>
+        <tr><td>open-pr: <code>HTTP 403 &mdash; Resource not accessible by personal access token</code> (branch already pushed)</td><td>The token can push but can't open the PR &mdash; it's missing <b>Pull requests: Read and write</b>. Regenerate the fine-grained PAT with <b>both</b> Contents <em>and</em> Pull requests set to Read and write (Step&nbsp;5), update the <code class="inline">gh-pat</code> secret, and rerun.</td></tr>
         <tr><td>PR step returns <code>HTTP 422</code></td><td>A PR for that branch already exists &mdash; merge/close it, then rerun.</td></tr>
         <tr><td>fix step: <code>CodeMender produced no patch</code> (though <code>cm fix</code> printed a Summary)</td><td>Old <code class="inline">scripts/fix.sh</code> &mdash; re-copy the current version. It now uses the fix CodeMender applied to the tree, not only the stored patch.</td></tr>
         <tr><td>Pipeline says <code>No findings</code></td><td>Target already fixed, or wrong path. Confirm <code class="inline">_SCAN_PATH</code> exists on <code class="inline">_BASE_BRANCH</code>.</td></tr>
