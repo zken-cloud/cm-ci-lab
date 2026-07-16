@@ -300,11 +300,11 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
 
     <section id="prereq">
       <h2><span class="kicker">Before you start</span>Prerequisites</h2>
-      <p>Everything runs on GitHub &mdash; the workflow builds the image, pulls it, and opens the PR. You only need a browser and (optionally) <code class="inline">gh</code> for the CLI shortcuts.</p>
+      <p>You drive this lab from <b>your own laptop</b> and <b>your own GitHub account</b>. The heavy lifting &mdash; building the image, running CodeMender, opening the PR &mdash; happens on GitHub-hosted runners, so you need <b>no local Docker and no GCP</b>. What you do locally is set up the repo and push the files into it.</p>
       <table class="tbl"><thead><tr><th>You need</th><th>Notes</th></tr></thead><tbody>
-        <tr><td>A <b>GitHub account</b></td><td>You'll fork Juice Shop and host the pipeline repo in it. GHCR (Packages) is included &mdash; nothing to enable.</td></tr>
-        <tr><td>The <b>CodeMender binary</b> (<code class="inline">cm-linux</code>)</td><td>Provided by your facilitator during EAP. You bake it into the image in Step&nbsp;5. (At public preview you'll download your own.)</td></tr>
-        <tr><td><b>gh</b> CLI (optional)</td><td>Handy for the copy-paste commands. Everything is also doable from the GitHub web UI.</td></tr>
+        <tr><td>Your <b>GitHub account</b></td><td>You'll fork Juice Shop and host the pipeline repo under it. GHCR (Packages) is included &mdash; nothing to enable.</td></tr>
+        <tr><td><b>git</b> + <b>gh</b> on your laptop</td><td>To create the repo, add the files (including the <code class="inline">cm-linux</code> binary), and push. <code class="inline">gh</code> also powers the optional copy-paste commands; anything <code class="inline">gh</code> does you can also do in the GitHub web UI. (<a href="https://cli.github.com" target="_blank" rel="noopener">install gh</a>, then <code class="inline">gh auth login</code>.)</td></tr>
+        <tr><td>The <b>CodeMender binary</b> (<code class="inline">cm-linux</code>)</td><td>Provided by your facilitator during EAP. You commit it into your repo and bake it into the image in Step&nbsp;5. (At public preview you'll download your own.)</td></tr>
       </tbody></table>
       <div class="callout warn"><div class="ct">&#9888; Use a throwaway fork</div><p>Juice Shop is <em>deliberately vulnerable</em>. Keep it in an isolated fork; never expose it publicly.</p></div>
     </section>
@@ -356,6 +356,11 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
 &#9492;&#9472; .github/workflows/
    &#9500;&#9472; image.yml           <span class="c"># build container/ -> GHCR (Step 5)</span>
    &#9492;&#9472; codemender.yml      <span class="c"># the pipeline (Step 7)</span></pre></figure>
+      <p>Create it and clone it to your laptop, then you'll add these files over the next steps and push. (Prefer the browser? Create the repo on github.com and use <b>Add file &rarr; Upload files</b> instead &mdash; but the <code class="inline">cm-linux</code> binary is ~29&nbsp;MB, so pushing with git is smoother.)</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; on your laptop</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo create <span class="p">YOUR_USER</span>/cm-ci-lab-gha --private --clone
+cd cm-ci-lab-gha
+<span class="c"># ...add container/, scripts/, and .github/workflows/ over Steps 5&ndash;7, then:</span>
+git add . &amp;&amp; git commit -m <span class="v">"codemender gha pipeline"</span> &amp;&amp; git push</pre></figure>
       <label class="done-toggle"><input type="checkbox" data-step="2"> Mark complete</label>
     </section>
 
@@ -448,14 +453,263 @@ top_finding_id() {
     (if type=="array" then . else [] end) | map(select(rank &gt;= $min))
     | sort_by(rank) | reverse | (.[0].FindingID // "")'</span>
 }</pre></figure>
-      <details class="fac"><summary>The four unchanged scripts &mdash; what each does <span class="tw">&#9656;</span></summary><div class="body">
+      <details class="fac"><summary>The four unchanged scripts &mdash; full source (copy into <code class="inline">scripts/</code>) <span class="tw">&#9656;</span></summary><div class="body">
         <table class="tbl"><thead><tr><th>Script</th><th>Does</th></tr></thead><tbody>
           <tr><td><code class="inline">find.sh</code></td><td><code class="inline">source cm-env.sh</code>; <code class="inline">cm find $SCAN_PATH -y</code>; write <code class="inline">cm report -f json</code>; pick the top finding.</td></tr>
           <tr><td><code class="inline">verify.sh</code></td><td><code class="inline">cm find verify</code> the top finding under a 15-min <code class="inline">timeout</code>; record the verdict (VERIFIED / OPEN) to a hand-off file. Hitting the cap does <em>not</em> skip fix.</td></tr>
           <tr><td><code class="inline">fix.sh</code></td><td><code class="inline">cm fix --auto-apply</code>; prefer the change made to the target file, else apply the stored patch; write <code class="inline">cm-status.txt</code> (FIXED / DISMISSED / NONE).</td></tr>
           <tr><td><code class="inline">open-pr.sh</code></td><td>If FIXED: commit to <code class="inline">codemender/&lt;cwe&gt;-&lt;id&gt;</code>, push with <code class="inline">GH_TOKEN</code>, open a PR whose body is CodeMender's analysis (flagged UNVERIFIED if verify hit the cap).</td></tr>
         </tbody></table>
-        <p class="small">Copy them verbatim from the Cloud Build lab's <code class="inline">pipeline/scripts/</code>. Only <code class="inline">cm-env.sh</code> differs.</p>
+        <p class="small">These are identical to the Cloud Build lab &mdash; copy each into <code class="inline">scripts/</code> exactly as-is. Only <code class="inline">cm-env.sh</code> (above) differs.</p>
+        <figure class="code"><figcaption><span class="lbl">scripts/find.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# find.sh — STEP 1: scan one file with CodeMender and record the findings.
+# State (findings DB) is written to the gcsfuse-mounted bucket so the verify
+# and fix steps can read it.
+source "$(dirname "$0")/cm-env.sh"
+
+: "${SCAN_PATH:?set SCAN_PATH (file to scan, relative to the repo)}"
+cd "$REPO_DIR"
+
+echo "🔍 cm find ${SCAN_PATH}"
+cm find "${SCAN_PATH}" -y
+
+echo "── findings ──────────────────────────────────────────"
+cm report                                   # human-readable table in the log
+cm report -f json &gt; "$WORKSPACE/cm-findings.json" || echo 'null' &gt; "$WORKSPACE/cm-findings.json"
+
+FID=$(top_finding_id)
+if [[ -z "$FID" ]]; then
+  echo "No findings at or above ${MIN_SEVERITY:-CRITICAL} — the verify/fix steps will no-op."
+else
+  echo "Top finding (&gt;= ${MIN_SEVERITY:-CRITICAL}) selected for verify/fix: $FID"
+fi</pre></figure>
+        <figure class="code"><figcaption><span class="lbl">scripts/verify.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# verify.sh — STEP 2: verify the highest-severity finding, capped at 15 minutes.
+#
+# cm find verify runs CodeMender's FULL verification — it may build and run the
+# app to reproduce the exploit. That is powerful but VARIABLE: usually a few
+# minutes, occasionally 40+ as the agent keeps retrying to stand up the app.
+# We cap it so the pipeline always finishes. Hitting the cap does NOT skip the
+# fix — we proceed, record the verdict, and the open-pr step flags the PR as
+# UNVERIFIED so the human reviewer knows to scrutinise it (human-in-the-loop).
+source "$(dirname "$0")/cm-env.sh"
+cd "$REPO_DIR"
+
+FID=$(top_finding_id)
+if [[ -z "$FID" ]]; then echo "No findings to verify."; exit 0; fi
+
+VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-900}"          # 15 minutes
+echo "🔬 cm find verify ${FID}  (capped at ${VERIFY_TIMEOUT}s)"
+if timeout "${VERIFY_TIMEOUT}s" cm find verify "${FID}"; then
+  echo "✅ verification finished within the cap"
+else
+  rc=$?
+  if [[ $rc -eq 124 ]]; then
+    echo "⏱️  verification hit the ${VERIFY_TIMEOUT}s cap — proceeding to fix; the PR will be flagged UNVERIFIED for human review"
+    # Cancel any session the cap interrupted so the fix session starts cleanly.
+    for s in $(cm session list 2&gt;/dev/null | awk 'NR&gt;2 &amp;&amp; /RUNNING/ {print $1}'); do
+      cm session cancel "$s" &gt;/dev/null 2&gt;&amp;1 || true
+    done
+  else
+    echo "verify exited ($rc) — proceeding"
+  fi
+fi
+
+# Record the verdict for the PR body: VERIFIED / DISMISSED / OPEN (=not confirmed).
+STATUS=$(cm report -f json | jq -r --arg id "$FID" '.[]|select(.FindingID==$id)|.Status' 2&gt;/dev/null)
+echo "${STATUS:-OPEN}" &gt; "$WORKSPACE/cm-verify-status.txt"
+echo "── status after verification (verdict: ${STATUS:-OPEN}) ──"
+cm report</pre></figure>
+        <figure class="code"><figcaption><span class="lbl">scripts/fix.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# fix.sh — STEP 3: generate the fix for the highest-severity finding, then apply
+# CodeMender's stored patch deterministically and leave metadata for open-pr.
+source "$(dirname "$0")/cm-env.sh"
+cd "$REPO_DIR"
+
+FID=$(top_finding_id)
+if [[ -z "$FID" ]]; then
+  echo "No findings to fix."; echo "NONE" &gt; "$WORKSPACE/cm-status.txt"; exit 0
+fi
+
+# Grab finding metadata for the PR body NOW (before cm fix touches the tree).
+cm report -f json | jq --arg id "$FID" '.[]|select(.FindingID==$id)' &gt; "$WORKSPACE/cm-finding.json"
+STATUS=$(jq -r '.Status' "$WORKSPACE/cm-finding.json")
+FILE=$(jq -r '.FilePath' "$WORKSPACE/cm-finding.json" | sed "s#^$REPO_DIR/##")
+if [[ "$STATUS" == "DISMISSED" ]]; then
+  echo "Finding $FID was DISMISSED during verification — not fixing."
+  echo "DISMISSED" &gt; "$WORKSPACE/cm-status.txt"; exit 0
+fi
+
+echo "🩹 cm fix ${FID} --auto-apply -y"
+cm fix "${FID}" --auto-apply -y 2&gt;&amp;1 | tee "$WORKSPACE/cm-fix.out"
+
+# CodeMender prints a one-line headline tagged [Summary]; capture the last one.
+SUMMARY=$(grep -aoE '\[Summary\][[:space:]]+.*' "$WORKSPACE/cm-fix.out" | tail -1 | sed -E 's/^\[Summary\][[:space:]]+//')
+[[ -z "$SUMMARY" ]] &amp;&amp; SUMMARY="Applied CodeMender remediation for finding ${FID}."
+printf '%s\n' "$SUMMARY" &gt; "$WORKSPACE/cm-summary.txt"
+
+# CodeMender's fix agent applies its patch to the working tree (often via
+# `git add -A`) and may leave exploit scaffolding behind from testing. Prefer the
+# change it actually made to the target file. Only if the tree is clean (the
+# agent reset it after testing) do we fall back to its STORED patch from
+# `cm report --patches`.
+git reset -q 2&gt;/dev/null || true          # unstage anything cm staged; keep the working-tree edits
+rm -rf "$REPO_DIR"/.exploit "$REPO_DIR"/.cm_project "$REPO_DIR"/routes/.exploit 2&gt;/dev/null || true
+
+if git diff --quiet -- "$FILE"; then
+  echo "Tree clean for ${FILE} after cm fix — applying CodeMender's stored patch."
+  git checkout -- . 2&gt;/dev/null || true
+  cm report --patches 2&gt;/dev/null | awk '
+    /^  diff --git /{cap=1}
+    cap &amp;&amp; /^  /{print; next}
+    cap &amp;&amp; !/^  /{cap=0}
+  ' | sed 's/^  //' &gt; "$WORKSPACE/cm.patch"
+  sed -i -e :a -e '/^[[:space:]]*$/{$d;N;ba}' "$WORKSPACE/cm.patch"   # trim trailing blanks
+  if [[ ! -s "$WORKSPACE/cm.patch" ]]; then
+    echo "❌ CodeMender produced no patch."; echo "NO_PATCH" &gt; "$WORKSPACE/cm-status.txt"; exit 1
+  fi
+  git apply --whitespace=nowarn "$WORKSPACE/cm.patch"
+else
+  echo "✅ Using the fix CodeMender applied to ${FILE}."
+fi
+
+if git diff --quiet -- "$FILE"; then
+  echo "❌ patch did not change ${FILE}."; echo "NO_CHANGE" &gt; "$WORKSPACE/cm-status.txt"; exit 1
+fi
+
+echo "FIXED" &gt; "$WORKSPACE/cm-status.txt"
+echo "✅ Fix applied to ${FILE}"
+git --no-pager diff -- "$FILE"</pre></figure>
+        <figure class="code"><figcaption><span class="lbl">scripts/open-pr.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+#
+# open-pr.sh — STEP 4: commit CodeMender's fix to a branch, push it to the
+# fork, and open a Pull Request whose body is CodeMender's own analysis.
+#
+# Does NOT touch CodeMender state — only git + the GitHub API — so it needs no
+# gcsfuse mount. Reads the metadata that fix.sh left in $WORKSPACE.
+set -euo pipefail
+
+WORKSPACE="${WORKSPACE:-/workspace}"
+REPO_DIR="${REPO_DIR:-$WORKSPACE/repo}"
+BASE_BRANCH="${BASE_BRANCH:-master}"
+GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-codemender-bot}"
+GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-codemender-bot@users.noreply.github.com}"
+
+: "${GH_OWNER:?set GH_OWNER}"; : "${GH_REPO:?set GH_REPO}"; : "${GH_TOKEN:?set GH_TOKEN (from Secret Manager)}"
+# Secret values often carry a trailing newline; strip all whitespace so it
+# can't corrupt the push URL or the auth header.
+GH_TOKEN=$(printf '%s' "$GH_TOKEN" | tr -d '[:space:]')
+
+STATUS=$(cat "$WORKSPACE/cm-status.txt" 2&gt;/dev/null || echo UNKNOWN)
+if [[ "$STATUS" != "FIXED" ]]; then
+  echo "cm-status is '$STATUS' (not FIXED) — nothing to open a PR for."; exit 0
+fi
+
+# --- Read the finding metadata ----------------------------------------------
+F="$WORKSPACE/cm-finding.json"
+FID=$(jq -r '.FindingID' "$F")
+TITLE=$(jq -r '.Title' "$F")
+SEV=$(jq -r '.Severity|ascii_upcase' "$F")
+CWE=$(jq -r '.VulnID // "CWE-unknown"' "$F")
+VTYPE=$(jq -r '.VulnType // "Vulnerability"' "$F")
+CONF=$(jq -r '.Confidence // 0' "$F")
+FILE=$(jq -r '.FilePath' "$F" | sed "s#^$REPO_DIR/##")
+ANALYSIS=$(jq -r '.Analysis // ""' "$F")
+SUMMARY=$(cat "$WORKSPACE/cm-summary.txt")
+
+# Verification verdict recorded by verify.sh (VERIFIED / DISMISSED / OPEN).
+VSTATUS=$(cat "$WORKSPACE/cm-verify-status.txt" 2&gt;/dev/null || echo "OPEN")
+if [[ "$VSTATUS" == "VERIFIED" ]]; then
+  VERIFY_LINE="✅ Reproduced &amp;amp; confirmed by CodeMender"
+  VERIFY_BANNER=""
+else
+  VERIFY_LINE="⚠️ NOT confirmed — verification did not complete within the 15-min cap"
+  VERIFY_BANNER=$'&gt; [!WARNING]\n&gt; **Human review required.** Automated verification did not confirm this finding within the 15-minute cap, so treat it as **UNVERIFIED**. Confirm the vulnerability and the fix from the analysis and diff below before approving.\n'
+fi
+
+SHORT="${FID:0:8}"
+CWE_SLUG=$(echo "$CWE" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9-')
+BRANCH="codemender/${CWE_SLUG}-${SHORT}"
+PR_TITLE="security: fix ${VTYPE} in ${FILE} (${CWE})"
+
+# --- Commit ------------------------------------------------------------------
+cd "$REPO_DIR"
+git config user.name  "$GIT_AUTHOR_NAME"
+git config user.email "$GIT_AUTHOR_EMAIL"
+git checkout -b "$BRANCH"
+git add -u                                   # tracked modifications only
+git commit -F - &lt;&lt;EOF
+${PR_TITLE}
+
+${SUMMARY}
+
+Finding:  ${TITLE}
+Severity: ${SEV}   Confidence: ${CONF}%   ${CWE}
+Detected &amp; remediated by CodeMender (finding ${FID}).
+EOF
+
+# --- Push (token redacted from any output) ----------------------------------
+PUSH_URL="https://x-access-token:${GH_TOKEN}@github.com/${GH_OWNER}/${GH_REPO}.git"
+set +e
+PUSH_OUT=$(git push "$PUSH_URL" "$BRANCH" 2&gt;&amp;1); PUSH_RC=$?
+set -e
+echo "${PUSH_OUT//${GH_TOKEN}/***}"
+[[ $PUSH_RC -eq 0 ]] || { echo "❌ git push failed"; exit 1; }
+
+# --- Compose the PR body -----------------------------------------------------
+{
+  echo "## 🛡️ CodeMender automated security fix"
+  echo
+  [[ -n "$VERIFY_BANNER" ]] &amp;&amp; { printf '%s\n' "$VERIFY_BANNER"; echo; }
+  echo "&gt; ${SUMMARY}"
+  echo
+  echo "| | |"
+  echo "|---|---|"
+  echo "| **Finding** | ${TITLE} |"
+  echo "| **Severity** | ${SEV} |"
+  echo "| **Type** | ${VTYPE} (${CWE}) |"
+  echo "| **Confidence** | ${CONF}% |"
+  echo "| **Verification** | ${VERIFY_LINE} |"
+  echo "| **File** | \`${FILE}\` |"
+  echo
+  echo "### Analysis"
+  echo
+  echo "${ANALYSIS}"
+  echo
+  echo "### Change"
+  echo '```diff'
+  git --no-pager diff "${BASE_BRANCH}..${BRANCH}" -- "$FILE"
+  echo '```'
+  echo
+  echo "---"
+  echo "_Generated by CodeMender. Review the diff before approving; merging applies the fix to \`${BASE_BRANCH}\`._"
+} &gt; "$WORKSPACE/cm-pr-body.md"
+
+# --- Open the PR -------------------------------------------------------------
+jq -n --arg t "$PR_TITLE" --arg h "$BRANCH" --arg b "$BASE_BRANCH" \
+      --rawfile body "$WORKSPACE/cm-pr-body.md" \
+      '{title:$t, head:$h, base:$b, body:$body, maintainer_can_modify:true}' &gt; "$WORKSPACE/pr-request.json"
+
+HTTP=$(curl -sS -o "$WORKSPACE/pr-response.json" -w '%{http_code}' -X POST \
+  -H "Authorization: Bearer ${GH_TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/pulls" \
+  -d @"$WORKSPACE/pr-request.json")
+
+if [[ "$HTTP" == "201" ]]; then
+  echo "✅ Pull Request opened: $(jq -r '.html_url' "$WORKSPACE/pr-response.json")"
+elif [[ "$HTTP" == "422" ]]; then
+  echo "ℹ️  A PR for this branch already exists (HTTP 422):"
+  jq -r '.errors[]?.message // .message' "$WORKSPACE/pr-response.json"
+else
+  echo "❌ GitHub API returned HTTP $HTTP"
+  jq -r '.message' "$WORKSPACE/pr-response.json" 2&gt;/dev/null || cat "$WORKSPACE/pr-response.json"
+  exit 1
+fi</pre></figure>
       </div></details>
       <label class="done-toggle"><input type="checkbox" data-step="6"> Mark complete</label>
     </section>
