@@ -464,13 +464,21 @@ git config --global user.email "<span class="p">you@example.com</span>"</pre></f
 export REGION=us-central1
 gcloud config set project "$PROJECT_ID"
 
-<span class="c"># Cloud Build runs the pipeline; Secret Manager holds the token; GCS holds CM state.</span>
-<span class="c"># Compute Engine API: Cloud Build's default service account is the Compute SA</span>
-<span class="c"># (PROJECT_NUMBER-compute@&hellip;), which only exists once this API is enabled &mdash;</span>
-<span class="c"># needed for the grants in Step 6.</span>
+<span class="c"># A brand-new project has NONE of these on. Enable everything the lab touches</span>
+<span class="c"># (this also auto-enables dependencies; give it ~1 min):</span>
+<span class="c">#   cloudbuild            = runs the pipeline</span>
+<span class="c">#   artifactregistry      = pull the CodeMender image</span>
+<span class="c">#   secretmanager         = holds the GitHub token</span>
+<span class="c">#   storage               = CM state bucket + `builds submit` source staging</span>
+<span class="c">#   compute               = Cloud Build's default (Compute Engine) service account</span>
+<span class="c">#   cloudresourcemanager  = the IAM grants in Step 6</span>
 gcloud services enable \
-  cloudbuild.googleapis.com secretmanager.googleapis.com storage.googleapis.com \
-  compute.googleapis.com</pre></figure>
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
+  secretmanager.googleapis.com \
+  storage.googleapis.com \
+  compute.googleapis.com \
+  cloudresourcemanager.googleapis.com</pre></figure>
       <label class="done-toggle"><input type="checkbox" data-step="3"> Mark step complete</label>
     </section>
 
@@ -494,6 +502,7 @@ gcloud storage buckets create "gs://$CM_STATE_BUCKET" \
       </ol><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your github secret&gt;</span>
 printf '%s' "$GH_PAT" | gcloud secrets create gh-pat --data-file=-
 unset GH_PAT</pre></figure>
+      <p class="small">&#128273; <code class="inline">export</code> records the token in your shell history &mdash; clear it when done with <code class="inline">history -c</code>.</p>
       <h3>Option B &mdash; Reuse the <code class="inline">gh</code> CLI token</h3>
       <p>Quicker if you already use the GitHub CLI; the token is broader-scoped, so delete the secret when done.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh auth login            <span class="c"># HTTPS; classic 'repo' scope = Contents + Pull requests (a broad superset)</span>
 gh auth status           <span class="c"># confirm the account that owns your fork is active</span>

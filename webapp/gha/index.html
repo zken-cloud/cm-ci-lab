@@ -382,6 +382,7 @@ git add . &amp;&amp; git commit -m <span class="v">"codemender gha pipeline"</sp
       <p>Store the token as an <b>Actions secret</b> named <code class="inline">GH_PAT</code> in the pipeline repo. This is the GHA equivalent of the Cloud Build lab's Secret Manager <code class="inline">gh-pat</code>.</p>
       <figure class="code"><figcaption><span class="lbl">bash &middot; or repo Settings &rarr; Secrets &rarr; Actions</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your github secret&gt;</span>
 gh secret set GH_PAT --body <span class="v">"$GH_PAT"</span> --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha</pre></figure>
+      <p class="small">&#128273; <code class="inline">export</code> records the token in your shell history &mdash; clear it when done with <code class="inline">history -c</code>.</p>
       <label class="done-toggle"><input type="checkbox" data-step="4"> Mark complete</label>
     </section>
 
