@@ -491,7 +491,7 @@ gcloud storage buckets create "gs://$CM_STATE_BUCKET" \
         <li><b>Repository access &rarr; Only select repositories &rarr;</b> your <code class="inline">juice-shop</code> fork.</li>
         <li><b>Repository permissions</b> &mdash; grant <b>exactly these two</b>: <b>Contents &rarr; Read and write</b> (push the branch) and <b>Pull requests &rarr; Read and write</b> (open the PR). Leave everything else at <em>No access</em>.</li>
         <li>Generate and copy the token (<code class="inline">github_pat_&hellip;</code>).</li>
-      </ol><figure class="code"><figcaption><span class="lbl">bash · input hidden, kept out of shell history</span><button class="copy" type="button">Copy</button></figcaption><pre>read -rs GH_PAT
+      </ol><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your github secret&gt;</span>
 printf '%s' "$GH_PAT" | gcloud secrets create gh-pat --data-file=-
 unset GH_PAT</pre></figure>
       <h3>Option B &mdash; Reuse the <code class="inline">gh</code> CLI token</h3>
