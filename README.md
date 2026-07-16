@@ -140,27 +140,34 @@ around current gaps, and the guide surfaces both to participants (see its
 Participants can rebuild the image from `container/` with their own `cm` binary —
 the Dockerfile is the reproducible recipe.
 
-## Hosting the guide (GCS static site + HTTPS LB)
+## Hosting the guide (Cloud Run + HTTPS LB + IAP)
 
-`webapp/index.html` is served as a **public** static site (it contains only
-placeholders — no secrets) from a GCS bucket behind an external HTTPS Load
-Balancer, deployed in project `zken-genai`:
+`webapp/` is an **nginx container on Cloud Run**, fronted by an external HTTPS Load
+Balancer and gated by **IAP** (all paths require Google sign-in), in project
+`zken-genai`. It contains only placeholders — no secrets.
 
-- **URL:** https://cm-ci-lab.cedemo.app
-- **Bucket:** `gs://zken-genai-cm-lab-site` (public-read, website config)
+> **Note:** hosting moved from a public GCS bucket to Cloud Run + IAP. The bucket
+> `gs://zken-genai-cm-lab-site` is legacy and no longer serves the site.
+
+- **URL:** https://cm-ci-lab.cedemo.app — the Cloud Build guide.
+  **`/gha`** — the GitHub Actions variant (staged; see `webapp/nginx.conf` routing).
+- **Cloud Run:** service `cm-lab-site` (region `us-central1`), nginx serving
+  `webapp/index.html` at `/` and `webapp/gha/index.html` at `/gha`.
 - **Static IP:** `136.68.201.46` (`cm-lab-ip`) · DNS `A cm-ci-lab.cedemo.app`
-  in Cloud DNS zone `cedemo-app` (project `waap-demo-323809`)
-- **LB:** backend-bucket `cm-lab-backend` → url-map `cm-lab-urlmap` →
-  https-proxy `cm-lab-https-proxy` (managed cert `cm-lab-cert-cedemo`) →
-  forwarding rule `cm-lab-https-fr`; HTTP `cm-lab-http-fr` redirects to HTTPS.
+  in Cloud DNS zone `cedemo-app` (project `waap-demo-323809`).
+- **LB:** serverless NEG `cm-lab-neg` → backend-service `cm-lab-run-backend`
+  (**IAP enabled**) → url-map `cm-lab-urlmap` → https-proxy `cm-lab-https-proxy`
+  (managed cert `cm-lab-cert-cedemo`) → forwarding rule `cm-lab-https-fr`;
+  HTTP `cm-lab-http-fr` redirects to HTTPS.
 
-Update the page after editing:
+Deploy after editing `webapp/` (builds the Dockerfile via Cloud Build, rolls out a
+new revision — traffic switches automatically):
 ```bash
-gcloud storage cp webapp/index.html gs://zken-genai-cm-lab-site/index.html \
-  --content-type=text/html --cache-control="public,max-age=300"
+gcloud run deploy cm-lab-site --source webapp/ \
+  --region us-central1 --project zken-genai
 ```
 
-Teardown (removes the LB + bucket):
+Teardown (removes the LB + Cloud Run service; the legacy bucket is separate):
 ```bash
 P=zken-genai
 for r in forwarding-rules/cm-lab-https-fr forwarding-rules/cm-lab-http-fr; do
@@ -168,11 +175,15 @@ for r in forwarding-rules/cm-lab-https-fr forwarding-rules/cm-lab-http-fr; do
 gcloud compute target-https-proxies delete cm-lab-https-proxy --global --project=$P --quiet
 gcloud compute target-http-proxies  delete cm-lab-http-proxy  --global --project=$P --quiet
 gcloud compute url-maps delete cm-lab-urlmap cm-lab-redirect --global --project=$P --quiet
-gcloud compute backend-buckets delete cm-lab-backend --project=$P --quiet
+gcloud compute backend-services delete cm-lab-run-backend --global --project=$P --quiet
+gcloud compute network-endpoint-groups delete cm-lab-neg --region=us-central1 --project=$P --quiet
+gcloud run services delete cm-lab-site --region=us-central1 --project=$P --quiet
 gcloud compute ssl-certificates delete cm-lab-cert-cedemo cm-lab-cert --global --project=$P --quiet
 gcloud compute addresses delete cm-lab-ip --global --project=$P --quiet
-gcloud storage rm -r gs://zken-genai-cm-lab-site --project=$P
 gcloud dns record-sets delete cm-ci-lab.cedemo.app. --type=A --zone=cedemo-app --project=waap-demo-323809
+# legacy, if cleaning up the old bucket path too:
+gcloud compute backend-buckets delete cm-lab-backend --project=$P --quiet 2>/dev/null || true
+gcloud storage rm -r gs://zken-genai-cm-lab-site --project=$P 2>/dev/null || true
 ```
 
 ## Validation

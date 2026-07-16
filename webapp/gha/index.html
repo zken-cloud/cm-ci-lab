@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CodeMender CI Lab (GitHub Actions) &mdash; Build a Remediation Pipeline</title>
+<style>
+/* ============================ Design tokens ============================ */
+:root{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b;
+  --code-ink:#dbe7e6; --code-muted:#7f9a99; --code-add:#7fdcae; --code-del:#f09195;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+  --maxw:820px;
+  --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+    --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+    --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+    --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be;
+    --code-ink:#d6e5e3; --code-muted:#6f8a89; --code-add:#7fdcae; --code-del:#f09195;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b; --code-ink:#dbe7e6; --code-muted:#7f9a99;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+}
+:root[data-theme="dark"]{
+  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+  --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+  --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+  --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be; --code-ink:#d6e5e3; --code-muted:#6f8a89;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ============================ Layout ============================ */
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:1.6rem 1.1rem 2rem;border-right:1px solid var(--hair)}
+.main{min-width:0;padding:0 clamp(1.1rem,4vw,3rem) 6rem}
+.col{max-width:var(--maxw)}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--hair)}
+  .rail-scroll{max-height:none}
+}
+
+/* ============================ Rail nav ============================ */
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.2rem}
+.brand svg{width:22px;height:22px;flex:none}
+.brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.railnav{margin-top:1.4rem;font-size:.86rem}
+.railnav a{display:block;color:var(--ink-2);padding:.28rem .5rem;border-radius:7px;
+  border-left:2px solid transparent}
+.railnav a:hover{background:var(--surface-2);text-decoration:none}
+.railnav a.active{color:var(--accent-ink);border-left-color:var(--accent);background:var(--surface-2);font-weight:600}
+.railnav .grp{margin:1rem .5rem .3rem;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.railnav a .n{display:inline-block;width:1.5em;color:var(--muted);font-variant-numeric:tabular-nums}
+.themebtn{margin-top:1.5rem;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2);
+  border-radius:8px;padding:.4rem .7rem;font:inherit;font-size:.8rem;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.themebtn:hover{border-color:var(--accent)}
+
+/* ============================ Hero ============================ */
+.hero{padding:2.6rem 0 1.4rem}
+.eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+h1{font-size:clamp(1.9rem,4.4vw,2.75rem);line-height:1.08;letter-spacing:-.025em;
+  margin:.5rem 0 .4rem;text-wrap:balance;font-weight:750}
+.lede{font-size:1.12rem;color:var(--ink-2);max-width:60ch;margin:.2rem 0 1.3rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem}
+.pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:500;
+  padding:.3rem .7rem;border-radius:999px;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2)}
+.pill b{color:var(--ink);font-weight:650}
+
+/* ============================ Diagram ============================ */
+.diagram{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:1.1rem;
+  margin:1.4rem 0;box-shadow:var(--shadow);overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:640px;height:auto}
+
+/* ============================ Sections ============================ */
+section{padding:1.7rem 0;border-top:1px solid var(--hair)}
+section:first-of-type{border-top:none}
+h2{font-size:1.5rem;letter-spacing:-.02em;margin:.2rem 0 .3rem;font-weight:700;scroll-margin-top:1rem}
+h2 .kicker{display:block;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:.35rem}
+h3{font-size:1.08rem;margin:1.6rem 0 .4rem;letter-spacing:-.01em}
+p{margin:.6rem 0}
+ul,ol{margin:.6rem 0;padding-left:1.3rem}
+li{margin:.3rem 0}
+.small{font-size:.9rem;color:var(--muted)}
+
+/* Step header */
+.step{display:flex;gap:.8rem;align-items:baseline;margin:0 0 .2rem}
+.step .num{flex:none;width:2rem;height:2rem;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:700;font-size:.95rem;font-variant-numeric:tabular-nums;transform:translateY(.25rem)}
+.step h2{margin:0}
+
+/* ============================ Code blocks ============================ */
+figure.code{margin:1rem 0;border:1px solid var(--hair-strong);border-radius:11px;overflow:hidden;background:var(--code-bg)}
+figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.5rem .5rem .5rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07)}
+figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;color:var(--code-muted);text-transform:uppercase}
+.copy{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--code-ink);
+  font:inherit;font-size:.74rem;padding:.28rem .6rem;border-radius:7px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
+figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
+pre .c{color:var(--code-muted)}      /* comment */
+pre .k{color:#7fd7c8}                 /* keyword/cmd */
+pre .v{color:#e9c17a}                 /* value/string */
+pre .p{color:#c99be0}                 /* placeholder */
+pre .add{color:var(--code-add)}
+pre .del{color:var(--code-del)}
+code.inline{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);
+  border:1px solid var(--hair);padding:.08em .38em;border-radius:5px;color:var(--ink);word-break:break-word}
+
+/* ============================ Callouts ============================ */
+.callout{margin:1.1rem 0;padding:.85rem 1rem .85rem 1.05rem;border-radius:10px;border:1px solid var(--hair);
+  background:var(--surface);border-left:3px solid var(--muted);box-shadow:var(--shadow)}
+.callout .ct{font-weight:650;font-size:.82rem;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem}
+.callout p{margin:.2rem 0}
+.callout.note{border-left-color:var(--accent)}
+.callout.note .ct{color:var(--accent-ink)}
+.callout.warn{border-left-color:var(--high)}
+.callout.warn .ct{color:var(--high)}
+.callout.sec{border-left-color:var(--crit);background:linear-gradient(0deg,var(--surface),var(--surface))}
+.callout.sec .ct{color:var(--crit)}
+.callout.chal{border-left-color:var(--accent);background:var(--accent-soft)}
+:root[data-theme="dark"] .callout.chal,@media (prefers-color-scheme:dark){.callout.chal{background:var(--accent-soft)}}
+.callout.chal .ct{color:var(--accent-ink)}
+.callout.chal .ct::before{content:"◆"}
+
+/* ============================ Chips / table ============================ */
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:650;padding:.12rem .5rem;
+  border-radius:6px;letter-spacing:.02em;text-transform:uppercase;font-family:var(--f-mono)}
+.chip.crit{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}
+.chip.high{background:color-mix(in srgb,var(--high) 18%,transparent);color:var(--high)}
+.chip.med{background:color-mix(in srgb,var(--med) 20%,transparent);color:var(--med)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;overflow-x:auto;display:block}
+.tbl thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--hair-strong);padding:.5rem .6rem;font-weight:600}
+.tbl td{padding:.5rem .6rem;border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl code{font-family:var(--f-mono);font-size:.85em}
+
+/* Collapsible facilitator */
+details.fac{border:1px solid var(--hair-strong);border-radius:12px;background:var(--surface);margin:1rem 0;box-shadow:var(--shadow)}
+details.fac>summary{cursor:pointer;list-style:none;padding:1rem 1.1rem;font-weight:650;display:flex;align-items:center;gap:.6rem}
+details.fac>summary::-webkit-details-marker{display:none}
+details.fac>summary .tw{margin-left:auto;color:var(--muted);transition:transform .2s}
+details.fac[open]>summary .tw{transform:rotate(90deg)}
+details.fac .body{padding:0 1.1rem 1.1rem}
+
+/* progress checkbox */
+.done-toggle{display:inline-flex;align-items:center;gap:.5rem;margin:.6rem 0 0;font-size:.85rem;color:var(--muted);cursor:pointer;user-select:none}
+.done-toggle input{accent-color:var(--accent);width:1.05em;height:1.05em}
+
+footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
+.kbd{font-family:var(--f-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--hair-strong);
+  border-bottom-width:2px;border-radius:5px;padding:.05em .4em}
+hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
+      <div>CodeMender Lab<small>GitHub Actions</small></div>
+    </div>
+    <nav class="railnav" aria-label="Lab contents">
+      <a href="#overview"><span class="n">&#9670;</span>Overview</a>
+      <a href="#flow"><span class="n">&#9670;</span>How it works</a>
+      <a href="#design"><span class="n">&#9670;</span>Design decisions</a>
+      <a href="#prereq"><span class="n">&#9670;</span>Prerequisites</a>
+      <a href="#image"><span class="n">&#9670;</span>The CodeMender image</a>
+      <div class="grp">The lab</div>
+      <a href="#s1"><span class="n">1</span>Fork Juice Shop</a>
+      <a href="#s2"><span class="n">2</span>Create the pipeline repo</a>
+      <a href="#s3"><span class="n">3</span>Create a fine-grained PAT</a>
+      <a href="#s4"><span class="n">4</span>Set the GH_PAT secret</a>
+      <a href="#s5"><span class="n">5</span>Build the toolbox image</a>
+      <a href="#s6"><span class="n">6</span>Write the phase scripts</a>
+      <a href="#s7"><span class="n">7</span>Write the workflow</a>
+      <a href="#s8"><span class="n">8</span>Run the pipeline</a>
+      <a href="#s9"><span class="n">9</span>Review the fix &amp; PR</a>
+      <a href="#s10"><span class="n">10</span>Approve &amp; merge</a>
+      <a href="#s11"><span class="n">11</span>Confirm remediation</a>
+      <div class="grp">Reference</div>
+      <a href="#concurrency"><span class="n">&#9670;</span>Concurrency &amp; safety</a>
+      <a href="#production"><span class="n">&#9670;</span>Production &amp; EAP notes</a>
+      <a href="#cleanup"><span class="n">&#9670;</span>Cleanup</a>
+    </nav>
+    <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span id="themelbl">Theme</span>
+    </button>
+  </aside>
+  <main class="main"><div class="col">
+
+    <header class="hero" id="overview">
+      <div class="eyebrow">Internal Customer Engineer Enablement</div>
+      <h1>Build a CodeMender remediation pipeline on GitHub Actions</h1>
+      <p class="lede">You'll package CodeMender into a container, push it to GHCR, and hand-write a GitHub Actions workflow that scans OWASP Juice&nbsp;Shop, <em>verifies</em> a real vulnerability, <em>fixes</em> it, and opens a Pull Request on your own fork &mdash; which you review, approve, and merge.</p>
+      <div class="meta">
+        <span class="pill">&#9201; <b>~45&nbsp;min</b></span>
+        <span class="pill">&#9670; <b>Intermediate</b></span>
+        <span class="pill">&#9095; <b>GitHub</b> &middot; Actions &middot; GHCR &middot; Packages</span>
+        <span class="pill">&#128273; <b>1 secret</b> (a PAT)</span>
+      </div>
+      <div class="callout note"><div class="ct">&#128260; This is the GitHub Actions port of the <a href="https://cm-ci-lab.cedemo.app">Cloud Build lab</a></div>
+        <p>Same CodeMender, same four phase scripts &mdash; a different CI driver. The interesting part is what <em>disappears</em>: because every step of a GHA job runs in <b>one container</b>, the CodeMender state that Cloud Build had to persist in a gcsfuse-mounted GCS bucket now just lives on the job filesystem. No bucket, no gcsfuse, no GCP.</p></div>
+      <div class="diagram" role="img" aria-label="A single GitHub Actions job runs in the CodeMender container pulled from GHCR. Its steps clone, find, verify, fix and open-pr share one filesystem, so CodeMender state persists with no gcsfuse. The job opens a Pull Request on the GitHub fork.">
+        <svg viewBox="0 0 720 320" font-family="var(--f-sans)">
+          <defs>
+            <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
+            <marker id="ara" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
+          </defs>
+          <rect x="14" y="118" width="150" height="80" rx="9" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="26" y="142" font-size="11" font-weight="700" fill="var(--ink)">GHCR</text>
+          <text x="26" y="160" font-size="10.5" fill="var(--ink-2)">codemender-ci</text>
+          <text x="26" y="175" font-size="10.5" fill="var(--ink-2)">image :v0.2.0</text>
+          <text x="26" y="190" font-size="9" fill="var(--muted)">pulled by GITHUB_TOKEN</text>
+          <rect x="196" y="40" width="360" height="250" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="216" y="66" font-size="12" font-weight="700" fill="var(--accent-ink)">One GHA job &mdash; the CodeMender container</text>
+          <g font-size="11" text-anchor="middle">
+            <g><rect x="216" y="80" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="99" fill="var(--ink)">0 &middot; clone your fork</text></g>
+            <g><rect x="216" y="116" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="135" fill="var(--ink)">1 &middot; cm find  (scan)</text></g>
+            <g><rect x="216" y="152" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="171" fill="var(--ink)">2 &middot; cm find verify  (reproduce)</text></g>
+            <g><rect x="216" y="188" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="207" fill="var(--ink)">3 &middot; cm fix  (apply patch)</text></g>
+            <g><rect x="216" y="224" width="320" height="30" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="376" y="243" fill="var(--accent-ink)" font-weight="650">4 &middot; push branch + open PR</text></g>
+          </g>
+          <text x="376" y="278" font-size="9.5" fill="var(--muted)" text-anchor="middle">steps share one filesystem &mdash; no gcsfuse</text>
+          <rect x="588" y="120" width="124" height="72" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="602" y="146" font-size="12" font-weight="700" fill="var(--ink)">GitHub fork</text>
+          <text x="602" y="165" font-size="10.5" fill="var(--ink-2)">Pull Request</text>
+          <text x="602" y="180" font-size="10.5" fill="var(--ink-2)">review &rarr; merge</text>
+          <line x1="164" y1="150" x2="212" y2="150" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+          <text x="188" y="142" font-size="9" fill="var(--muted)" text-anchor="middle">pull</text>
+          <line x1="556" y1="240" x2="586" y2="170" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ara)"/>
+        </svg>
+      </div>
+    </header>
+
+    <section id="flow">
+      <h2><span class="kicker">The big picture</span>What you are building</h2>
+      <p>CodeMender (<code class="inline">cm</code>) is an AI security agent: a thin client that streams a codebase to a hardened backend which reasons about vulnerabilities and generates <em>validated</em> patches. You'll drive it from CI as five steps of a single GitHub Actions job:</p>
+      <ul>
+        <li><b>clone</b> &mdash; shallow-clone your fork into <code class="inline">/workspace/repo</code> using your PAT.</li>
+        <li><b>find</b> &mdash; <code class="inline">cm find</code> scans a file and records vulnerabilities (severity, CWE, analysis).</li>
+        <li><b>verify</b> &mdash; <code class="inline">cm find verify</code> <em>reproduces</em> the top finding (it may build &amp; run the app) to confirm it's real. This is why the image ships with node/npm.</li>
+        <li><b>fix</b> &mdash; <code class="inline">cm fix</code> generates the patch; your script applies it deterministically.</li>
+        <li><b>open-pr</b> &mdash; commit to a branch, push to your fork, open a PR whose body is CodeMender's own analysis.</li>
+      </ul>
+      <div class="callout note"><div class="ct">&#128190; Why there's <em>no</em> state bucket here</div>
+        <p>On Cloud Build each step is a fresh container, so CodeMender's <code class="inline">~/.codemender</code> (config, identity key, findings SQLite DB) had to be persisted in a gcsfuse-mounted GCS bucket. On GitHub Actions every step of a job runs in the <b>same container</b>, so that directory simply survives from <code class="inline">find</code> to <code class="inline">verify</code> to <code class="inline">fix</code>. We point <code class="inline">$HOME</code> at a per-run folder and move on &mdash; the one real simplification of this port.</p></div>
+      <div class="callout note"><div class="ct">&#128273; No CodeMender secret to manage &mdash; for now (EAP)</div>
+        <p>The CodeMender server endpoint and credential are baked into the <code class="inline">cm</code> binary, so the only secret <em>you</em> create is a GitHub token to push and open a PR. That's an <b>EAP convenience</b>. The <b>public preview and GA won't</b> ship auth in the binary &mdash; they'll authenticate with <b>standard methods</b> you wire into the same one setup step: a <b>service account</b>, <b>Workload Identity Federation</b>, or a <b>scoped API key</b> (least secure of the three). See <a href="#production">Production &amp; EAP notes</a>.</p></div>
+
+      <h3>The five scripts &mdash; identical to the Cloud Build lab</h3>
+      <p>The CodeMender knowledge lives in the container image and four phase scripts. Those are <b>byte-for-byte the same</b> across platforms. Only <code class="inline">cm-env.sh</code> (the shared setup the others <code class="inline">source</code>) changed &mdash; its gcsfuse mount block is gone, because state persistence is free here:</p>
+      <ul>
+        <li><code class="inline">cm-env.sh</code> &mdash; not a step of its own. It points <code class="inline">$HOME</code> at a per-run folder, runs <code class="inline">cm init</code> once, and defines <code class="inline">top_finding_id()</code>, the <code class="inline">jq</code> helper that picks the highest-severity finding. <code class="inline">find</code>/<code class="inline">verify</code>/<code class="inline">fix</code> each <code class="inline">source</code> it first.</li>
+        <li><code class="inline">find.sh</code> &rarr; <code class="inline">verify.sh</code> &rarr; <code class="inline">fix.sh</code> &rarr; <code class="inline">open-pr.sh</code> &mdash; one workflow step each, run in order, all in the same container.</li>
+      </ul>
+      <p><b>In sync without passing arguments.</b> No step tells the next <em>which</em> finding to work on. Every step independently re-runs <code class="inline">top_finding_id()</code> &mdash; it greps <code class="inline">cm report -f json</code>, keeps findings at or above <code class="inline">MIN_SEVERITY</code>, and returns the single top one. Because all steps read the <em>same</em> findings DB on the shared filesystem, they agree on the same finding without ever exchanging an ID. That decoupling is why any step can be re-run on its own, and why the &ldquo;confirm remediation&rdquo; pass naturally opens no PR once the top finding is gone.</p>
+    </section>
+
+    <section id="design">
+      <h2><span class="kicker">Why it's built this way</span>Design decisions</h2>
+      <table class="tbl"><thead><tr><th>Decision</th><th>Why</th></tr></thead><tbody>
+        <tr><td><b>One job, five steps</b> (not five jobs)</td><td>Steps of a job share a container and filesystem, so CodeMender state persists for free. Splitting into jobs would reintroduce the cross-container state problem (and need <code class="inline">actions/cache</code> or artifacts).</td></tr>
+        <tr><td><b>Container image</b> from GHCR</td><td>The image is the transferable unit: the same Dockerfile runs on Cloud Build, GHA, and GitLab, and pins the exact toolchain (node 22, build-essential) regardless of the runner. Pulled with the built-in <code class="inline">GITHUB_TOKEN</code> &mdash; no registry credentials to manage.</td></tr>
+        <tr><td><b>Full verification</b>, not skipped</td><td>CodeMender reproduces the exploit (it builds &amp; runs the app), so a fix targets a <em>confirmed</em> bug. This is why the image ships node/npm and why verify is the slow step.</td></tr>
+        <tr><td><b>15-min verify cap + PR flag</b></td><td><code class="inline">cm find verify</code> is thorough but <em>variable</em>. <b>The cap is a lab convenience, not a product limit.</b> When it's hit we still generate the fix and <b>flag the PR as UNVERIFIED</b> so the human reviewer scrutinises it. Automated verification assists the human gate &mdash; it never replaces it.</td></tr>
+        <tr><td><b>Deterministic patch apply</b></td><td>The fix step prefers the change CodeMender actually made to the target file, falling back to its <em>stored</em> patch &mdash; so the result is reproducible.</td></tr>
+        <tr><td><b>Human-in-the-loop PR</b></td><td>The pipeline never writes to <code class="inline">master</code>. CodeMender proposes; you review, approve, and merge. Nothing in the pipeline ever closes a PR, so the review PR stays open until a person acts on it.</td></tr>
+        <tr><td><b>Same-file concurrency guard</b></td><td>A <code class="inline">concurrency:</code> group serialises runs that target the same file, so two <code class="inline">cm fix</code> runs never produce divergent patches / conflicting PRs. See <a href="#concurrency">Concurrency &amp; safety</a>.</td></tr>
+        <tr><td><b>Single-file scan target</b></td><td>A one-file target keeps CodeMender's sandbox scoped &mdash; fast and deterministic for the lab.</td></tr>
+        <tr><td><b>Severity gate</b> (<code class="inline">min_severity</code>, default CRITICAL)</td><td>Only findings at/above the threshold are auto-remediated. Lower-severity findings are reported but don't open PRs.</td></tr>
+      </tbody></table>
+    </section>
+
+    <section id="prereq">
+      <h2><span class="kicker">Before you start</span>Prerequisites</h2>
+      <p>Everything runs on GitHub &mdash; the workflow builds the image, pulls it, and opens the PR. You only need a browser and (optionally) <code class="inline">gh</code> for the CLI shortcuts.</p>
+      <table class="tbl"><thead><tr><th>You need</th><th>Notes</th></tr></thead><tbody>
+        <tr><td>A <b>GitHub account</b></td><td>You'll fork Juice Shop and host the pipeline repo in it. GHCR (Packages) is included &mdash; nothing to enable.</td></tr>
+        <tr><td>The <b>CodeMender binary</b> (<code class="inline">cm-linux</code>)</td><td>Provided by your facilitator during EAP. You bake it into the image in Step&nbsp;5. (At public preview you'll download your own.)</td></tr>
+        <tr><td><b>gh</b> CLI (optional)</td><td>Handy for the copy-paste commands. Everything is also doable from the GitHub web UI.</td></tr>
+      </tbody></table>
+      <div class="callout warn"><div class="ct">&#9888; Use a throwaway fork</div><p>Juice Shop is <em>deliberately vulnerable</em>. Keep it in an isolated fork; never expose it publicly.</p></div>
+    </section>
+
+    <section id="image">
+      <h2><span class="kicker">The transferable unit</span>The CodeMender image</h2>
+      <p>The toolbox image is a deliberately minimal container: the <code class="inline">cm</code> client plus the build/runtime tools the pipeline needs (node/npm so <code class="inline">cm find verify</code> can build &amp; run Juice Shop, git, jq). It carries <b>no orchestration</b> &mdash; you author the scripts and the workflow.</p>
+      <p>It's identical to the Cloud Build lab's image (it even still contains gcsfuse &mdash; harmless here, and it keeps <b>one</b> image working across every platform). You build it once with the workflow in Step&nbsp;5; here's the recipe for reference:</p>
+      <details class="fac"><summary>container/Dockerfile &mdash; reference only <span class="tw">&#9656;</span></summary><div class="body"><figure class="code"><figcaption><span class="lbl">container/Dockerfile</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># CodeMender CI toolbox image (same recipe as the Cloud Build lab).</span>
+<span class="c"># Base: Debian-based Node.js (glibc). cm is glibc-linked; Juice Shop runs on Node 22.</span>
+<span class="k">FROM</span> node:22-bookworm-slim
+
+<span class="c"># git/ca-certs: clone+push+TLS · curl/jq: GitHub API + parse cm report</span>
+<span class="c"># build-essential/python3: node-gyp · fuse3/gcsfuse: unused here, kept for portability</span>
+<span class="k">RUN</span> apt-get update \
+ &amp;&amp; apt-get install -y --no-install-recommends \
+      git ca-certificates curl jq gnupg build-essential python3 fuse3 \
+ &amp;&amp; curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+      | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+ &amp;&amp; echo <span class="v">"deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt gcsfuse-bookworm main"</span> \
+      &gt; /etc/apt/sources.list.d/gcsfuse.list \
+ &amp;&amp; apt-get update &amp;&amp; apt-get install -y --no-install-recommends gcsfuse \
+ &amp;&amp; rm -rf /var/lib/apt/lists/*
+
+<span class="k">COPY</span> cm-linux /usr/local/bin/cm
+<span class="k">RUN</span> chmod 0755 /usr/local/bin/cm
+<span class="k">WORKDIR</span> /workspace</pre></figure></div></details>
+    </section>
+
+    <section id="s1">
+      <div class="step"><span class="num">1</span><h2>Fork Juice Shop</h2></div>
+      <p>Fork <a href="https://github.com/juice-shop/juice-shop" target="_blank" rel="noopener">OWASP Juice Shop</a> into your account &mdash; this is the code CodeMender will scan and open a PR against. Base branch is <code class="inline">master</code>.</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; optional (gh)</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo fork juice-shop/juice-shop --clone=false
+<span class="c"># -> creates <span class="p">YOUR_USER</span>/juice-shop</span></pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="1"> Mark complete</label>
+    </section>
+
+    <section id="s2">
+      <div class="step"><span class="num">2</span><h2>Create the pipeline repo</h2></div>
+      <p>The workflow lives in its <em>own</em> repo (kept separate from the code it scans, mirroring how you'd run a remediation pipeline against many targets). Create a <b>private</b> repo and add these files &mdash; the layout you'll fill in over the next steps:</p>
+      <figure class="code"><figcaption><span class="lbl">repo layout</span><button class="copy" type="button">Copy</button></figcaption><pre>cm-ci-lab-gha/
+&#9500;&#9472; container/
+&#9474;  &#9500;&#9472; Dockerfile          <span class="c"># the toolbox recipe (Step 5)</span>
+&#9474;  &#9492;&#9472; cm-linux            <span class="c"># the cm binary from your facilitator</span>
+&#9500;&#9472; scripts/
+&#9474;  &#9500;&#9472; cm-env.sh           <span class="c"># shared setup (gcsfuse removed)</span>
+&#9474;  &#9500;&#9472; find.sh  verify.sh   <span class="c"># -- identical to the Cloud Build lab --</span>
+&#9474;  &#9492;&#9472; fix.sh   open-pr.sh
+&#9492;&#9472; .github/workflows/
+   &#9500;&#9472; image.yml           <span class="c"># build container/ -> GHCR (Step 5)</span>
+   &#9492;&#9472; codemender.yml      <span class="c"># the pipeline (Step 7)</span></pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="2"> Mark complete</label>
+    </section>
+
+    <section id="s3">
+      <div class="step"><span class="num">3</span><h2>Create a fine-grained PAT</h2></div>
+      <p>The pipeline's job-scoped <code class="inline">GITHUB_TOKEN</code> can't reach a <em>different</em> repo, so the <code class="inline">open-pr</code> step needs a token that can push a branch and open a PR on your fork. Create a <b>fine-grained personal access token</b> scoped to just that fork:</p>
+      <ul>
+        <li>GitHub &rarr; <b>Settings</b> &rarr; <b>Developer settings</b> &rarr; <b>Personal access tokens</b> &rarr; <b>Fine-grained tokens</b> &rarr; <b>Generate new token</b>.</li>
+        <li><b>Repository access</b> &rarr; <em>Only select repositories</em> &rarr; your <code class="inline">juice-shop</code> fork.</li>
+        <li><b>Repository permissions</b>: <span class="chip ok">Contents: Read and write</span> <span class="chip ok">Pull requests: Read and write</span></li>
+        <li>Set a short expiry and generate. Copy the token &mdash; you'll paste it in Step&nbsp;4.</li>
+      </ul>
+      <div class="callout note"><div class="ct">&#128273; Why not the built-in token?</div><p><code class="inline">GITHUB_TOKEN</code> is automatically scoped to the repo the workflow runs in (the pipeline repo), so it can't push to your <em>fork</em>. A scoped PAT is the least-privilege way to cross that boundary. (If you put the workflow <em>inside</em> the fork instead, <code class="inline">GITHUB_TOKEN</code> would suffice &mdash; but keeping the pipeline in its own repo is the more portable, real-world shape.)</p></div>
+      <label class="done-toggle"><input type="checkbox" data-step="3"> Mark complete</label>
+    </section>
+
+    <section id="s4">
+      <div class="step"><span class="num">4</span><h2>Set the GH_PAT secret</h2></div>
+      <p>Store the token as an <b>Actions secret</b> named <code class="inline">GH_PAT</code> in the pipeline repo. This is the GHA equivalent of the Cloud Build lab's Secret Manager <code class="inline">gh-pat</code>.</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; or repo Settings &rarr; Secrets &rarr; Actions</span><button class="copy" type="button">Copy</button></figcaption><pre>gh secret set GH_PAT --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha
+<span class="c"># paste the fine-grained PAT when prompted</span></pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="4"> Mark complete</label>
+    </section>
+
+    <section id="s5">
+      <div class="step"><span class="num">5</span><h2>Build the toolbox image &rarr; GHCR</h2></div>
+      <p>Add <code class="inline">container/Dockerfile</code> and the <code class="inline">cm-linux</code> binary, then add this workflow. It builds the image and pushes it to GHCR using the built-in <code class="inline">GITHUB_TOKEN</code> (granted <code class="inline">packages: write</code>) &mdash; no local Docker, no registry login, no GCP.</p>
+      <figure class="code"><figcaption><span class="lbl">.github/workflows/image.yml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Build the CodeMender toolbox image and push it to GHCR.</span>
+<span class="k">name</span>: build-image
+<span class="k">on</span>: { workflow_dispatch: {}, push: { paths: [ container/**, .github/workflows/image.yml ] } }
+<span class="k">env</span>: { IMAGE: ghcr.io/<span class="p">YOUR_USER</span>/codemender-ci }
+<span class="k">jobs</span>:
+  build:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: <span class="v">"${{ github.actor }}"</span>, password: <span class="v">"${{ secrets.GITHUB_TOKEN }}"</span> }
+      - uses: docker/build-push-action@v6
+        with:
+          context: container
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:v0.2.0
+            ${{ env.IMAGE }}:latest</pre></figure>
+      <p>Run it: <b>Actions</b> &rarr; <b>build-image</b> &rarr; <b>Run workflow</b>. It finishes in ~90&nbsp;s and produces <code class="inline">ghcr.io/<span class="p">YOUR_USER</span>/codemender-ci:v0.2.0</code>. The package is private and linked to the repo, so the pipeline pulls it with the same <code class="inline">GITHUB_TOKEN</code>.</p>
+      <label class="done-toggle"><input type="checkbox" data-step="5"> Mark complete</label>
+    </section>
+
+    <section id="s6">
+      <div class="step"><span class="num">6</span><h2>Write the phase scripts</h2></div>
+      <p><b>Four of the five scripts are identical to the <a href="https://cm-ci-lab.cedemo.app">Cloud Build lab</a></b> &mdash; copy <code class="inline">find.sh</code>, <code class="inline">verify.sh</code>, <code class="inline">fix.sh</code>, and <code class="inline">open-pr.sh</code> unchanged into <code class="inline">scripts/</code>. They're pure CodeMender logic and don't care what CI drives them. The only edit is <code class="inline">cm-env.sh</code>: its gcsfuse mount block is gone, because state persists on the job filesystem.</p>
+      <figure class="code"><figcaption><span class="lbl">scripts/cm-env.sh &middot; the one changed file</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c">#!/usr/bin/env bash</span>
+<span class="c"># cm-env.sh — shared setup, sourced by find/verify/fix.</span>
+<span class="c">#</span>
+<span class="c"># GHA vs Cloud Build — the ONE platform difference: every step of a GHA job runs</span>
+<span class="c"># in the SAME container, so ~/.codemender already persists across find→verify→fix.</span>
+<span class="c"># We just point HOME at a per-run dir — no bucket, no gcsfuse. STATE_ID keeps</span>
+<span class="c"># concurrent runs isolated (and underpins the same-file concurrency guard).</span>
+<span class="k">set</span> -euo pipefail
+: <span class="v">"${STATE_ID:?set STATE_ID (e.g. the GHA \$GITHUB_RUN_ID)}"</span>
+
+<span class="k">export</span> WORKSPACE=<span class="v">"${WORKSPACE:-/workspace}"</span>
+<span class="k">export</span> REPO_DIR=<span class="v">"${REPO_DIR:-$WORKSPACE/repo}"</span>
+<span class="k">export</span> HOME=<span class="v">"/cmstate/${STATE_ID}"</span>          <span class="c"># cm writes ~/.codemender here</span>
+mkdir -p <span class="v">"$HOME"</span>
+
+<span class="k">if</span> [[ ! -f <span class="v">"$HOME/.codemender/config.yaml"</span> ]]; <span class="k">then</span>
+  cm init
+  cat &gt; <span class="v">"$HOME/.codemender/config.yaml"</span> &lt;&lt;<span class="v">'YAML'</span>
+server: {}
+scan: { extensions: { include: [".ts",".js"], exclude: [".min.js",".spec.ts",".test.ts"] }, incremental: false }
+output: { format: table }
+tools:  { confirm_commands: false, confirm_writes: false }
+vcs:    { type: git }
+build:  { command: "" }
+YAML
+<span class="k">fi</span>
+
+<span class="k">case</span> <span class="v">"${MIN_SEVERITY:-CRITICAL}"</span> <span class="k">in</span>
+  CRITICAL) <span class="k">export</span> SEV_RANK=4;; HIGH) <span class="k">export</span> SEV_RANK=3;;
+  MEDIUM)   <span class="k">export</span> SEV_RANK=2;; *)    <span class="k">export</span> SEV_RANK=1;;
+<span class="k">esac</span>
+
+<span class="c"># highest-severity finding UUID at/above MIN_SEVERITY (empty if none)</span>
+top_finding_id() {
+  cm report -f json 2&gt;/dev/null | jq -r --argjson min <span class="v">"${SEV_RANK:-4}"</span> <span class="v">'
+    def rank: {CRITICAL:4,HIGH:3,MEDIUM:2,LOW:1}[(.Severity|ascii_upcase)] // 0;
+    (if type=="array" then . else [] end) | map(select(rank &gt;= $min))
+    | sort_by(rank) | reverse | (.[0].FindingID // "")'</span>
+}</pre></figure>
+      <details class="fac"><summary>The four unchanged scripts &mdash; what each does <span class="tw">&#9656;</span></summary><div class="body">
+        <table class="tbl"><thead><tr><th>Script</th><th>Does</th></tr></thead><tbody>
+          <tr><td><code class="inline">find.sh</code></td><td><code class="inline">source cm-env.sh</code>; <code class="inline">cm find $SCAN_PATH -y</code>; write <code class="inline">cm report -f json</code>; pick the top finding.</td></tr>
+          <tr><td><code class="inline">verify.sh</code></td><td><code class="inline">cm find verify</code> the top finding under a 15-min <code class="inline">timeout</code>; record the verdict (VERIFIED / OPEN) to a hand-off file. Hitting the cap does <em>not</em> skip fix.</td></tr>
+          <tr><td><code class="inline">fix.sh</code></td><td><code class="inline">cm fix --auto-apply</code>; prefer the change made to the target file, else apply the stored patch; write <code class="inline">cm-status.txt</code> (FIXED / DISMISSED / NONE).</td></tr>
+          <tr><td><code class="inline">open-pr.sh</code></td><td>If FIXED: commit to <code class="inline">codemender/&lt;cwe&gt;-&lt;id&gt;</code>, push with <code class="inline">GH_TOKEN</code>, open a PR whose body is CodeMender's analysis (flagged UNVERIFIED if verify hit the cap).</td></tr>
+        </tbody></table>
+        <p class="small">Copy them verbatim from the Cloud Build lab's <code class="inline">pipeline/scripts/</code>. Only <code class="inline">cm-env.sh</code> differs.</p>
+      </div></details>
+      <label class="done-toggle"><input type="checkbox" data-step="6"> Mark complete</label>
+    </section>
+
+    <section id="s7">
+      <div class="step"><span class="num">7</span><h2>Write the workflow</h2></div>
+      <p>This is the driver &mdash; the GHA counterpart of <code class="inline">cloudbuild.yaml</code>. One job, running inside the toolbox container, with the five steps as <code class="inline">run:</code> steps. Note three things: the <code class="inline">container:</code> block (pulls from GHCR with <code class="inline">GITHUB_TOKEN</code>), the <code class="inline">concurrency:</code> guard (<a href="#concurrency">same-file safety</a>), and <code class="inline">STATE_ID: ${{ github.run_id }}</code> (per-run state isolation).</p>
+      <figure class="code"><figcaption><span class="lbl">.github/workflows/codemender.yml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">name</span>: codemender
+<span class="k">on</span>:
+  workflow_dispatch:
+    inputs:
+      gh_owner:     { default: <span class="v">"<span class="p">YOUR_USER</span>"</span> }
+      gh_repo:      { default: <span class="v">"juice-shop"</span> }
+      base_branch:  { default: <span class="v">"master"</span> }
+      scan_path:    { default: <span class="v">"routes/login.ts"</span> }
+      min_severity: { default: <span class="v">"CRITICAL"</span> }
+
+<span class="c"># ── Same-file concurrency guard ──────────────────────────────</span>
+<span class="c"># Serialize runs per (owner, repo, scan_path) so two cm-fix runs never work the</span>
+<span class="c"># same file at once. cancel-in-progress:false => queue, don't kill a fix.</span>
+<span class="k">concurrency</span>:
+  group: cm-${{ inputs.gh_owner }}-${{ inputs.gh_repo }}-${{ inputs.scan_path }}
+  cancel-in-progress: false
+
+<span class="k">jobs</span>:
+  remediate:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: read }
+    container:
+      image: ghcr.io/<span class="p">YOUR_USER</span>/codemender-ci:v0.2.0
+      credentials: { username: <span class="v">"${{ github.actor }}"</span>, password: <span class="v">"${{ secrets.GITHUB_TOKEN }}"</span> }
+    env:
+      STATE_ID:  ${{ github.run_id }}      <span class="c"># per-run state isolation</span>
+      WORKSPACE: /workspace
+      REPO_DIR:  /workspace/repo
+    steps:
+      - uses: actions/checkout@v4
+      - name: clone fork
+        env: { GH_PAT: <span class="v">"${{ secrets.GH_PAT }}"</span>, GH_OWNER: <span class="v">"${{ inputs.gh_owner }}"</span>, GH_REPO: <span class="v">"${{ inputs.gh_repo }}"</span>, BASE_BRANCH: <span class="v">"${{ inputs.base_branch }}"</span> }
+        run: |
+          set -e; mkdir -p "$WORKSPACE"; rm -rf "$REPO_DIR"
+          git config --global credential.helper \
+            '!f() { echo username=x-access-token; echo "password=${GH_PAT}"; }; f'
+          git clone --depth 1 --branch "$BASE_BRANCH" \
+            "https://github.com/${GH_OWNER}/${GH_REPO}.git" "$REPO_DIR"
+      - name: find
+        env: { SCAN_PATH: <span class="v">"${{ inputs.scan_path }}"</span>, MIN_SEVERITY: <span class="v">"${{ inputs.min_severity }}"</span> }
+        run: bash scripts/find.sh
+      - name: verify
+        env: { MIN_SEVERITY: <span class="v">"${{ inputs.min_severity }}"</span> }
+        run: bash scripts/verify.sh
+      - name: fix
+        env: { MIN_SEVERITY: <span class="v">"${{ inputs.min_severity }}"</span> }
+        run: bash scripts/fix.sh
+      - name: open-pr
+        env: { GH_TOKEN: <span class="v">"${{ secrets.GH_PAT }}"</span>, GH_OWNER: <span class="v">"${{ inputs.gh_owner }}"</span>, GH_REPO: <span class="v">"${{ inputs.gh_repo }}"</span>, BASE_BRANCH: <span class="v">"${{ inputs.base_branch }}"</span> }
+        run: bash scripts/open-pr.sh</pre></figure>
+      <label class="done-toggle"><input type="checkbox" data-step="7"> Mark complete</label>
+    </section>
+
+    <section id="s8">
+      <div class="step"><span class="num">8</span><h2>Run the pipeline</h2></div>
+      <p><b>Actions</b> &rarr; <b>codemender</b> &rarr; <b>Run workflow</b>. Keep the defaults (scan <code class="inline">routes/login.ts</code>) or set <code class="inline">min_severity</code>. Watch the steps stream in the job log.</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; optional (gh)</span><button class="copy" type="button">Copy</button></figcaption><pre>gh workflow run codemender.yml --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha
+gh run watch $(gh run list --workflow codemender.yml --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha -L1 --json databaseId -q '.[0].databaseId') \
+  --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha</pre></figure>
+      <div class="callout note"><div class="ct">&#128200; What "success" means on each step</div><p>The step goes green if its <em>script</em> exits 0. For <code class="inline">verify</code> that includes the case where the 15-min cap was hit &mdash; the pipeline proceeds and flags the PR UNVERIFIED. Green on <code class="inline">verify</code> is not the same as &ldquo;CodeMender confirmed it&rdquo;; read the PR banner.</p></div>
+      <label class="done-toggle"><input type="checkbox" data-step="8"> Mark complete</label>
+    </section>
+
+    <section id="s9">
+      <div class="step"><span class="num">9</span><h2>Review the fix &amp; the PR</h2></div>
+      <p>The <code class="inline">open-pr</code> step logs the PR URL. Open it on your fork: the body is CodeMender's own analysis (finding, severity, confidence, verification verdict) and the diff. For the default <code class="inline">routes/login.ts</code> target the fix replaces a raw SQL string with a parameterised query &mdash; the correct SQL-injection remediation.</p>
+      <div class="callout warn"><div class="ct">&#9888; The commit may touch more than the scan file</div><p>To reproduce the exploit, <code class="inline">cm find verify</code> can edit other files (e.g. disabling a startup precondition so the app boots). Because <code class="inline">open-pr.sh</code> commits all tracked modifications (<code class="inline">git add -u</code>), that scaffolding can ride along in the PR. Review the full diff. To scope the commit to just the finding's file, change <code class="inline">git add -u</code> to <code class="inline">git add -- "$FILE"</code> in <code class="inline">open-pr.sh</code> &mdash; a good <a href="#production">hardening</a>.</p></div>
+      <label class="done-toggle"><input type="checkbox" data-step="9"> Mark complete</label>
+    </section>
+
+    <section id="s10">
+      <div class="step"><span class="num">10</span><h2>Approve &amp; merge the Pull Request</h2></div>
+      <p>You are the gate. Read the analysis, confirm the diff, then <b>Merge</b>. The pipeline never writes to <code class="inline">master</code> and never closes the PR &mdash; it stays open until you act, so a reviewer always makes the final call.</p>
+      <label class="done-toggle"><input type="checkbox" data-step="10"> Mark complete</label>
+    </section>
+
+    <section id="s11">
+      <div class="step"><span class="num">11</span><h2>Confirm the remediation</h2></div>
+      <p>Re-run the workflow after merging. <code class="inline">find</code> re-scans the now-fixed file; <code class="inline">top_finding_id()</code> finds nothing at/above the gate, so <code class="inline">fix</code> writes <code class="inline">NONE</code> and <code class="inline">open-pr</code> logs &ldquo;nothing to open a PR for.&rdquo; A clean confirm run &mdash; no PR &mdash; is the proof the vulnerability is gone.</p>
+      <label class="done-toggle"><input type="checkbox" data-step="11"> Mark complete</label>
+    </section>
+
+    <section id="concurrency">
+      <h2><span class="kicker">Reference</span>Concurrency &amp; same-file safety</h2>
+      <p>Two <code class="inline">cm fix</code> runs working the <em>same</em> source file at once would generate divergent patches, race on the branch, and open conflicting PRs. The workflow closes all three race surfaces:</p>
+      <table class="tbl"><thead><tr><th>Race surface</th><th>Guard</th></tr></thead><tbody>
+        <tr><td><b>The target file / branch</b></td><td><code class="inline">concurrency:</code> group keyed by <code class="inline">(owner, repo, scan_path)</code> with <code class="inline">cancel-in-progress:&nbsp;false</code> &mdash; same-file runs queue and run one at a time; <em>different</em> files still run in parallel.</td></tr>
+        <tr><td><b>CodeMender state DB</b></td><td><code class="inline">STATE_ID = github.run_id</code> &rarr; each run gets its own <code class="inline">~/.codemender</code>, so the findings SQLite DBs never collide.</td></tr>
+        <tr><td><b>The working tree</b></td><td>Each run clones the fork fresh into its own container filesystem &mdash; no shared checkout to corrupt.</td></tr>
+      </tbody></table>
+      <p>Scaling to many files? Drive a <b>matrix</b> over scan paths and set the concurrency <code class="inline">group</code> from <code class="inline">matrix.scan_path</code>. Same-file legs serialise; different-file legs run concurrently &mdash; safe fan-out with no extra machinery.</p>
+    </section>
+
+    <section id="production">
+      <h2><span class="kicker">Beyond the lab</span>Production &amp; EAP notes</h2>
+      <p>The lab is deliberately transparent so you see every step. A real deployment would harden it:</p>
+      <ul>
+        <li><b>CodeMender auth (post-EAP).</b> The baked-in credential goes away at public preview. Wire auth into the one <code class="inline">cm init</code> step in <code class="inline">cm-env.sh</code> &mdash; a <b>service account</b>, <b>Workload Identity Federation</b> (keyless; GHA issues an OIDC token GCP can federate), or a <b>scoped API key</b> stored as another Actions secret. WIF is the most portable and needs no long-lived secret.</li>
+        <li><b>Scope the commit.</b> Change <code class="inline">git add -u</code> to <code class="inline">git add -- "$FILE"</code> so verification scaffolding can't ride along in the PR (see Step&nbsp;9).</li>
+        <li><b>Pin the image by digest</b> (<code class="inline">@sha256:…</code>) instead of a tag, and least-privilege the PAT (fine-grained, short expiry) or use a GitHub App.</li>
+        <li><b>Emit SARIF</b> (<code class="inline">cm report -f sarif</code>) into <b>GitHub code scanning</b> instead of ad-hoc <code class="inline">jq</code> parsing.</li>
+        <li><b>Put the workflow in the target repo</b> to drop the PAT entirely (native checkout + <code class="inline">GITHUB_TOKEN</code> for the PR) &mdash; less portable across CIs, but simplest when you guard a single repo.</li>
+        <li><b>Set <code class="inline">build.command</code></b> so <code class="inline">cm</code> rejects patches that don't compile/test, and widen scans from a file to a directory.</li>
+      </ul>
+    </section>
+
+    <section id="cleanup">
+      <h2><span class="kicker">Wrap up</span>Cleanup</h2>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Close/merge the demo PR, delete the branch, remove the secret and image if done.</span>
+gh secret delete GH_PAT --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha
+<span class="c"># Delete the GHCR package and the pipeline repo from the GitHub UI when finished.</span></pre></figure>
+    </section>
+    <footer>CodeMender CI Lab &mdash; GitHub Actions variant. Same CodeMender, same scripts; a thinner driver and one less moving part. Built and validated end-to-end: image pushed to GHCR, one-job pipeline opened a real PR on a Juice Shop fork, CodeMender state persisted across steps with no gcsfuse.</footer>
+  </div></main>
+</div>
+<script>
+(function(){
+  "use strict";
+  var root=document.documentElement, btn=document.getElementById('themebtn'), lbl=document.getElementById('themelbl');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('cm-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function curDark(){var t=root.getAttribute('data-theme');return t?t==='dark':sysDark();}
+  function syncLbl(){lbl.textContent=curDark()?'Light':'Dark';}
+  syncLbl();
+  btn.addEventListener('click',function(){var next=curDark()?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('cm-theme',next);}catch(e){}syncLbl();});
+  document.querySelectorAll('figure.code').forEach(function(fig){
+    var b=fig.querySelector('.copy'), pre=fig.querySelector('pre'); if(!b||!pre)return;
+    b.addEventListener('click',function(){navigator.clipboard.writeText(pre.innerText).then(function(){var o=b.textContent;b.textContent='Copied';b.classList.add('done');setTimeout(function(){b.textContent=o;b.classList.remove('done');},1400);}).catch(function(){});});
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('.railnav a')), map={};
+  links.forEach(function(a){var id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)map[id]=a;});
+  var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
+  Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
+  document.querySelectorAll('.done-toggle input').forEach(function(cb){var k='cm-step-'+cb.getAttribute('data-step');try{if(localStorage.getItem(k)==='1')cb.checked=true;}catch(e){}cb.addEventListener('change',function(){try{localStorage.setItem(k,cb.checked?'1':'0');}catch(e){}});});
+})();
+</script>
+
+</body>
+</html>
