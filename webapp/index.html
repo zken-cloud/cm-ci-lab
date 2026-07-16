@@ -464,9 +464,13 @@ git config --global user.email "<span class="p">you@example.com</span>"</pre></f
 export REGION=us-central1
 gcloud config set project "$PROJECT_ID"
 
-<span class="c"># Cloud Build runs the pipeline; Secret Manager holds the token; GCS holds CM state</span>
+<span class="c"># Cloud Build runs the pipeline; Secret Manager holds the token; GCS holds CM state.</span>
+<span class="c"># Compute Engine API: Cloud Build's default service account is the Compute SA</span>
+<span class="c"># (PROJECT_NUMBER-compute@&hellip;), which only exists once this API is enabled &mdash;</span>
+<span class="c"># needed for the grants in Step 6.</span>
 gcloud services enable \
-  cloudbuild.googleapis.com secretmanager.googleapis.com storage.googleapis.com</pre></figure>
+  cloudbuild.googleapis.com secretmanager.googleapis.com storage.googleapis.com \
+  compute.googleapis.com</pre></figure>
       <label class="done-toggle"><input type="checkbox" data-step="3"> Mark step complete</label>
     </section>
 
