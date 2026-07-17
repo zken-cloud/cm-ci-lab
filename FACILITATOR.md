@@ -35,7 +35,7 @@ You're ready to deliver once all of these are true:
   central project:
   ```bash
   gcloud auth login
-  export CENTRAL_PROJECT=zken-genai               # the project that hosts the codemender repo
+  export CENTRAL_PROJECT=zken-sandbox-sandbox-26301   # the project that hosts the codemender repo
   export REGION=us-central1
   gcloud config set project "$CENTRAL_PROJECT"
   ```
@@ -76,7 +76,7 @@ even if a tag is later re-pushed:
 gcloud artifacts docker images describe \
   "$REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0" \
   --format='value(image_summary.fully_qualified_digest)'
-# -> us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci@sha256:a1c470…
+# -> us-central1-docker.pkg.dev/zken-sandbox-sandbox-26301/codemender/codemender-ci@sha256:a1c470…
 ```
 
 To see which tags exist first (e.g. after a rotation), list them with digests:
@@ -201,6 +201,13 @@ it happens, your only action is to re-share the URL:
   digest-pinned reference; participants update `_CM_IMAGE`.
 - **No re-grant.** The reader bindings are repo-scoped, so they already cover the
   new version.
+- **⚠ Moving the repo is the exception — it invalidates every grant.** The
+  bindings live *on the repo*. Publishing to a **different repo or project**
+  leaves them all behind, and the new repo starts with an empty IAM policy — so
+  **every participant must be re-granted** (re-run the cohort loop below against
+  the new `CENTRAL_PROJECT`). Participants see the same failure as no grant at
+  all: the pipeline's image pull fails with `denied` at step 0. Same rule as
+  Secret Manager: IAM lives on the resource, not the name.
 - **Not a security control.** The baked key is identical across every tag and
   extractable from any of them, and you can't re-key it — so rotating the URL only
   versions the toolbox, it does **not** re-secure the credential. The real
