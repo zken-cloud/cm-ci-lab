@@ -1040,15 +1040,15 @@ gcloud builds submit . --config cloudbuild.yaml \
 
     <section id="s11">
       <div class="step"><span class="num">11</span><h2>Approve &amp; merge the Pull Request</h2></div>
-      <p>You are the human in the loop. Read the diff, then approve and merge &mdash; merging is what lands the fix on <code class="inline">master</code>.</p><figure class="code"><figcaption><span class="lbl">bash · or use the GitHub UI</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr view <span class="p">N</span>  --repo <span class="p">YOUR_GITHUB_USERNAME</span>/juice-shop --web
-gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME</span>/juice-shop --squash</pre></figure>
+      <p>You are the human in the loop. Read the diff, then approve and merge &mdash; merging is what lands the fix on <code class="inline">master</code>.</p><figure class="code"><figcaption><span class="lbl">bash · or use the GitHub UI</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr view <span class="p">N</span>  --repo "$GH_OWNER/juice-shop" --web
+gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre></figure>
       <label class="done-toggle"><input type="checkbox" data-step="11"> Mark step complete</label>
     </section>
 
     <section id="s12">
       <div class="step"><span class="num">12</span><h2>Confirm the remediation</h2></div>
       <p>Confirm the SQL injection is gone. The surest check is the merged code itself &mdash; <code class="inline">routes/login.ts</code> on <code class="inline">master</code> now uses a parameterized query (<code class="inline">WHERE email = ? AND password = ?</code>), so the injection vector is closed. You can also re-run the pipeline against <code class="inline">master</code>:</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud builds submit . --config cloudbuild.yaml \
-  --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER=<span class="p">YOUR_GITHUB_USERNAME</span>,_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
+  --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER="$GH_OWNER",_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
       <div class="callout warn"><div class="ct">&#9888; Juice Shop's login route has more than one issue</div><p>The re-scan won't re-flag the fixed SQL injection, but <code class="inline">login.ts</code> also contains an <em>intentional</em> hardcoded-credentials issue (part of Juice Shop's challenges), which CodeMender may surface as the next finding and open a PR for &mdash; that's expected, not a failure. This lab focuses on the SQL injection; to stop there, confirm via the merged code above, or point <code class="inline">_SCAN_PATH</code> at a different file to keep going. (CodeMender's severities can also vary run-to-run &mdash; an EAP trait.)</p></div>
       <div class="callout note"><div class="ct">&#9989; You closed the loop</div><p>Package &rarr; find &rarr; verify &rarr; fix &rarr; PR &rarr; human approval &rarr; merge &rarr; re-scan confirms the SQL injection is gone. A complete AI-assisted remediation workflow, with the approval gate intact.</p></div>
       <label class="done-toggle"><input type="checkbox" data-step="12"> Mark step complete</label>
@@ -1121,7 +1121,7 @@ gh pr merge <span class="p">N</span> --repo <span class="p">YOUR_GITHUB_USERNAME
     <section id="cleanup">
       <h2><span class="kicker">Leave it tidy</span>Cleanup</h2><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud secrets delete gh-pat --quiet
 gcloud storage rm -r "gs://$CM_STATE_BUCKET" --quiet     <span class="c"># optional: delete CM state</span>
-gh pr list --repo <span class="p">YOUR_GITHUB_USERNAME</span>/juice-shop     <span class="c"># close any leftover PRs</span></pre></figure>
+gh pr list --repo "$GH_OWNER/juice-shop"     <span class="c"># close any leftover PRs</span></pre></figure>
       <p class="small">Facilitators: keep the Artifact Registry image for the next cohort, or delete it with <code class="inline">gcloud artifacts repositories delete codemender --location=$REGION</code>.</p>
     </section>
 
