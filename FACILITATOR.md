@@ -171,6 +171,10 @@ done < project-numbers.txt
 - Grant **both** SAs. A project builds as the legacy `@cloudbuild` SA *or* the
   default `-compute@developer` SA; if you grant only one and the build uses the
   other, the image pull fails with `denied` (the log shows which SA it used).
+  On a **brand-new project the legacy SA isn't created at all** — the build runs
+  as `-compute@developer`. Granting the legacy SA anyway is harmless (IAM accepts
+  a binding for an SA that doesn't exist), so keep both in the loop rather than
+  guessing which one a given project uses.
 - **Repo-scoped, so rotation-proof.** These bindings are on the `codemender`
   repo, not on a tag — they cover every current and future image version, so you
   never re-grant when the image is rotated.
