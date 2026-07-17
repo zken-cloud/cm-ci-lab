@@ -195,14 +195,23 @@ unrotatable credential to the entire authenticated internet. Use only if
 collecting numbers is truly impossible, and time-box it with an IAM Condition:
 
 ```bash
+# ◀ set EXPIRY to the END of your lab day, in the future — a past timestamp
+#   makes the condition always false, i.e. a grant that silently never applies
+EXPIRY=2026-07-25T23:59:59Z
 gcloud artifacts repositories add-iam-policy-binding codemender \
-  --location="$REGION" --member="allAuthenticatedUsers" \
+  --location="$REGION" --project="$CENTRAL_PROJECT" --member="allAuthenticatedUsers" \
   --role="roles/artifactregistry.reader" \
-  --condition='expression=request.time < timestamp("2026-01-01T00:00:00Z"),title=lab-day-only'
+  --condition="expression=request.time < timestamp(\"$EXPIRY\"),title=lab-day-only"
 ```
 
-If Domain Restricted Sharing blocks `allAuthenticatedUsers` too, run all builds
-in **one shared build project** (one SA, one grant) — but note that
+**Note: DRS does not save you here.** It's tempting to assume Domain Restricted
+Sharing would block `allAuthenticatedUsers` as a backstop — it doesn't.
+`allAuthenticatedUsers` isn't a domain principal, so DRS ignores it and the grant
+**succeeds** (verified on this repo). Treat the decision as entirely yours: there
+is no org policy standing behind you.
+
+If you ever do need to avoid per-SA grants, the safer fallback is to run all
+builds in **one shared build project** (one SA, one grant) — but that
 re-centralizes each participant's GitHub token and Cloud Build quota, so it's
 worse than per-SA at scale.
 
@@ -284,5 +293,8 @@ it happens, your only action is to re-share the URL:
   central project is Argolis, and Domain Restricted Sharing bars `@google.com`
   principals from its IAM policy entirely. Bindings are made per-identity on the
   repo and the project (see below) rather than via a group.
-- **The web guide is public** (GCS static site behind an HTTPS LB) but contains
-  only placeholders — no project IDs, tokens, service-account emails, or keys.
+- **The web guide is sign-in gated** — an nginx container on **Cloud Run** behind
+  an HTTPS LB with **IAP** on every path, so participants need a Google account to
+  read it. It contains only placeholders — no tokens, service-account emails, or
+  keys — though it does name the central project in the image URL, which is why
+  the repo's IAM (not obscurity) is what protects the image.
