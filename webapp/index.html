@@ -1119,9 +1119,13 @@ gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre
     </section>
 
     <section id="cleanup">
-      <h2><span class="kicker">Leave it tidy</span>Cleanup</h2><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud secrets delete gh-pat --quiet
-gcloud storage rm -r "gs://$CM_STATE_BUCKET" --quiet     <span class="c"># optional: delete CM state</span>
-gh pr list --repo "$GH_OWNER/juice-shop"     <span class="c"># close any leftover PRs</span></pre></figure>
+      <h2><span class="kicker">Leave it tidy</span>Cleanup</h2><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># In a new terminal? Re-export CM_STATE_BUCKET and GH_OWNER from Step 9 first —</span>
+<span class="c"># the guard below stops the block rather than deleting the wrong thing.</span>
+: "${CM_STATE_BUCKET:?set CM_STATE_BUCKET (from Step 9)}" && : "${GH_OWNER:?set GH_OWNER (from Step 9)}" && {
+  gcloud secrets delete gh-pat --quiet
+  gcloud storage rm -r "gs://$CM_STATE_BUCKET" --quiet     <span class="c"># optional: delete CM state</span>
+  gh pr list --repo "$GH_OWNER/juice-shop"     <span class="c"># close any leftover PRs</span>
+}</pre></figure>
       <p class="small">Facilitators: keep the Artifact Registry image for the next cohort, or delete it with <code class="inline">gcloud artifacts repositories delete codemender --location=$REGION</code>.</p>
     </section>
 
