@@ -6,7 +6,7 @@
 #   gcloud builds submit . \
 #     --config cloudbuild.yaml \
 #     --substitutions=\
-#   _CM_IMAGE=us-central1-docker.pkg.dev/zken-sandbox-sandbox-26301/codemender/codemender-ci@sha256:a1c470e4…,\
+#   _CM_IMAGE=us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci@sha256:a1c470e4…,\
 #   _CM_STATE_BUCKET=YOUR_PROJECT-cm-state,\
 #   _GH_OWNER=YOUR_GITHUB_USERNAME,_GH_REPO=juice-shop,_BASE_BRANCH=master,\
 #   _SCAN_PATH=routes/login.ts
