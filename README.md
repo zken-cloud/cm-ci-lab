@@ -58,9 +58,12 @@ guide walks participants through creating.
 The one-time image build & publish, and per-participant access grants, live in
 their own doc: **[`FACILITATOR.md`](FACILITATOR.md)**. In short: build
 `container/` into Artifact Registry as `codemender-ci:v0.2.0`, share the image
-URL, and grant image read **once, org-wide** (a per-participant service-account
-grant doesn't scale to 100 users — see `FACILITATOR.md`). Then send them the
-guide at https://cm-ci-lab.cedemo.app.
+URL, and grant image read to **each participant's two Cloud Build service
+accounts** — collect their project *number* and grant both SA variants on the
+repo (see `FACILITATOR.md`). The image embeds a **sensitive EAP credential**, so
+this stays a tight, per-SA grant. Note an org-wide `domain:` grant is *not* an
+option: `domain:` matches user accounts, not service accounts — and the pipeline
+pulls as the build SA. Then send them the guide at https://cm-ci-lab.cedemo.app.
 
 ---
 
