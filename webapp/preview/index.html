@@ -204,6 +204,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <a href="#s10"><span class="n">10</span>Run the pipeline</a>
       <a href="#s11"><span class="n">11</span>Review, approve &amp; merge</a>
       <div class="grp">Reference</div>
+      <a href="#adc"><span class="n">&#9670;</span>Authenticating in CI</a>
       <a href="#cheatsheet"><span class="n">&#9670;</span>cm cheat sheet</a>
       <a href="#facilitator"><span class="n">&#9670;</span>Facilitator notes</a>
       <a href="#cleanup"><span class="n">&#9670;</span>Cleanup</a>
@@ -264,7 +265,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <tr><td><b>2</b></td><td>Which <b>IAM role</b> grants access to the Interactions API?</td><td>Step 4 can't list a grant. Docs name no role anywhere.</td></tr>
         <tr><td><b>3</b></td><td>Which <b>API</b> must be enabled, and in which project?</td><td>Step 4's <code class="inline">gcloud services enable</code> list is incomplete. Docs never name the service.</td></tr>
         <tr><td><b>4</b></td><td>Does the build SA need <b>download access</b> to <code class="inline">cmoc-prod</code>?</td><td>Decides whether the image is built from a laptop-downloaded binary (Step 7) or pulls during the build.</td></tr>
-        <tr><td><b>5</b></td><td>Does ADC resolve from the <b>Cloud Build metadata server</b> without extra config?</td><td>If not, the scripts need an explicit credential path.</td></tr>
+        <tr><td><b>5</b></td><td><s>Does ADC resolve from the <b>Cloud Build metadata server</b> without extra config?</s> <span class="chip ok">answered &mdash; yes</span></td><td><b>Tested 21&nbsp;Jul&nbsp;2026 in a real Cloud Build run.</b> No ADC file on disk, <code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code> unset, yet <code class="inline">google.auth.default()</code> resolved to the build SA, minted a token, and auto-detected the quota project. <b>Zero configuration needed.</b> See <a href="#adc">Authenticating in CI</a>.</td></tr>
         <tr><td><b>6</b></td><td>What are the <b>quotas</b> &mdash; concurrent sessions, scans/day?</td><td>A 20-person cohort scanning at once could exhaust them mid-lab.</td></tr>
         <tr><td><b>7</b></td><td>Is it <code class="inline">tools.confirm_execution</code> or <code class="inline">confirm_writes</code> &mdash; or both?</td><td>The setup page documents the first, the fix page references the second. Non-interactive CI needs whichever disables prompts.</td></tr>
         </tbody>
@@ -581,7 +582,7 @@ availableSecrets:
 options:
   logging: CLOUD_LOGGING_ONLY
 timeout: 3600s</pre></figure>
-      <div class="callout note"><div class="ct">&#8505; No CodeMender credential anywhere in this file</div><p>Compare with the EAP pipeline, where the whole point of <code class="inline">_CM_IMAGE</code> being digest-pinned and IAM-gated was to protect a baked key. Here the build SA's own identity is the credential, picked up as ADC from the metadata server. <span class="chip high">assumed</span> &mdash; <a href="#unknowns">Open question&nbsp;5</a>.</p></div>
+      <div class="callout note"><div class="ct">&#8505; No CodeMender credential anywhere in this file</div><p>Compare with the EAP pipeline, where the whole point of <code class="inline">_CM_IMAGE</code> being digest-pinned and IAM-gated was to protect a baked key. Here the build SA's own identity is the credential, picked up as ADC from the metadata server &mdash; <b>verified in a real build</b>, see <a href="#adc">Authenticating in CI</a>.</p></div>
     </section>
 
     <section id="s10">
@@ -602,6 +603,38 @@ gcloud builds submit . --config cloudbuild.yaml \
 gh pr view <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --web
 gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre></figure>
       <div class="callout warn"><div class="ct">&#9888; Preview terms put this on you</div><p>The docs are explicit: pre-GA CodeMender is for testing and evaluation, <b>not production</b>, and customers should <em>"closely supervise the use of CodeMender."</em> Disabling the confirmation prompts &mdash; which our <code class="inline">config.yaml</code> does, to make CI non-interactive &mdash; is called out as a customer responsibility under the Service Specific Terms. Worth saying out loud to a cohort: the human merge gate is what keeps that supervision real.</p></div>
+    </section>
+
+    <section id="adc">
+      <div class="step"><span class="num">&#9670;</span><h2>Authenticating in CI &mdash; ADC is not a blocker</h2></div>
+      <p>The docs only show <code class="inline">gcloud auth application-default login</code>, which looks like an interactive dead end for a pipeline. It isn't. <b>ADC is a credential <em>resolution chain</em>, not a login method</b> &mdash; that command is just the laptop way to populate it. Libraries resolve credentials in this order:</p>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>ADC looks for</th><th>Who uses it</th></tr></thead>
+        <tbody>
+        <tr><td>1</td><td><code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code> &rarr; a JSON file (SA key <em>or</em> a Workload Identity Federation config)</td><td>CI outside GCP</td></tr>
+        <tr><td>2</td><td>The well-known file written by <code class="inline">gcloud auth application-default login</code></td><td>Laptops</td></tr>
+        <tr><td>3</td><td><b>The metadata server</b> &mdash; the attached service account</td><td>Cloud Build, Cloud Run, GCE, GKE</td></tr>
+        </tbody>
+      </table>
+      <div class="callout note"><div class="ct">&#10003; Verified: on Cloud Build, path 3 needs zero configuration</div><p>A real build in this project confirmed it &mdash; no ADC file on disk, <code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code> unset, and <code class="inline">google.auth.default()</code> still returned working credentials for <code class="inline">163236863044@cloudbuild.gserviceaccount.com</code>, minted a token, and auto-detected the quota project. <b>The build service account simply <em>is</em> the ADC identity.</b> Nothing in the pipeline needs an auth step.</p></div>
+
+      <h3>Options by platform</h3>
+      <table class="tbl">
+        <thead><tr><th>Where the pipeline runs</th><th>How to authenticate</th><th>Verdict</th></tr></thead>
+        <tbody>
+        <tr><td><b>Cloud Build</b> (or Cloud Run / GKE / GCE)</td><td>Nothing. Metadata server resolves the attached SA. Attach a <em>custom</em> SA via the build's <code class="inline">serviceAccount:</code> field for least privilege.</td><td><span class="chip ok">best</span> no key material anywhere</td></tr>
+        <tr><td><b>GitHub Actions / GitLab / any CI outside GCP</b></td><td><b>Workload Identity Federation.</b> The runner's OIDC token is exchanged for Google credentials; <code class="inline">google-github-actions/auth</code> writes an external-account JSON and sets <code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code> &mdash; i.e. ADC path&nbsp;1.</td><td><span class="chip ok">best</span> no long-lived key</td></tr>
+        <tr><td>Same, without WIF</td><td>A <b>service-account key JSON</b> in a CI secret, written to a file, pointed at by <code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code>.</td><td><span class="chip high">works, but</span> see below</td></tr>
+        <tr><td><b>Self-hosted runner on GCE/GKE</b></td><td>Back to the metadata server &mdash; same as Cloud Build.</td><td><span class="chip ok">good</span></td></tr>
+        <tr><td><b>Only certain SAs allowlisted</b></td><td><b>Impersonation.</b> The pipeline's own identity impersonates the allowlisted SA (<code class="inline">--impersonate-service-account</code>, or an impersonated-credentials ADC config).</td><td><span class="chip ok">useful lever</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn"><div class="ct">&#9888; Don't undo the win with a key file</div><p>The headline improvement of preview is that <b>no long-lived credential ships in the artifact</b>. Dropping an SA key JSON into a CI secret re-creates exactly the problem we just escaped &mdash; a static, stealable, manually-rotated credential &mdash; only now it's in your CI system instead of a container. Use WIF unless something genuinely blocks it.</p></div>
+
+      <div class="callout warn"><div class="ct">&#9888; Authentication is not authorization</div><p>Everything above solves <em>proving who you are</em>. It says nothing about whether that identity is <b>allowed</b> to call CodeMender. The docs gate preview on an allowlist and never say whether service accounts can be on it &mdash; that is still <a href="#unknowns">Open question&nbsp;1</a>, and it remains the one that decides whether a CI lab is possible at all. A build SA that authenticates perfectly and is then refused by the allowlist looks like a broken pipeline, so establish this before a cohort.</p></div>
+
+      <div class="callout note"><div class="ct">&#8505; Watch the quota / billing project</div><p>The docs say data is isolated per <b>customer billing project</b>. In CI the quota project resolves automatically to the build project (verified above). On a laptop it may not &mdash; if a user hits quota-project errors, <code class="inline">gcloud auth application-default set-quota-project PROJECT_ID</code> is the fix.</p></div>
     </section>
 
     <section id="cheatsheet">
