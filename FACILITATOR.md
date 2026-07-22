@@ -135,27 +135,93 @@ cleaner at scale — participants can't see or overwrite each other's rows.)
 
 ### 2 — Run the grant script
 
-`facilitator/grant-image-access.sh` does the whole job. Run it with no arguments
-and paste the numbers when prompted, or pass them on the command line:
+`facilitator/grant-image-access.sh` does the whole job: it takes project numbers,
+derives both build service accounts, and grants each one reader on the image repo.
+
+#### Get it and make it executable
 
 ```bash
-./facilitator/grant-image-access.sh                    # prompts
-./facilitator/grant-image-access.sh 739082641234       # one
-./facilitator/grant-image-access.sh 739082641234,556677889900  # many
+git clone https://github.com/zken-cloud/cm-ci-lab.git
+cd cm-ci-lab
+./facilitator/grant-image-access.sh --help 2>/dev/null || true   # smoke test
 ```
 
-- **Numbers or IDs.** If someone submits a project *ID* instead of a number, the
-  script resolves it for you rather than failing.
-- **Uses your own login** — the active `gcloud` account, no key file. It checks
-  you can read the repo policy *before* prompting, so a missing grant or a
-  `@google.com` sign-in fails fast with a clear message instead of halfway
-  through a cohort.
-- **Safe to re-run.** Bindings are idempotent; the script reports which SAs
-  already had access, so you can re-drain the sheet as rows arrive.
-- **Overridable** via `CENTRAL_PROJECT`, `REPO`, `REGION` env vars.
+A `git clone` **preserves the executable bit** (the file is committed mode `755`),
+so you normally don't need to do anything. If you copied or downloaded the file on
+its own, restore it:
 
-Exit status is non-zero if any grant failed, so it can be used in a loop or a
-scheduled drain.
+```bash
+chmod +x facilitator/grant-image-access.sh
+```
+
+Getting `Permission denied` when you run it means exactly that bit is missing. You
+can also skip `chmod` entirely by invoking the interpreter directly — handy on a
+locked-down machine or a mounted volume with `noexec`:
+
+```bash
+bash facilitator/grant-image-access.sh
+```
+
+#### Sign in first
+
+The script uses your **active `gcloud` account** — no key file, nothing to
+configure. Note this is the `gcloud auth login` credential, *not* the separate
+`gcloud auth application-default login` one:
+
+```bash
+gcloud auth login zken@gcp.altostrat.com   # ◀ your own ldap@gcp.altostrat.com
+gcloud config get-value account            # confirm before you start
+```
+
+#### Run it
+
+```bash
+./facilitator/grant-image-access.sh                             # prompts you
+./facilitator/grant-image-access.sh 739082641234                # one
+./facilitator/grant-image-access.sh 739082641234,556677889900   # comma-separated
+./facilitator/grant-image-access.sh 739082641234 556677889900   # or space-separated
+```
+
+With no arguments it asks, so you can paste a whole column straight from the sheet:
+
+```
+Enter participant GCP project numbers or IDs (comma or space separated):
+> 739082641234, 556677889900
+```
+
+#### Reading the output
+
+```
+739082641234
+  ✓ 739082641234@cloudbuild.gserviceaccount.com
+  • 739082641234-compute@developer.gserviceaccount.com — already had access
+
+Done. 1 granted, 1 already had access, 0 failed.
+```
+
+| Line | Meaning |
+|---|---|
+| `✓` | Binding created. |
+| `• … already had access` | Nothing to do — safe, expected on a re-run. |
+| `✗ … no such service account` | The SA genuinely doesn't exist. Either the project number is wrong, or the participant hasn't run `gcloud services enable cloudbuild.googleapis.com` yet (guide Step 3). **If *both* SAs report this, they almost certainly haven't done Step 3 at all.** |
+
+#### Good to know
+
+- **Numbers or IDs.** If someone pastes a project *ID* instead of a number, the
+  script resolves it (`your-project → 739082641234`) rather than failing.
+- **Fails fast, before prompting.** It verifies it can read the repo IAM policy
+  first, so a wrong account or a missing facilitator grant surfaces immediately
+  instead of halfway through a cohort. It also warns if you're signed in as
+  `@google.com`, which Argolis will reject.
+- **Safe to re-run.** Bindings are idempotent — re-drain the sheet as often as
+  you like as new rows arrive.
+- **Exit status** is non-zero if any grant failed, so it drops into a `watch` or a
+  cron drain cleanly.
+- **Overridable** for a different repo or project:
+  ```bash
+  CENTRAL_PROJECT=my-project REPO=my-repo REGION=us-east1 \
+    ./facilitator/grant-image-access.sh 739082641234
+  ```
 
 ### 2b — Or grant by hand
 

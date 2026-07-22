@@ -23,6 +23,23 @@ bold=$'\e[1m'; red=$'\e[31m'; grn=$'\e[32m'; ylw=$'\e[33m'; dim=$'\e[2m'; off=$'
 say()  { printf '%s\n' "$*"; }
 die()  { printf '%s\n' "${red}✗ $*${off}" >&2; exit 1; }
 
+usage() {
+  cat <<USAGE
+Grant participants' Cloud Build service accounts read access to the lab image.
+
+  $(basename "$0")                          prompt for project numbers/IDs
+  $(basename "$0") 123456789012             one
+  $(basename "$0") 123,456 789              comma- and/or space-separated
+
+Accepts project numbers or project IDs (IDs are resolved automatically).
+Safe to re-run. Exits non-zero if any grant failed.
+
+Env overrides: CENTRAL_PROJECT (${CENTRAL_PROJECT}), REPO (${REPO}), REGION (${REGION})
+USAGE
+}
+
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+
 # ── Preflight ────────────────────────────────────────────────────────────────
 command -v gcloud >/dev/null || die "gcloud not found on PATH."
 
@@ -46,8 +63,12 @@ case "$ACCOUNT" in
 esac
 
 # Proves the facilitator actually has access before we prompt for anything.
-POLICY="$(gcloud artifacts repositories get-iam-policy "$REPO" \
-            --location="$REGION" --project="$CENTRAL_PROJECT" --format=json 2>/dev/null)" \
+# One member per line, scoped to the role we grant, so membership can be matched
+# exactly (a substring match could false-positive and silently skip a grant).
+MEMBERS="$(gcloud artifacts repositories get-iam-policy "$REPO" \
+             --location="$REGION" --project="$CENTRAL_PROJECT" \
+             --flatten='bindings[].members[]' --filter="bindings.role=${ROLE}" \
+             --format='value(bindings.members)' 2>/dev/null)" \
   || die "Can't read the repo IAM policy as ${ACCOUNT}.
   Either you're signed in as the wrong account, or your identity hasn't been
   granted yet — ask the lab owner. See FACILITATOR.md."
@@ -69,12 +90,17 @@ read -r -a TOKENS <<< "$(printf '%s' "$RAW" | tr ',' ' ' | tr -s '[:space:]' ' '
 granted=0; already=0; failed=0
 say ""
 for TOKEN in "${TOKENS[@]}"; do
-  if [[ "$TOKEN" =~ ^[0-9]+$ ]]; then
+  if [[ "$TOKEN" == -* ]]; then
+    # Never hand a flag to `gcloud projects describe` — it would print its own
+    # help into PROJNUM and cascade into nonsense.
+    say "${red}✗ ${TOKEN}${off} — not a project number or ID (see --help)"
+    failed=$(( failed + 1 )); continue
+  elif [[ "$TOKEN" =~ ^[0-9]+$ ]]; then
     PROJNUM="$TOKEN"; LABEL="$TOKEN"
   else
     # A project ID was pasted instead of a number — resolve it rather than fail.
     PROJNUM="$(gcloud projects describe "$TOKEN" --format='value(projectNumber)' 2>/dev/null || true)"
-    if [[ -z "$PROJNUM" ]]; then
+    if [[ ! "$PROJNUM" =~ ^[0-9]+$ ]]; then
       say "${red}✗ ${TOKEN}${off} — not a number, and no project with that ID is visible to you"
       failed=$(( failed + 1 )); continue
     fi
@@ -85,7 +111,7 @@ for TOKEN in "${TOKENS[@]}"; do
   for SA in "${PROJNUM}@cloudbuild.gserviceaccount.com" \
             "${PROJNUM}-compute@developer.gserviceaccount.com"; do
     MEMBER="serviceAccount:${SA}"
-    if grep -q "\"${MEMBER}\"" <<< "$POLICY"; then
+    if grep -Fxq "$MEMBER" <<< "$MEMBERS"; then
       say "  ${dim}• ${SA} — already had access${off}"; already=$(( already + 1 )); continue
     fi
     if ERR="$(gcloud artifacts repositories add-iam-policy-binding "$REPO" \
