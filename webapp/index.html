@@ -637,6 +637,15 @@ source &quot;$(dirname &quot;$0&quot;)/cm-env.sh&quot;
 : &quot;${SCAN_PATH:?set SCAN_PATH (file to scan, relative to the repo)}&quot;
 cd &quot;$REPO_DIR&quot;
 
+<span class="c"># Fail early and legibly on a mistyped _SCAN_PATH. A stray character is easy to</span>
+<span class="c"># miss in a long --substitutions line, so print the real directory next to it.</span>
+if [[ ! -e &quot;$SCAN_PATH&quot; ]]; then
+  echo &quot;❌ SCAN_PATH '${SCAN_PATH}' does not exist in the repo.&quot;
+  echo &quot;   Check _SCAN_PATH for typos or stray characters. Nearby files:&quot;
+  ls -1 &quot;$(dirname &quot;$SCAN_PATH&quot;)&quot; 2&gt;/dev/null | head -20 | sed 's/^/     /' || true
+  exit 1
+fi
+
 echo &quot;🔍 cm find ${SCAN_PATH}&quot;
 cm find &quot;${SCAN_PATH}&quot; -y
 
@@ -1080,6 +1089,7 @@ gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre
         <tr><td>Build is <b>green but no PR</b> &mdash; find logged <code>No findings at or above CRITICAL</code> (run finishes in ~3&nbsp;min)</td><td><b>Not a bug &mdash; and not your setup.</b> Severity is <em>model-assessed and re-derived on every scan</em>: the same Juice Shop SQL injection can come back <span class="chip crit">Critical</span> on one run and <span class="chip med">Low</span> on the next. With the gate at CRITICAL, a run that finds nothing at/above it correctly no-ops and opens no PR. <b>Just re-run</b> &mdash; it's a ~3-min round trip because verify/fix skip. If you'd rather remediate whatever the top finding is, set <code class="inline">_MIN_SEVERITY=HIGH</code> in Step&nbsp;9 &mdash; but note it may then fix a <em>different</em> vulnerability (e.g. a JWT-payload leak), so Steps&nbsp;10&ndash;12's SQL-injection walkthrough won't match what you see.</td></tr>
         <tr><td>find step: <code>failed to access secret version &hellip; Permission 'secretmanager.versions.access' denied</code></td><td>Your build SA can't read <code class="inline">gh-pat</code>. Almost always because the secret was <b>deleted and recreated</b> after Step&nbsp;6 &mdash; IAM bindings live <em>on the secret</em>, so recreating it wipes them and the new secret starts with an empty policy. <b>Re-run Step&nbsp;6</b> (a fresh grant also needs ~1&nbsp;min to propagate). To rotate the token, add a <em>version</em> instead (Step&nbsp;5). Don't "fix" it by switching on project-wide Secret Manager access &mdash; that just hides the missing binding behind read access to <em>every</em> secret.</td></tr>
         <tr><td><code>invalid build step name ""</code> / <code>could not parse reference</code> at submit</td><td>A substitution is empty &mdash; usually <code>_CM_IMAGE</code>. Re-run the <code>export</code> lines in Step&nbsp;9 in your current shell; env vars don't survive a new shell or a Cloud Shell reconnect.</td></tr>
+        <tr><td><code>SCAN_PATH '&hellip;' does not exist in the repo</code>, or <code>stat &hellip;: no such file or directory</code> from <code>cm find</code></td><td>A typo or <b>stray character</b> in <code>_SCAN_PATH</code> &mdash; a trailing <code>~</code> or space at the end of the <code>--substitutions</code> line is easy to miss, since <code>_SCAN_PATH</code> is the last thing on it. The find step lists the real directory contents so you can compare. Re-run Step&nbsp;9 with the path corrected; nothing needs cleaning up first.</td></tr>
         <tr><td><code>scripts/find.sh: No such file or directory</code> in the find step</td><td>The <code>scripts/</code> folder wasn't uploaded. Submit from the folder holding <b>both</b> <code class="inline">cloudbuild.yaml</code> and <code class="inline">scripts/</code> (use Step&nbsp;9's <code>ls</code> check first), and make sure no <code class="inline">.gcloudignore</code>/<code class="inline">.gitignore</code> excludes them.</td></tr>
         <tr><td>Clone fails: <code>could not read Username for 'https://github.com'</code></td><td>GitHub demanded auth &mdash; the fork is <b>private</b> or the path is wrong. The pipeline clones with your <code class="inline">gh-pat</code>, so a private fork is fine; confirm <code class="inline">_GH_OWNER</code> is your GitHub username and <code class="inline">_GH_REPO</code> (default <code>juice-shop</code>) exists on branch <code class="inline">_BASE_BRANCH</code>.</td></tr>
         <tr><td><code>denied &hellip; artifactregistry</code> pulling the image</td><td>Your facilitator hasn't granted your build SAs yet &mdash; confirm your project number is in their sheet (Step&nbsp;6) and wait for confirmation.</td></tr>
