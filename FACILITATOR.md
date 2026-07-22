@@ -133,7 +133,31 @@ The sheet is your single source of truth and pairs with the idempotent loop belo
 so you can re-drain it as rows arrive. (A Google **Form** that feeds the sheet is
 cleaner at scale — participants can't see or overwrite each other's rows.)
 
-### 2 — Extract the submissions and grant both build SAs
+### 2 — Run the grant script
+
+`facilitator/grant-image-access.sh` does the whole job. Run it with no arguments
+and paste the numbers when prompted, or pass them on the command line:
+
+```bash
+./facilitator/grant-image-access.sh                    # prompts
+./facilitator/grant-image-access.sh 739082641234       # one
+./facilitator/grant-image-access.sh 739082641234,556677889900  # many
+```
+
+- **Numbers or IDs.** If someone submits a project *ID* instead of a number, the
+  script resolves it for you rather than failing.
+- **Uses your own login** — the active `gcloud` account, no key file. It checks
+  you can read the repo policy *before* prompting, so a missing grant or a
+  `@google.com` sign-in fails fast with a clear message instead of halfway
+  through a cohort.
+- **Safe to re-run.** Bindings are idempotent; the script reports which SAs
+  already had access, so you can re-drain the sheet as rows arrive.
+- **Overridable** via `CENTRAL_PROJECT`, `REPO`, `REGION` env vars.
+
+Exit status is non-zero if any grant failed, so it can be used in a loop or a
+scheduled drain.
+
+### 2b — Or grant by hand
 
 **One participant (ad-hoc).** If you were just handed a single project number,
 grant its two build SAs directly:
@@ -171,10 +195,14 @@ done < project-numbers.txt
 - Grant **both** SAs. A project builds as the legacy `@cloudbuild` SA *or* the
   default `-compute@developer` SA; if you grant only one and the build uses the
   other, the image pull fails with `denied` (the log shows which SA it used).
-  On a **brand-new project the legacy SA isn't created at all** — the build runs
-  as `-compute@developer`. Granting the legacy SA anyway is harmless (IAM accepts
-  a binding for an SA that doesn't exist), so keep both in the loop rather than
-  guessing which one a given project uses.
+  Both exist as **Google-managed service agents** once the Cloud Build API is
+  enabled — they do *not* show up in the participant's
+  `gcloud iam service-accounts list`, which lists only project-owned SAs. That
+  absence is normal and is not a reason to skip either grant.
+- **A grant that fails with `Service account … does not exist` means the SA is
+  genuinely absent** — IAM rejects bindings for non-existent principals (verified
+  21 Jul 2026). In practice that's either a wrong project number or a participant
+  who hasn't run `gcloud services enable cloudbuild.googleapis.com` yet.
 - **Repo-scoped, so rotation-proof.** These bindings are on the `codemender`
   repo, not on a tag — they cover every current and future image version, so you
   never re-grant when the image is rotated.
