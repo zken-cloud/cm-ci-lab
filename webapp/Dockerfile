@@ -7,4 +7,5 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY gha/index.html /usr/share/nginx/html/gha/index.html
 COPY eap/index.html /usr/share/nginx/html/eap/index.html
 COPY smoke/index.html /usr/share/nginx/html/smoke/index.html
-COPY skills/index.html /usr/share/nginx/html/skills/index.html
+# webapp/skills/index.html intentionally NOT copied — Skills page hidden for now
+# (AGY harness refused the scan). Kept in the repo for revival.
