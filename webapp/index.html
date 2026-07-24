@@ -339,7 +339,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         </tbody>
       </table>
       <div class="callout warn"><div class="ct">&#9888; Use the <em>right</em> build SA</div><p>A project has two build identities: the legacy <code class="inline">PROJNUM@cloudbuild.gserviceaccount.com</code> and the default <code class="inline">PROJNUM-compute@developer.gserviceaccount.com</code>. In testing, only the <b>compute</b> SA carried the AI roles &mdash; the legacy cloudbuild SA was denied <code class="inline">aiplatform.interactions.create</code>. The pipeline below pins the entitled SA with <code class="inline">--service-account</code> (Step&nbsp;10). Your facilitator will tell you which SA in <code class="inline">cloud-llm-preview1</code> is entitled.</p></div>
-      <div class="callout note"><div class="ct">&#8505; Because the project is shared, namespace everything</div><p>Buckets and secrets live in one project for the whole cohort, so name them with your ldap to avoid collisions: <code class="inline"><span class="p">ldap</span>-cm-state</code>, <code class="inline">gh-pat-<span class="p">ldap</span></code>, branch <code class="inline">codemender/fix-<span class="p">ldap</span></code>. Your Juice Shop fork is on your own GitHub, so PRs never collide.</p></div>
+      <div class="callout note"><div class="ct">&#8505; Because the project is shared, namespace everything</div><p>Everything you create lives in one project for the whole cohort, so bind names to your <b>ldap</b> &mdash; not the project id (same for everyone) or region. Bucket <code class="inline"><span class="p">ldap</span>-cm-state</code>, secret <code class="inline">gh-pat-<span class="p">ldap</span></code>, image tag <code class="inline">cm-ci-preview:<span class="p">ldap</span></code>, PR branch <code class="inline">codemender/fix-<span class="p">ldap</span></code>. Your Juice Shop fork is on your own GitHub, so PRs never collide.</p></div>
     </section>
 
     <section id="s1">
@@ -423,9 +423,10 @@ WORKDIR /workspace</pre></figure>
       <figure class="code"><figcaption><span class="lbl">bash &middot; build &amp; push into the shared project</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts repositories create codemender \
   --repository-format=docker --location="$REGION" --project="$CM_PROJECT" 2>/dev/null || true
 
-export CM_IMAGE="$REGION-docker.pkg.dev/$CM_PROJECT/codemender/cm-ci-preview:v1"
+<span class="c"># tag with your ldap — the repo is shared, so a fixed tag would clobber others</span>
+export CM_IMAGE="$REGION-docker.pkg.dev/$CM_PROJECT/codemender/cm-ci-preview:${LDAP}"
 gcloud builds submit container/ --tag "$CM_IMAGE" --project="$CM_PROJECT"</pre></figure>
-      <p class="small">One shared image serves the whole cohort &mdash; the facilitator may have built it already; if so, just <code class="inline">export CM_IMAGE=</code> the URL they give you.</p>
+      <div class="callout note"><div class="ct">&#8505; The image is identical for everyone &mdash; prefer the facilitator's</div><p>The toolbox is the same for the whole cohort, so the facilitator usually builds it <b>once</b> and hands out the URL &mdash; just <code class="inline">export CM_IMAGE=</code> that and skip the build. If you do build your own, the <code class="inline">:${LDAP}</code> tag keeps it from overwriting anyone else's in the shared <code class="inline">codemender</code> repo.</p></div>
     </section>
 
     <section id="s8">
@@ -644,7 +645,7 @@ gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre
         <li><b>Everything runs in <code class="inline">cloud-llm-preview1</code>.</b> Grant each participant <code class="inline">roles/cloudbuild.builds.editor</code> and <code class="inline">iam.serviceAccountUser</code> on the entitled build SA so they can submit builds that run as it.</li>
         <li><b>Confirm the build SA is agent-entitled.</b> The project is entitled; verify the <em>compute</em> SA specifically can call the <code class="inline">codemender-preview</code> agent (a single <code class="inline">cm find</code> in a one-step build). This is the one unproven link.</li>
         <li><b>Build the toolbox image once</b> and share its URL &mdash; it carries no credential, so a shared image is fine.</li>
-        <li><b>Namespacing is mandatory</b> in a shared project: per-ldap buckets, secrets (<code class="inline">gh-pat-ldap</code>), and PR branches. <code class="inline">STATE_ID=$BUILD_ID</code> already isolates state per run.</li>
+        <li><b>Namespacing is mandatory</b> in a shared project &mdash; bind to ldap, not project id/region: per-ldap buckets (<code class="inline">ldap-cm-state</code>), secrets (<code class="inline">gh-pat-ldap</code>), image tags (<code class="inline">cm-ci-preview:ldap</code>), and PR branches. <code class="inline">STATE_ID=$BUILD_ID</code> already isolates state per run.</li>
         <li><b>Access is <code class="inline">@google.com</code>-only</b> for now (Googlers), inherited from the shared project. Customer/Argolis projects need their own preview entitlement before this model extends to them.</li>
       </ul>
     </section>
