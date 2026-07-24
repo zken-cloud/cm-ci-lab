@@ -7,3 +7,4 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY gha/index.html /usr/share/nginx/html/gha/index.html
 COPY eap/index.html /usr/share/nginx/html/eap/index.html
 COPY smoke/index.html /usr/share/nginx/html/smoke/index.html
+COPY skills/index.html /usr/share/nginx/html/skills/index.html

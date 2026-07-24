@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CodeMender Skills for Antigravity — sandboxed fan-out</title>
+<style>
+/* ============================ Design tokens ============================ */
+:root{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b;
+  --code-ink:#dbe7e6; --code-muted:#7f9a99; --code-add:#7fdcae; --code-del:#f09195;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+  --maxw:820px;
+  --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+    --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+    --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+    --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be;
+    --code-ink:#d6e5e3; --code-muted:#6f8a89; --code-add:#7fdcae; --code-del:#f09195;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b; --code-ink:#dbe7e6; --code-muted:#7f9a99;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+}
+:root[data-theme="dark"]{
+  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+  --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+  --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+  --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be; --code-ink:#d6e5e3; --code-muted:#6f8a89;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ============================ Layout ============================ */
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:1.6rem 1.1rem 2rem;border-right:1px solid var(--hair)}
+.main{min-width:0;padding:0 clamp(1.1rem,4vw,3rem) 6rem}
+.col{max-width:var(--maxw)}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--hair)}
+  .rail-scroll{max-height:none}
+}
+
+/* ============================ Rail nav ============================ */
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.2rem}
+.brand svg{width:22px;height:22px;flex:none}
+.brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.railnav{margin-top:1.4rem;font-size:.86rem}
+.railnav a{display:block;color:var(--ink-2);padding:.28rem .5rem;border-radius:7px;
+  border-left:2px solid transparent}
+.railnav a:hover{background:var(--surface-2);text-decoration:none}
+.railnav a.active{color:var(--accent-ink);border-left-color:var(--accent);background:var(--surface-2);font-weight:600}
+.railnav .grp{margin:1rem .5rem .3rem;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.railnav a .n{display:inline-block;width:1.5em;color:var(--muted);font-variant-numeric:tabular-nums}
+.themebtn{margin-top:1.5rem;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2);
+  border-radius:8px;padding:.4rem .7rem;font:inherit;font-size:.8rem;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.themebtn:hover{border-color:var(--accent)}
+
+/* ============================ Hero ============================ */
+.hero{padding:2.6rem 0 1.4rem}
+.eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+h1{font-size:clamp(1.9rem,4.4vw,2.75rem);line-height:1.08;letter-spacing:-.025em;
+  margin:.5rem 0 .4rem;text-wrap:balance;font-weight:750}
+.lede{font-size:1.12rem;color:var(--ink-2);max-width:60ch;margin:.2rem 0 1.3rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem}
+.pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:500;
+  padding:.3rem .7rem;border-radius:999px;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2)}
+.pill b{color:var(--ink);font-weight:650}
+
+/* ============================ Diagram ============================ */
+.diagram{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:1.1rem;
+  margin:1.4rem 0;box-shadow:var(--shadow);overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:640px;height:auto}
+
+/* ============================ Sections ============================ */
+section{padding:1.7rem 0;border-top:1px solid var(--hair)}
+section:first-of-type{border-top:none}
+h2{font-size:1.5rem;letter-spacing:-.02em;margin:.2rem 0 .3rem;font-weight:700;scroll-margin-top:1rem}
+h2 .kicker{display:block;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:.35rem}
+h3{font-size:1.08rem;margin:1.6rem 0 .4rem;letter-spacing:-.01em}
+p{margin:.6rem 0}
+ul,ol{margin:.6rem 0;padding-left:1.3rem}
+li{margin:.3rem 0}
+.small{font-size:.9rem;color:var(--muted)}
+
+/* Step header */
+.step{display:flex;gap:.8rem;align-items:baseline;margin:0 0 .2rem}
+.step .num{flex:none;width:2rem;height:2rem;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:700;font-size:.95rem;font-variant-numeric:tabular-nums;transform:translateY(.25rem)}
+.step h2{margin:0}
+
+/* ============================ Code blocks ============================ */
+figure.code{margin:1rem 0;border:1px solid var(--hair-strong);border-radius:11px;overflow:hidden;background:var(--code-bg)}
+figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.5rem .5rem .5rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07)}
+figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;color:var(--code-muted);text-transform:uppercase}
+.copy{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--code-ink);
+  font:inherit;font-size:.74rem;padding:.28rem .6rem;border-radius:7px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
+figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
+pre .c{color:var(--code-muted)}
+pre .k{color:#7fd7c8}
+pre .v{color:#e9c17a}
+pre .p{color:#c99be0}
+pre .add{color:var(--code-add)}
+pre .del{color:var(--code-del)}
+code.inline{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);
+  border:1px solid var(--hair);padding:.08em .38em;border-radius:5px;color:var(--ink);word-break:break-word}
+
+/* ============================ Callouts ============================ */
+.callout{margin:1.1rem 0;padding:.85rem 1rem .85rem 1.05rem;border-radius:10px;border:1px solid var(--hair);
+  background:var(--surface);border-left:3px solid var(--muted);box-shadow:var(--shadow)}
+.callout .ct{font-weight:650;font-size:.82rem;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem}
+.callout p{margin:.2rem 0}
+.callout.note{border-left-color:var(--accent)}
+.callout.note .ct{color:var(--accent-ink)}
+.callout.warn{border-left-color:var(--high)}
+.callout.warn .ct{color:var(--high)}
+.callout.sec{border-left-color:var(--crit)}
+.callout.sec .ct{color:var(--crit)}
+
+/* ============================ Chips / table ============================ */
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:650;padding:.12rem .5rem;
+  border-radius:6px;letter-spacing:.02em;text-transform:uppercase;font-family:var(--f-mono)}
+.chip.crit{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}
+.chip.high{background:color-mix(in srgb,var(--high) 18%,transparent);color:var(--high)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;overflow-x:auto;display:block}
+.tbl thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--hair-strong);padding:.5rem .6rem;font-weight:600}
+.tbl td{padding:.5rem .6rem;border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl code{font-family:var(--f-mono);font-size:.85em}
+
+/* Tabs */
+.tabrow{display:flex;flex-wrap:wrap;gap:.35rem;margin:.4rem 0 .5rem}
+.tab{appearance:none;border:1px solid var(--hair-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:.78rem;padding:.32rem .75rem;border-radius:999px;cursor:pointer}
+.tab:hover{border-color:var(--accent)}
+.tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
+.tabpane{display:none}
+.tabpane.active{display:block}
+
+/* site top nav */
+.topnav{display:flex;align-items:center;gap:1rem;padding:.65rem clamp(1rem,4vw,2rem);background:var(--surface);border-bottom:1px solid var(--hair-strong)}
+.topnav .home{display:flex;align-items:center;gap:.5rem;font-weight:750;color:var(--ink);letter-spacing:-.01em;font-size:.98rem}
+.topnav .home svg{width:20px;height:20px;color:var(--accent)}
+.topnav .links{display:flex;gap:.4rem;margin-left:auto}
+.topnav .links a{padding:.5rem 1rem;border-radius:9px;font-size:.92rem;font-weight:650;color:var(--ink-2)}
+.topnav .links a:hover{background:var(--surface-2);text-decoration:none}
+.topnav .links a.active{background:var(--accent);color:#fff}
+@media(max-width:560px){.topnav{flex-wrap:wrap;gap:.5rem}.topnav .links{margin-left:0;width:100%}.topnav .links a{flex:1;text-align:center;padding:.5rem .35rem;font-size:.84rem}}
+
+footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
+hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
+  <div class="links">
+    <a href="/smoke">Smoke Test</a>
+    <a href="/skills" class="active">Skills</a>
+    <a href="/gha">GitHub Actions</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
+      <div>CodeMender Lab<small>Skills &middot; Antigravity</small></div>
+    </div>
+    <nav class="railnav" aria-label="Skills guide">
+      <a href="#overview"><span class="n">&#9670;</span>Overview</a>
+      <div class="grp">Set up</div>
+      <a href="#prereqs"><span class="n">1</span>Prerequisites</a>
+      <a href="#install"><span class="n">2</span>Install the skill</a>
+      <div class="grp">Run</div>
+      <a href="#use-agent"><span class="n">3</span>Use it from Antigravity</a>
+      <a href="#use-cli"><span class="n">4</span>Run the scripts directly</a>
+      <a href="#outputs"><span class="n">5</span>Outputs &amp; PR</a>
+      <div class="grp">Reference</div>
+      <a href="#how"><span class="n">&#9670;</span>Fan-out &amp; sandbox</a>
+      <a href="#knobs"><span class="n">&#9670;</span>Tuning &amp; troubleshooting</a>
+</nav>
+    <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span id="themelbl">Theme</span>
+    </button>
+  </aside>
+  <main class="main"><div class="col">
+
+    <header class="hero" id="overview">
+      <div class="eyebrow">Internal CE Enablement &middot; Antigravity &middot; public preview</div>
+      <h1>CodeMender Skills for Antigravity</h1>
+      <p class="lede">An <b>Agent Skill</b> that drives CodeMender across a whole directory from Antigravity &mdash; <b>find</b> many vulnerabilities, <b>verify</b> them in parallel, <b>fix</b> the verified ones in parallel &mdash; each parallel worker isolated so the single-writer SQLite state never corrupts, and every <code class="inline">cm</code> run wrapped in an OS-native sandbox. All local, as you. No CI, no bucket, no secret store.</p>
+      <div class="meta">
+        <span class="pill">&#129520; <b>Agent Skill</b> &middot; SKILL.md</span>
+        <span class="pill">&#9729; <b>@google.com</b> &middot; cloud-llm-preview1</span>
+        <span class="pill">&#128421;&#65039; <b>macOS</b> &middot; <b>Linux</b></span>
+        <span class="pill">&#9670; AGY <b>CLI &middot; 2.0 &middot; IDE</b></span>
+      </div>
+      <div class="callout note"><div class="ct">&#10003; Why a skill instead of CI</div><p>The shared preview project only grants Vertex&nbsp;AI &mdash; no GCS or Secret Manager &mdash; so a Cloud Build pipeline can't run there. But you <b>can</b> run <code class="inline">cm</code> locally. This skill packages the fan-out + sandbox logic so Antigravity can drive it on your laptop, at scale.</p></div>
+
+      <div class="diagram" role="img" aria-label="find scans a directory into a local state.db; verify fans out N workers over the found vulnerabilities into verified.txt; fix fans out N workers over the verified ones into patch files; you apply the patches and open a PR. Each cm worker runs in an OS sandbox with a private state copy, an independent clone, and its own app port.">
+        <svg viewBox="0 0 760 250" font-family="var(--f-sans)">
+          <defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker></defs>
+          <rect x="16" y="94" width="120" height="60" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="76" y="120" font-size="12" font-weight="700" text-anchor="middle" fill="var(--ink)" font-family="var(--f-mono)">find.sh</text>
+          <text x="76" y="137" font-size="9.5" text-anchor="middle" fill="var(--ink-2)">scan a dir</text>
+          <rect x="160" y="94" width="120" height="60" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="220" y="120" font-size="12" font-weight="700" text-anchor="middle" fill="var(--ink)" font-family="var(--f-mono)">verify.sh</text>
+          <text x="220" y="137" font-size="9" text-anchor="middle" fill="var(--accent-ink)">fan out &times;N</text>
+          <rect x="304" y="94" width="120" height="60" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="364" y="120" font-size="12" font-weight="700" text-anchor="middle" fill="var(--ink)" font-family="var(--f-mono)">fix.sh</text>
+          <text x="364" y="137" font-size="9" text-anchor="middle" fill="var(--accent-ink)">fan out &times;N</text>
+          <rect x="448" y="94" width="130" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="513" y="120" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">patches/</text>
+          <text x="513" y="137" font-size="9" text-anchor="middle" fill="var(--accent-ink)">one .patch each</text>
+          <rect x="602" y="94" width="142" height="60" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="673" y="120" font-size="12" font-weight="700" text-anchor="middle" fill="var(--ink)">you</text>
+          <text x="673" y="137" font-size="9.5" text-anchor="middle" fill="var(--ink-2)">apply &rarr; PR</text>
+          <g stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a)">
+            <line x1="136" y1="124" x2="158" y2="124"/><line x1="280" y1="124" x2="302" y2="124"/>
+            <line x1="424" y1="124" x2="446" y2="124"/><line x1="578" y1="124" x2="600" y2="124"/>
+          </g>
+          <text x="220" y="80" font-size="8.5" text-anchor="middle" fill="var(--muted)">state.db &rarr; verified.txt</text>
+          <rect x="150" y="176" width="284" height="52" rx="9" fill="none" stroke="var(--hair-strong)" stroke-dasharray="4 3"/>
+          <text x="292" y="196" font-size="9.5" text-anchor="middle" fill="var(--muted)">each worker: private state copy &middot; independent clone</text>
+          <text x="292" y="212" font-size="9.5" text-anchor="middle" fill="var(--muted)">own app port (cm -c) &middot; sandboxed cm</text>
+        </svg>
+      </div>
+    </header>
+
+    <section id="prereqs">
+      <div class="step"><span class="num">1</span><h2>Prerequisites</h2></div>
+      <p>Everything runs locally as your own identity. You need:</p>
+      <ul>
+        <li><b><code class="inline">cm</code> on PATH</b> &mdash; the skill can fetch it (<code class="inline">scripts/bootstrap-cm.sh</code>) or use the <a href="/smoke">Smoke Test</a> download.</li>
+        <li><b>Authenticated ADC</b>, entitled to the preview.</li>
+        <li><b><code class="inline">git</code>, <code class="inline">jq</code>, <code class="inline">unzip</code></b> on PATH; the target is a <b>git</b> repo.</li>
+        <li><b>Sandbox runtime</b> &mdash; macOS <code class="inline">sandbox-exec</code> is built in; Linux needs gVisor <code class="inline">runsc</code>.</li>
+      </ul>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; auth once</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com
+gcloud auth application-default set-quota-project cloud-llm-preview1</pre></figure>
+      <div class="callout note"><div class="ct">&#128273; ADC survives the sandbox</div><p>Fan-out workers each run with a private <code class="inline">HOME</code> (for an isolated <code class="inline">state.db</code>), which would normally hide your ADC. The skill pins <code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code> to your real ADC file up front, so auth keeps working &mdash; nothing to configure.</p></div>
+      <p class="small"><b>Linux only</b> &mdash; install gVisor (rootless, no Docker; works without KVM via the <code class="inline">systrap</code> platform):</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; linux: install gVisor</span><button class="copy" type="button">Copy</button></figcaption><pre>curl -fsSL "https://storage.googleapis.com/gvisor/releases/release/latest/$(uname -m)/runsc" -o runsc
+chmod +x runsc &amp;&amp; sudo mv runsc /usr/local/bin/
+runsc --version</pre></figure>
+    </section>
+
+    <section id="install">
+      <div class="step"><span class="num">2</span><h2>Install the skill</h2></div>
+      <p>An Antigravity skill is a folder containing <code class="inline">SKILL.md</code> plus its <code class="inline">scripts/</code>. Drop <code class="inline">codemender-fanout/</code> into one of the two <b>universal</b> skill locations &mdash; both are recognised by <b>AGY, AGY&nbsp;CLI, and AGY&nbsp;IDE</b> (2.0 included).</p>
+      <div class="tabs" data-tabs>
+        <div class="tabrow" role="tablist">
+          <button class="tab active" data-tab="glob" type="button">Global &middot; all workspaces</button>
+          <button class="tab" data-tab="ws" type="button">Workspace &middot; this project</button>
+        </div>
+        <div class="tabpane active" data-pane="glob"><figure class="code"><figcaption><span class="lbl">~/.gemini/config/skills/</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># get the skill folder (from the lab repo your facilitator shares)</span>
+git clone https://github.com/zken-cloud/cm-ci-lab
+
+mkdir -p ~/.gemini/config/skills
+cp -R cm-ci-lab/skills/codemender-fanout ~/.gemini/config/skills/
+chmod +x ~/.gemini/config/skills/codemender-fanout/scripts/*.sh
+
+ls ~/.gemini/config/skills/codemender-fanout/SKILL.md   <span class="c"># should exist</span></pre></figure></div>
+        <div class="tabpane" data-pane="ws"><figure class="code"><figcaption><span class="lbl">&lt;repo&gt;/.agents/skills/</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># from the root of the repo you want CodeMender to work on</span>
+mkdir -p .agents/skills
+cp -R /path/to/cm-ci-lab/skills/codemender-fanout .agents/skills/
+chmod +x .agents/skills/codemender-fanout/scripts/*.sh</pre></figure></div>
+      </div>
+      <div class="callout note"><div class="ct">&#9670; One skill, all three AGY surfaces</div><p>AGY, AGY&nbsp;CLI, and AGY&nbsp;IDE share the same <code class="inline">SKILL.md</code> format and each read the two locations above &mdash; so a single install covers the CLI, 2.0, and the IDE. (Variant-specific paths also exist &mdash; <code class="inline">~/.gemini/antigravity/skills/</code>, <code class="inline">~/.gemini/antigravity-cli/skills/</code> &mdash; but the two universal ones avoid the guesswork.)</p></div>
+    </section>
+
+    <section id="use-agent">
+      <div class="step"><span class="num">3</span><h2>Use it from Antigravity</h2></div>
+      <p>Open the target repo in Antigravity (CLI, 2.0, or IDE) and ask the agent for the task &mdash; it discovers <code class="inline">codemender-fanout</code> by its description, reads <code class="inline">SKILL.md</code>, and runs the scripts. A prompt like:</p>
+      <figure class="code"><figcaption><span class="lbl">antigravity &middot; agent prompt</span><button class="copy" type="button">Copy</button></figcaption><pre>Use the codemender-fanout skill on this repo: scan <span class="v">routes/</span>,
+verify the findings, and fix the CRITICAL ones. Show me the patches
+before I open a PR.</pre></figure>
+      <p>The agent sets <code class="inline">REPO_DIR</code>/<code class="inline">SCAN_PATH</code>, runs <code class="inline">find.sh</code> &rarr; <code class="inline">verify.sh</code> &rarr; <code class="inline">fix.sh</code>, and reports the results. On Linux it will pass <code class="inline">SBX_RUNSC_FLAGS=--rootless</code> for an unprivileged laptop.</p>
+      <div class="callout note"><div class="ct">&#128161; First time? Ask it to bootstrap</div><p>&ldquo;First run <code class="inline">scripts/bootstrap-cm.sh</code> if <code class="inline">cm</code> isn't installed, then verify auth with <code class="inline">cm init --verify</code>.&rdquo; The skill's <code class="inline">SKILL.md</code> already documents this so the agent does it in order.</p></div>
+    </section>
+
+    <section id="use-cli">
+      <div class="step"><span class="num">4</span><h2>Run the scripts directly</h2></div>
+      <p>The same scripts work standalone &mdash; handy to smoke-test the skill before wiring it into the agent. Point at a repo and a scan path, then run the three phases in order.</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; on OWASP Juice Shop</span><button class="copy" type="button">Copy</button></figcaption><pre>SKILL=~/.gemini/config/skills/codemender-fanout/scripts
+
+git clone --depth 1 https://github.com/juice-shop/juice-shop &amp;&amp; cd juice-shop
+export REPO_DIR="$PWD"
+export SCAN_PATH="routes/"          <span class="c"># a directory OR space-separated files</span>
+export SBX_RUNSC_FLAGS=--rootless    <span class="c"># Linux laptop; omit on macOS</span>
+
+"$SKILL/bootstrap-cm.sh"             <span class="c"># if cm isn't installed yet</span>
+"$SKILL/find.sh"                     <span class="c"># scan -> findings in local state.db</span>
+"$SKILL/verify.sh"                  <span class="c"># fan out cm verify -> verified.txt</span>
+"$SKILL/fix.sh"                     <span class="c"># fan out cm fix   -> patches/*.patch</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; Confirm <code class="inline">cm -c</code> before scaling fan-out</div><p>Each worker asks <code class="inline">cm</code> to run the app on a <b>unique port</b> via <code class="inline">-c</code> context, so verify/fix parallelise without colliding. If your <code class="inline">cm</code> expects a structured context instead of free text, set <code class="inline">CM_CTX_TEMPLATE="&lt;key&gt;=%PORT%"</code> (or <code class="inline">CM_CTX_TEMPLATE=""</code> to disable and keep fan-out at 1). Start with a single <code class="inline">verify</code> before raising <code class="inline">VERIFY_FANOUT</code>.</p></div>
+    </section>
+
+    <section id="outputs">
+      <div class="step"><span class="num">5</span><h2>Outputs &amp; opening a PR</h2></div>
+      <p>Everything lands under <code class="inline">$REPO_DIR/.cm-fanout/</code>:</p>
+      <table class="tbl">
+        <thead><tr><th>File</th><th>What</th></tr></thead>
+        <tbody>
+        <tr><td><code class="inline">state/</code></td><td>the shared <code class="inline">~/.codemender</code> written by <code class="inline">find</code></td></tr>
+        <tr><td><code class="inline">cm-report.md</code></td><td>the findings report (good PR body)</td></tr>
+        <tr><td><code class="inline">verified.txt</code></td><td>FindingIDs that verify reproduced</td></tr>
+        <tr><td><code class="inline">patches/&lt;id&gt;.patch</code></td><td>one diff per fixed finding</td></tr>
+        </tbody>
+      </table>
+      <p>You are the human in the loop &mdash; review the patches, then apply and open a PR with your own GitHub auth:</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>cd "$REPO_DIR"
+for p in .cm-fanout/patches/*.patch; do git apply "$p" || git apply --3way "$p"; done
+git checkout -b codemender/fixes &amp;&amp; git commit -am "security: CodeMender fixes"
+gh pr create --fill</pre></figure>
+    </section>
+
+    <section id="how">
+      <div class="step"><span class="num">&#9670;</span><h2>How the fan-out stays safe</h2></div>
+      <h3>Isolated SQLite state</h3>
+      <p><code class="inline">cm</code> keeps findings in a <b>single-writer SQLite</b> <code class="inline">state.db</code>. <code class="inline">find</code> writes it once; then <code class="inline">verify</code>/<code class="inline">fix</code> fan out and <b>each worker copies the state to a private dir</b> and runs in its <b>own independent <code class="inline">git clone</code></b> (a shared <code class="inline">git worktree</code> deadlocks on <code class="inline">.git/index.lock</code>). Results come back through append-only hand-off files, never a concurrent DB write.</p>
+      <h3>Unique port per worker</h3>
+      <p><code class="inline">cm verify</code>/<code class="inline">cm fix</code> build and run the target app to reproduce the exploit &mdash; on a fixed port by default. Each worker derives a <b>deterministic unique port</b> from the FindingID and passes it via <code class="inline">cm -c</code>, so parallel workers don't collide <b>on either OS</b>.</p>
+      <h3>Sandbox per OS</h3>
+      <table class="tbl">
+        <thead><tr><th>OS</th><th>Sandbox</th><th>What it contains</th></tr></thead>
+        <tbody>
+        <tr><td><b>macOS</b></td><td><code class="inline">sandbox-exec</code></td><td>Reads/exec/network allowed; <b>writes confined</b> to the worker dir + tmp. Built in.</td></tr>
+        <tr><td><b>Linux</b></td><td>gVisor <code class="inline">runsc do</code></td><td>Intercepts <b>syscalls</b> (protects the host kernel) and isolates the network. No Docker. <span class="chip ok">tested</span></td></tr>
+        </tbody>
+      </table>
+      <div class="callout note"><div class="ct">&#10003; Validated on Linux through real gVisor</div><p>The full flow &mdash; find &rarr; parallel verify &rarr; parallel fix, with per-worker state copies, independent clones, unique ports, and the hand-off files &mdash; was run end-to-end through <code class="inline">runsc</code> (rootless, <code class="inline">systrap</code>). Two Linux notes: <code class="inline">runsc do</code> overlays the host read-only, so the wrapper uses <code class="inline">-force-overlay=false</code> to persist the hand-off files (gVisor still isolates syscalls + network, but not filesystem writes to a subtree the way macOS does); and per-worker <b>netns</b> needs root, so on a rootless laptop the <b>unique port</b> is what keeps parallelism safe.</p></div>
+    </section>
+
+    <section id="knobs">
+      <div class="step"><span class="num">&#9670;</span><h2>Tuning &amp; troubleshooting</h2></div>
+      <table class="tbl">
+        <thead><tr><th>Env var</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+        <tr><td><code class="inline">REPO_DIR</code></td><td><code class="inline">$PWD</code></td><td>git repo to scan/fix</td></tr>
+        <tr><td><code class="inline">SCAN_PATH</code></td><td>&mdash;</td><td>directory or space-separated files (required for find)</td></tr>
+        <tr><td><code class="inline">MIN_SEVERITY</code></td><td><code class="inline">CRITICAL</code></td><td>severity floor for verify/fix</td></tr>
+        <tr><td><code class="inline">VERIFY_FANOUT</code> / <code class="inline">FIX_FANOUT</code></td><td><code class="inline">3</code></td><td>parallel workers</td></tr>
+        <tr><td><code class="inline">SKIP_EXPLOIT</code></td><td><code class="inline">0</code></td><td><code class="inline">1</code> &rarr; static verify (no app, no port)</td></tr>
+        <tr><td><code class="inline">CM_CTX_TEMPLATE</code></td><td><i>port instruction</i></td><td><code class="inline">-c</code> template; <code class="inline">%PORT%</code> placeholder; <code class="inline">""</code> disables</td></tr>
+        <tr><td><code class="inline">SBX_RUNSC_FLAGS</code></td><td>&mdash;</td><td>Linux: set <code class="inline">--rootless</code> on an unprivileged laptop</td></tr>
+        <tr><td><code class="inline">SBX_DISABLE</code></td><td><code class="inline">0</code></td><td><code class="inline">1</code> &rarr; run unsandboxed (loud warning; unsupported hosts only)</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li><b><code class="inline">Unsupported agent interaction: codemender-preview</code></b> &mdash; your ADC identity/quota project isn't entitled. Re-check the auth step.</li>
+        <li><b>Linux: <code class="inline">runsc: permission denied</code></b> &mdash; set <code class="inline">SBX_RUNSC_FLAGS=--rootless</code>.</li>
+        <li><b>Port collisions when fanning out</b> &mdash; <code class="inline">cm -c</code> isn't honouring the port; fix <code class="inline">CM_CTX_TEMPLATE</code> or drop fan-out to 1.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p><b>CodeMender Skills for Antigravity</b> &middot; public preview. Skill format is the portable <code class="inline">SKILL.md</code> spec &mdash; the same one Antigravity, the AGY CLI, and the AGY IDE read.</p>
+      <p class="small">No secrets appear here. <code class="inline">cm</code> authenticates as your own <code class="inline">@google.com</code> identity via Application Default Credentials.</p>
+    </footer>
+   </div></main>
+</div>
+<script>
+(function(){
+  "use strict";
+  var root=document.documentElement, btn=document.getElementById('themebtn'), lbl=document.getElementById('themelbl');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('cm-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function curDark(){var t=root.getAttribute('data-theme');return t?t==='dark':sysDark();}
+  function syncLbl(){lbl.textContent=curDark()?'Light':'Dark';}
+  syncLbl();
+  btn.addEventListener('click',function(){var next=curDark()?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('cm-theme',next);}catch(e){}syncLbl();});
+  document.querySelectorAll('figure.code').forEach(function(fig){
+    var b=fig.querySelector('.copy'), pre=fig.querySelector('pre'); if(!b||!pre)return;
+    b.addEventListener('click',function(){navigator.clipboard.writeText(pre.innerText).then(function(){var o=b.textContent;b.textContent='Copied';b.classList.add('done');setTimeout(function(){b.textContent=o;b.classList.remove('done');},1400);}).catch(function(){});});
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('.railnav a')), map={};
+  links.forEach(function(a){var id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)map[id]=a;});
+  var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
+  Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
+  document.querySelectorAll('[data-tabs]').forEach(function(box){
+    var tabs=box.querySelectorAll('.tab');
+    tabs.forEach(function(t){t.addEventListener('click',function(){
+      var k=t.getAttribute('data-tab');
+      tabs.forEach(function(x){x.classList.toggle('active',x===t);});
+      box.querySelectorAll('.tabpane').forEach(function(p){p.classList.toggle('active',p.getAttribute('data-pane')===k);});
+    });});
+  });
+})();
+</script>
+
+</body>
+</html>
