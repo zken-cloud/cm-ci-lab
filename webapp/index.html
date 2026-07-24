@@ -187,7 +187,6 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
     </div>
     <nav class="railnav" aria-label="Lab contents">
       <a href="#overview"><span class="n">&#9670;</span>Overview &amp; status</a>
-      <a href="#delta"><span class="n">&#9670;</span>What changed vs EAP</a>
       <a href="#flow"><span class="n">&#9670;</span>How it works</a>
       <a href="#access"><span class="n">&#9670;</span>Access model</a>
       <div class="grp">The lab</div>
@@ -228,27 +227,104 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <div class="callout note"><div class="ct">&#10003; Verified vs &#9888; not-yet-verified</div><p><span class="chip ok">verified</span> steps have been run for real. <span class="chip high">unverified</span> steps follow directly from what works but the <b>full Cloud Build pipeline has not been run end-to-end yet</b> &mdash; this run is the one that proves it. The interactive path (download &rarr; <code class="inline">cm init</code> &rarr; <code class="inline">cm find</code>) is <span class="chip ok">verified</span> in <code class="inline">cloud-llm-preview1</code> with a <code class="inline">@google.com</code> identity.</p></div>
 
       <div class="callout warn"><div class="ct">&#9888; The one thing this run is testing</div><p>The pipeline runs <code class="inline">cm</code> as <code class="inline">cloud-llm-preview1</code>'s <b>Cloud Build service account</b>, not a human. We confirmed a service account clears the Interaction API's IAM check and provisioning; what is <b>not</b> yet confirmed is that the build SA is entitled to the <code class="inline">codemender-preview</code> <em>agent</em>. If Step&nbsp;10 fails with <code class="inline">Unsupported agent interaction: codemender-preview</code>, that entitlement is the gap &mdash; see <a href="#s10">Step&nbsp;10</a>.</p></div>
-    </header>
 
-    <section id="delta">
-      <div class="step"><span class="num">&#9670;</span><h2>What changed from the EAP lab</h2></div>
-      <table class="tbl">
-        <thead><tr><th>Aspect</th><th><a href="/eap">EAP lab</a></th><th>Public preview (this guide)</th></tr></thead>
-        <tbody>
-        <tr><td><b>Binary</b></td><td>Baked into a central image with an embedded API key</td><td>Downloaded from <code class="inline">cmoc-prod</code>; <b>no key inside</b> <span class="chip ok">verified</span></td></tr>
-        <tr><td><b>Auth</b></td><td>Baked key &mdash; anyone with the image can call the backend</td><td>ADC &mdash; the caller's own identity is checked <span class="chip ok">verified</span></td></tr>
-        <tr><td><b>Backend</b></td><td>EAP endpoint</td><td>Interaction API on <code class="inline">aiplatform.googleapis.com</code>; permission <code class="inline">aiplatform.interactions.create</code> <span class="chip ok">verified</span></td></tr>
-        <tr><td><b>Verify / Fix / Report</b></td><td><code class="inline">cm find verify</code>, <code class="inline">--auto-apply</code>, <code class="inline">-f json</code></td><td><code class="inline">cm verify</code>, <code class="inline">cm fix -y</code>, <code class="inline">cm report --format json</code></td></tr>
-        <tr><td><b>Project</b></td><td>Each participant's own project</td><td>Shared, preview-entitled <code class="inline">cloud-llm-preview1</code></td></tr>
-        <tr><td><b>Image sensitivity</b></td><td>Sensitive (extractable key)</td><td><b>Not sensitive</b> &mdash; nothing to steal</td></tr>
-        </tbody>
-      </table>
-    </section>
+      <div class="diagram" role="img" aria-label="Five Cloud Build steps in cloud-llm-preview1: clone the fork, cm find across many files, cm verify fanned out across the found vulnerabilities, cm fix fanned out across the verified ones, then open one PR. Steps share CodeMender state through a gcsfuse-mounted GCS bucket and open a PR on the GitHub fork.">
+        <svg viewBox="0 0 720 336" font-family="var(--f-sans)">
+          <defs>
+            <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
+            <marker id="ara" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
+          </defs>
+          <rect x="14" y="128" width="150" height="80" rx="9" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="26" y="152" font-size="11" font-weight="700" fill="var(--ink)">GCS state bucket</text>
+          <text x="26" y="170" font-size="10" fill="var(--ink-2)">config &middot; identity</text>
+          <text x="26" y="185" font-size="10" fill="var(--ink-2)">findings state.db</text>
+          <text x="26" y="200" font-size="9" fill="var(--muted)">ldap-cm-state</text>
+          <rect x="196" y="34" width="360" height="272" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="216" y="56" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Cloud Build &mdash; cloud-llm-preview1</text>
+          <text x="216" y="70" font-size="9" fill="var(--muted)">runs as the entitled build service account</text>
+          <g font-size="11" text-anchor="middle">
+            <g><rect x="216" y="80" width="320" height="28" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="98" fill="var(--ink)">0 &middot; clone your fork</text></g>
+            <g><rect x="216" y="113" width="320" height="28" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="131" fill="var(--ink)">1 &middot; cm find &mdash; scan many files</text></g>
+            <g><rect x="216" y="146" width="320" height="28" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="164" fill="var(--ink)">2 &middot; cm verify &times;N &mdash; fan out (_VERIFY_FANOUT)</text></g>
+            <g><rect x="216" y="179" width="320" height="28" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="197" fill="var(--ink)">3 &middot; cm fix &times;N &mdash; fan out (_FIX_FANOUT)</text></g>
+            <g><rect x="216" y="212" width="320" height="28" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="376" y="230" fill="var(--accent-ink)" font-weight="650">4 &middot; apply patches + open PR</text></g>
+          </g>
+          <text x="376" y="262" font-size="9" fill="var(--muted)" text-anchor="middle">steps 2 &amp; 3 fan out across findings &mdash; each worker in isolated state</text>
+          <rect x="588" y="128" width="124" height="80" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="602" y="152" font-size="12" font-weight="700" fill="var(--ink)">GitHub fork</text>
+          <text x="602" y="171" font-size="10" fill="var(--ink-2)">Pull Request</text>
+          <text x="602" y="186" font-size="10" fill="var(--ink-2)">review &rarr; merge</text>
+          <line x1="164" y1="148" x2="212" y2="132" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+          <line x1="164" y1="184" x2="212" y2="205" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+          <text x="90" y="120" font-size="9.5" fill="var(--muted)" text-anchor="middle">gcsfuse mount</text>
+          <line x1="556" y1="226" x2="586" y2="176" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ara)"/>
+        </svg>
+      </div>
+    </header>
 
     <section id="flow">
       <div class="step"><span class="num">&#9670;</span><h2>How it works</h2></div>
-      <p>Five Cloud Build steps in <code class="inline">cloud-llm-preview1</code>: <b>clone</b> &rarr; <b>find</b> &rarr; <b>verify</b> &rarr; <b>fix</b> &rarr; <b>open-pr</b>. CodeMender is <b>local-first</b> &mdash; a hosted agent reasons; the <code class="inline">cm</code> client in each step reads files, builds, and runs proof-of-concept exploits locally, sending only snippets and results to the backend.</p>
-      <div class="callout note"><div class="ct">&#8505; Why the state bucket is still here</div><p>CodeMender keeps findings in a local SQLite <code class="inline">state.db</code>, and each Cloud Build step is a fresh container &mdash; so the same gcsfuse-mounted GCS bucket as the EAP lab carries state across find &rarr; verify &rarr; fix. (On a single-container runner like GitHub Actions it isn't needed.)</p></div>
+      <p>Five Cloud Build steps in <code class="inline">cloud-llm-preview1</code>, one script each &mdash; a fifth, <code class="inline">cm-env.sh</code>, is <em>sourced</em> by the others so they share one setup and one finding-selector. CodeMender is <b>local-first</b>: a hosted agent reasons; the <code class="inline">cm</code> client reads files, builds, and runs proof-of-concept exploits locally.</p>
+      <ul>
+        <li><code class="inline">find.sh</code> &mdash; <code class="inline">cm find</code> scans <b>many files</b> (a directory or a list) and records every finding.</li>
+        <li><code class="inline">verify.sh</code> &mdash; <b>fans out</b> <code class="inline">cm verify</code> across the found vulnerabilities, <code class="inline">_VERIFY_FANOUT</code> at a time.</li>
+        <li><code class="inline">fix.sh</code> &mdash; <b>fans out</b> <code class="inline">cm fix</code> across the <em>verified</em> vulnerabilities, <code class="inline">_FIX_FANOUT</code> at a time.</li>
+        <li><code class="inline">open-pr.sh</code> &mdash; applies the collected patches and opens one PR whose body is CodeMender's analysis.</li>
+      </ul>
+      <div class="diagram" role="img" aria-label="Five phase scripts run as separate Cloud Build steps. find, verify and fix each source cm-env.sh and share CodeMender findings state through a gcsfuse-mounted GCS bucket. verify and fix fan out across findings. All steps read and write small hand-off files in Cloud Build's persisted /workspace; open-pr reads those and opens the PR.">
+        <svg viewBox="0 0 760 320" font-family="var(--f-sans)">
+          <defs>
+            <marker id="fm" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
+            <marker id="fa" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
+          </defs>
+          <rect x="40" y="30" width="660" height="42" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="56" y="50" font-size="11.5" font-weight="700" fill="var(--ink)">/workspace</text>
+          <text x="56" y="65" font-size="10" fill="var(--ink-2)">persisted by Cloud Build across steps &middot; plain-text hand-off files</text>
+          <line x1="115" y1="118" x2="115" y2="74" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#fa)"/>
+          <line x1="285" y1="118" x2="285" y2="74" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#fa)"/>
+          <line x1="455" y1="118" x2="455" y2="74" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#fa)"/>
+          <line x1="625" y1="74"  x2="625" y2="116" stroke="var(--muted)" stroke-width="1.3" marker-end="url(#fm)"/>
+          <g font-size="8" text-anchor="middle" fill="var(--muted)" font-family="var(--f-mono)">
+            <text x="115" y="98">writes findings</text>
+            <text x="285" y="98">writes verified.txt</text>
+            <text x="455" y="98">writes patches/</text>
+            <text x="625" y="98" fill="var(--accent-ink)">reads all hand-offs</text>
+          </g>
+          <g text-anchor="middle">
+            <g><rect x="40"  y="118" width="150" height="70" rx="10" fill="var(--surface)" stroke="var(--hair-strong)"/>
+              <text x="115" y="140" font-size="11.5" font-weight="700" fill="var(--ink)" font-family="var(--f-mono)">1 &middot; find.sh</text>
+              <text x="115" y="156" font-size="10" fill="var(--ink-2)">cm find &mdash; many files</text>
+              <text x="115" y="171" font-size="8.5" fill="var(--muted)">sources cm-env.sh</text></g>
+            <g><rect x="210" y="118" width="150" height="70" rx="10" fill="var(--surface)" stroke="var(--hair-strong)"/>
+              <text x="285" y="140" font-size="11.5" font-weight="700" fill="var(--ink)" font-family="var(--f-mono)">2 &middot; verify.sh</text>
+              <text x="285" y="156" font-size="10" fill="var(--ink-2)">cm verify &times;N</text>
+              <text x="285" y="171" font-size="8.5" fill="var(--accent-ink)">fan out &middot; isolated state</text></g>
+            <g><rect x="380" y="118" width="150" height="70" rx="10" fill="var(--surface)" stroke="var(--hair-strong)"/>
+              <text x="455" y="140" font-size="11.5" font-weight="700" fill="var(--ink)" font-family="var(--f-mono)">3 &middot; fix.sh</text>
+              <text x="455" y="156" font-size="10" fill="var(--ink-2)">cm fix &times;N</text>
+              <text x="455" y="171" font-size="8.5" fill="var(--accent-ink)">fan out &middot; isolated clone</text></g>
+            <g><rect x="550" y="118" width="150" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+              <text x="625" y="140" font-size="11.5" font-weight="700" fill="var(--accent-ink)" font-family="var(--f-mono)">4 &middot; open-pr.sh</text>
+              <text x="625" y="156" font-size="10" fill="var(--accent-ink)">apply patches + PR</text>
+              <text x="625" y="171" font-size="8.5" fill="var(--accent-ink)">no cm-env &middot; no mount</text></g>
+          </g>
+          <g stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fm)">
+            <line x1="190" y1="153" x2="208" y2="153"/>
+            <line x1="360" y1="153" x2="378" y2="153"/>
+            <line x1="530" y1="153" x2="548" y2="153"/>
+          </g>
+          <rect x="40" y="214" width="530" height="72" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="56" y="236" font-size="11" font-weight="700" fill="var(--ink)">GCS state bucket &middot; gcsfuse</text>
+          <text x="56" y="252" font-size="9.5" fill="var(--ink-2)">the shared findings state.db from step&nbsp;1 &mdash; read by verify &amp; fix</text>
+          <text x="56" y="268" font-size="9" fill="var(--muted)">fan-out workers copy it locally; nobody writes the shared DB concurrently</text>
+          <g stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#fm)">
+            <line x1="115" y1="188" x2="140" y2="212"/>
+            <line x1="285" y1="188" x2="270" y2="212"/>
+            <line x1="455" y1="188" x2="360" y2="212"/>
+          </g>
+        </svg>
+      </div>
+      <div class="callout note"><div class="ct">&#128452;&#65039; Why the state bucket &mdash; and why fan-out copies it</div><p>Each Cloud Build step is a fresh container, so CodeMender's findings <code class="inline">state.db</code> (SQLite, under <code class="inline">~/.codemender</code>) is carried across steps in a gcsfuse-mounted GCS bucket. But <b>SQLite is single-writer</b> and gcsfuse advisory locks are unreliable, so the fan-out workers in verify/fix must <b>not</b> write that shared DB in parallel &mdash; each copies it to local disk and runs in its own independent clone. That isolation is what makes <code class="inline">_VERIFY_FANOUT</code> / <code class="inline">_FIX_FANOUT</code> safe. (On a single-container runner like GitHub Actions the bucket isn't needed.)</p></div>
     </section>
 
     <section id="access">
@@ -354,7 +430,9 @@ gcloud builds submit container/ --tag "$CM_IMAGE" --project="$CM_PROJECT"</pre><
 
     <section id="s8">
       <div class="step"><span class="num">8</span><h2>Write the phase scripts</h2></div>
-      <p>Four scripts under <code class="inline">scripts/</code>. Note the preview command surface: <code class="inline">cm verify</code>, <code class="inline">cm fix -y</code>, <code class="inline">cm report --format json</code>. <b>No auth step</b> &mdash; the build SA is the ADC identity.</p>
+      <p>Five scripts under <code class="inline">scripts/</code> (four steps + the sourced <code class="inline">cm-env.sh</code>). Preview command surface: <code class="inline">cm verify</code>, <code class="inline">cm fix -y</code>, <code class="inline">cm report --format json</code>. <b>No auth step</b> &mdash; the build SA is the ADC identity.</p>
+      <div class="callout note"><div class="ct">&#9889; Two knobs control fan-out</div><p><code class="inline">_VERIFY_FANOUT</code> &mdash; how many <b>found</b> vulnerabilities <code class="inline">verify.sh</code> reproduces in parallel. <code class="inline">_FIX_FANOUT</code> &mdash; how many <b>verified</b> vulnerabilities <code class="inline">fix.sh</code> patches in parallel. Each worker runs in a private state copy + an <b>independent git clone</b> (a worktree shares <code class="inline">.git</code> and deadlocks).</p></div>
+      <div class="callout warn"><div class="ct">&#9888; Validated: fan-out is port-bound on a single-server app &mdash; default is 1</div><p>Testing with a real binary confirmed two things. The clone isolation above is required (worktrees collide on <code class="inline">.git/index.lock</code>). And <code class="inline">cm verify</code>/<code class="inline">cm fix</code> <b>build &amp; run Juice Shop on a fixed port (3000)</b> to reproduce the exploit &mdash; so two in parallel collide on the port regardless of git isolation. For one target, keep both fan-outs at <b>1</b>. Raise them only when workers have isolated runtime (distinct targets, or per-worker network namespaces), or fan out <b>static</b> verification with <code class="inline">cm verify --skip-exploit-verification</code> (no app, no port). The machinery scales; the single shared app is the limit.</p></div>
       <figure class="code"><figcaption><span class="lbl">scripts/cm-env.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
 set -euo pipefail
 : "${CM_STATE_BUCKET:?}"; : "${STATE_ID:?}"
@@ -375,40 +453,84 @@ tools: { confirm_execution: false, confirm_writes: false }
 YAML
 fi
 
-top_finding_id() {
-  cm report --format json --status OPEN --severity "${MIN_SEVERITY:-CRITICAL}" \
-    | jq -r '.[0].FindingID // empty'
+# Every finding id at/above severity with a given status (OPEN, VERIFIED, &hellip;).
+finding_ids() {   # $1 = status
+  cm report --format json --status "$1" --severity "${MIN_SEVERITY:-CRITICAL}" \
+    | jq -r '.[].FindingID'
 }</pre></figure>
-      <figure class="code"><figcaption><span class="lbl">scripts/find.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+      <figure class="code"><figcaption><span class="lbl">scripts/find.sh &middot; scan many files</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
 source "$(dirname "$0")/cm-env.sh"
 : "${SCAN_PATH:?}"; cd "$REPO_DIR"
-[[ -e "$SCAN_PATH" ]] || { echo "SCAN_PATH '$SCAN_PATH' not found"; ls "$(dirname "$SCAN_PATH")"; exit 1; }
-cm find "$SCAN_PATH" -y --bypass-warning
+# SCAN_PATH is a directory OR a space-separated list of files.
+for p in $SCAN_PATH; do
+  [[ -e "$p" ]] || { echo "❌ scan target '$p' not found"; exit 1; }
+  echo "🔍 cm find $p"; cm find "$p" -y --bypass-warning
+done
 cm report
-cm report --format json &gt; "$WORKSPACE/cm-findings.json" || echo '[]' &gt; "$WORKSPACE/cm-findings.json"</pre></figure>
-      <figure class="code"><figcaption><span class="lbl">scripts/verify.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-source "$(dirname "$0")/cm-env.sh"; cd "$REPO_DIR"
-FID="$(top_finding_id)"; [[ -z "$FID" ]] &amp;&amp; { echo "nothing to verify"; exit 0; }
-cm verify "$FID" -y            # builds &amp; runs a PoC exploit
-cm report</pre></figure>
-      <figure class="code"><figcaption><span class="lbl">scripts/fix.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-source "$(dirname "$0")/cm-env.sh"; cd "$REPO_DIR"
-FID="$(top_finding_id)"; [[ -z "$FID" ]] &amp;&amp; { echo "nothing to fix"; exit 0; }
-cm fix "$FID" -y               # patches, rebuilds, re-runs the exploit
-cm vcs status; cm vcs diff</pre></figure>
-      <figure class="code"><figcaption><span class="lbl">scripts/open-pr.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+cm report --format md &gt; "$WORKSPACE/cm-report.md"       # PR body for open-pr
+echo "found $(finding_ids OPEN | wc -l) finding(s) at/above ${MIN_SEVERITY:-CRITICAL}"</pre></figure>
+      <figure class="code"><figcaption><span class="lbl">scripts/verify.sh &middot; fan out across found vulns</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
 source "$(dirname "$0")/cm-env.sh"
+FANOUT="${VERIFY_FANOUT:-3}"                 # ◀ verify this many in parallel
+mapfile -t IDS &lt; &lt;(finding_ids OPEN)
+(( ${#IDS[@]} )) || { echo "nothing to verify"; exit 0; }
+echo "🧪 verifying ${#IDS[@]} finding(s), ${FANOUT} at a time"
+: &gt; "$WORKSPACE/verified.txt"
+
+verify_one() {
+  local fid="$1"
+  # Isolation: private state copy + an INDEPENDENT clone (own .git). A git
+  # worktree shares .git and parallel cm resets deadlock on index.lock — verified.
+  local w="/tmp/cm-v-$fid"; rm -rf "$w"; mkdir -p "$w"
+  cp -a "$HOME/.codemender" "$w/.codemender"
+  git clone -q "$REPO_DIR" "$w/repo"
+  ( cd "$w/repo" &amp;&amp; HOME="$w" cm verify "$fid" -y ) \
+    &amp;&amp; flock "$WORKSPACE/verified.txt" -c "echo $fid &gt;&gt; $WORKSPACE/verified.txt"
+  rm -rf "$w"
+}
+export -f verify_one; export HOME REPO_DIR WORKSPACE
+printf '%s\n' "${IDS[@]}" | xargs -r -P "$FANOUT" -I{} bash -c 'verify_one "$@"' _ {}
+echo "✅ verified $(wc -l &lt; "$WORKSPACE/verified.txt") finding(s)"</pre></figure>
+      <figure class="code"><figcaption><span class="lbl">scripts/fix.sh &middot; fan out across verified vulns</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+source "$(dirname "$0")/cm-env.sh"
+FANOUT="${FIX_FANOUT:-2}"                     # ◀ fix this many in parallel
+mapfile -t IDS &lt; &lt;(sort -u "$WORKSPACE/verified.txt" 2&gt;/dev/null)
+(( ${#IDS[@]} )) || { echo "nothing to fix"; exit 0; }
+echo "🔧 fixing ${#IDS[@]} verified finding(s), ${FANOUT} at a time"
+mkdir -p "$WORKSPACE/patches"
+
+fix_one() {
+  local fid="$1"
+  local w="/tmp/cm-f-$fid"; rm -rf "$w"; mkdir -p "$w"
+  cp -a "$HOME/.codemender" "$w/.codemender"
+  git clone -q "$REPO_DIR" "$w/repo"          # independent clone, own .git
+  ( cd "$w/repo" &amp;&amp; HOME="$w" cm fix "$fid" -y \
+      &amp;&amp; git diff HEAD &gt; "$WORKSPACE/patches/$fid.patch" )
+  rm -rf "$w"
+}
+export -f fix_one; export HOME REPO_DIR WORKSPACE
+printf '%s\n' "${IDS[@]}" | xargs -r -P "$FANOUT" -I{} bash -c 'fix_one "$@"' _ {}
+echo "📦 produced $(ls "$WORKSPACE/patches" 2&gt;/dev/null | wc -l) patch(es)"</pre></figure>
+      <figure class="code"><figcaption><span class="lbl">scripts/open-pr.sh &middot; apply patches, one PR</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+set -euo pipefail                             # no cm-env: no mount, no cm needed
 : "${GH_OWNER:?}"; : "${GH_REPO:?}"; : "${GH_TOKEN:?}"; : "${BASE_BRANCH:?}"; : "${LDAP:?}"
-cd "$REPO_DIR"
-git diff --quiet &amp;&amp; { echo "no changes - no PR"; exit 0; }
+WORKSPACE="${WORKSPACE:-/workspace}"; cd "$WORKSPACE/repo"
+shopt -s nullglob; PATCHES=("$WORKSPACE"/patches/*.patch)
+(( ${#PATCHES[@]} )) || { echo "no patches - no PR"; exit 0; }
+
 BRANCH="codemender/fix-${LDAP}-${STATE_ID}"
 git config user.email "<span class="p">ldap</span>@google.com"; git config user.name "<span class="p">ldap</span>"
-git checkout -b "$BRANCH"; git add -A
-git commit -qm "security: fix vulnerability found by CodeMender"
+git checkout -q -b "$BRANCH"
+for p in "${PATCHES[@]}"; do
+  git apply "$p" 2&gt;/dev/null || git apply --3way "$p" 2&gt;/dev/null \
+    || echo "⚠️ $(basename "$p") did not apply cleanly, skipping"
+done
+git add -A
+git commit -qm "security: fix ${#PATCHES[@]} vulnerabilities found by CodeMender"
 git push -q "https://x-access-token:${GH_TOKEN}@github.com/${GH_OWNER}/${GH_REPO}.git" "$BRANCH" \
   2&gt;&amp;1 | sed "s|${GH_TOKEN}|***|g"
-jq -n --arg t "security: CodeMender fix" --arg h "$BRANCH" --arg b "$BASE_BRANCH" \
-      --arg body "$(cm report --format md)" \
+jq -n --arg t "security: CodeMender fixed ${#PATCHES[@]} findings" --arg h "$BRANCH" \
+      --arg b "$BASE_BRANCH" --arg body "$(cat "$WORKSPACE/cm-report.md" 2&gt;/dev/null)" \
       '{title:$t, head:$h, base:$b, body:$body}' \
   | curl -sS -X POST -H "Authorization: token ${GH_TOKEN}" -H "Accept: application/vnd.github+json" \
       "https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/pulls" -d @- \
@@ -425,8 +547,10 @@ jq -n --arg t "security: CodeMender fix" --arg h "$BRANCH" --arg b "$BASE_BRANCH
   _LDAP: ""              # &#9664; your ldap
   _GH_REPO: juice-shop
   _BASE_BRANCH: master
-  _SCAN_PATH: routes/login.ts
+  _SCAN_PATH: routes/          # &#9664; a directory, or a space-separated list of files
   _MIN_SEVERITY: CRITICAL
+  _VERIFY_FANOUT: "1"          # &#9664; verify N in parallel — but port-bound, see Step 8
+  _FIX_FANOUT: "1"             # &#9664; fix N in parallel — raise only with runtime isolation
 
 steps:
   - id: clone
@@ -445,14 +569,15 @@ steps:
   - id: verify
     name: ${_CM_IMAGE}
     entrypoint: bash
-    timeout: 900s
-    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','MIN_SEVERITY=${_MIN_SEVERITY}']
+    timeout: 1800s
+    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','MIN_SEVERITY=${_MIN_SEVERITY}','VERIFY_FANOUT=${_VERIFY_FANOUT}']
     args: ['-c','scripts/verify.sh']
 
   - id: fix
     name: ${_CM_IMAGE}
     entrypoint: bash
-    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','MIN_SEVERITY=${_MIN_SEVERITY}']
+    timeout: 1800s
+    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','MIN_SEVERITY=${_MIN_SEVERITY}','FIX_FANOUT=${_FIX_FANOUT}']
     args: ['-c','scripts/fix.sh']
 
   - id: open-pr
@@ -482,7 +607,7 @@ BUILD_SA="${PROJNUM}-compute@developer.gserviceaccount.com"
 gcloud builds submit . --config cloudbuild.yaml \
   --project=cloud-llm-preview1 --region=global \
   --service-account="projects/cloud-llm-preview1/serviceAccounts/${BUILD_SA}" \
-  --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER="$GH_OWNER",_LDAP="$LDAP",_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/login.ts</pre></figure>
+  --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER="$GH_OWNER",_LDAP="$LDAP",_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/,_VERIFY_FANOUT=1,_FIX_FANOUT=1</pre></figure>
       <div class="callout warn"><div class="ct">&#9888; If it fails, read the error precisely</div><p><b><code class="inline">Unsupported agent interaction: codemender-preview</code></b> &rarr; the <em>build SA</em> isn't entitled to the agent even though the project is. Tell the facilitator; the fix is server-side. &nbsp;<b><code class="inline">aiplatform.interactions.create denied</code></b> &rarr; the build ran as the wrong SA (the legacy <code class="inline">@cloudbuild</code> one) &mdash; confirm the <code class="inline">--service-account</code> flag took. &nbsp;<b><code class="inline">Resource setup has just started</code></b> &rarr; first-use provisioning; just re-run in a couple of minutes.</p></div>
       <div class="callout note"><div class="ct">&#9201; Expect ~20&ndash;30 minutes</div><p>Verification dominates &mdash; CodeMender builds Juice Shop and runs a PoC exploit. Resumable: <code class="inline">cm session list</code> then <code class="inline">cm session resume</code>.</p></div>
     </section>

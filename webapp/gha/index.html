@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CodeMender CI Lab (GitHub Actions) &mdash; Build a Remediation Pipeline</title>
+<title>CodeMender CI Lab <title>CodeMender CI Lab (GitHub Actions) &mdash; Build a Remediation Pipeline</title>mdash; Public Preview (GitHub Actions)</title>
 <style>
 /* ============================ Design tokens ============================ */
 :root{
@@ -183,31 +183,25 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <aside class="rail">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
-      <div>CodeMender Lab<small>GitHub Actions</small></div>
+      <div>CodeMender Lab<small>Public Preview &middot; GitHub Actions</small></div>
     </div>
     <nav class="railnav" aria-label="Lab contents">
-      <a href="#overview"><span class="n">&#9670;</span>Overview</a>
+      <a href="#overview"><span class="n">&#9670;</span>Overview &amp; status</a>
       <a href="#flow"><span class="n">&#9670;</span>How it works</a>
-      <a href="#design"><span class="n">&#9670;</span>Design decisions</a>
-      <a href="#prereq"><span class="n">&#9670;</span>Prerequisites</a>
-      <a href="#image"><span class="n">&#9670;</span>The CodeMender image</a>
+      <a href="#access"><span class="n">&#9670;</span>Access model</a>
       <div class="grp">The lab</div>
-      <a href="#s1"><span class="n">1</span>Fork Juice Shop</a>
-      <a href="#s2"><span class="n">2</span>Create the pipeline repo</a>
-      <a href="#s3"><span class="n">3</span>Create a fine-grained PAT</a>
-      <a href="#s4"><span class="n">4</span>Set the GH_PAT secret</a>
-      <a href="#s5"><span class="n">5</span>Build the toolbox image</a>
-      <a href="#s6"><span class="n">6</span>Write the phase scripts</a>
-      <a href="#s7"><span class="n">7</span>Write the workflow</a>
-      <a href="#s8"><span class="n">8</span>Run the pipeline</a>
-      <a href="#s9"><span class="n">9</span>Review the fix &amp; PR</a>
-      <a href="#s10"><span class="n">10</span>Approve &amp; merge</a>
-      <a href="#s11"><span class="n">11</span>Confirm remediation</a>
+      <a href="#s1"><span class="n">1</span>Sign in &amp; smoke-test</a>
+      <a href="#s2"><span class="n">2</span>Fork Juice Shop</a>
+      <a href="#s3"><span class="n">3</span>Add the workflow</a>
+      <a href="#s4"><span class="n">4</span>Secrets: PAT + ADC</a>
+      <a href="#s5"><span class="n">5</span>The workflow</a>
+      <a href="#s6"><span class="n">6</span>Run it</a>
+      <a href="#s7"><span class="n">7</span>Review &amp; merge</a>
       <div class="grp">Reference</div>
-      <a href="#concurrency"><span class="n">&#9670;</span>Concurrency &amp; safety</a>
-      <a href="#production"><span class="n">&#9670;</span>Production &amp; EAP notes</a>
+      <a href="#cheatsheet"><span class="n">&#9670;</span>cm cheat sheet</a>
+      <a href="#cb"><span class="n">&#9670;</span>vs the Cloud Build lab</a>
       <a href="#cleanup"><span class="n">&#9670;</span>Cleanup</a>
-    </nav>
+</nav>
     <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
       <span id="themelbl">Theme</span>
@@ -216,622 +210,201 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <main class="main"><div class="col">
 
     <header class="hero" id="overview">
-      <div class="eyebrow">Internal Customer Engineer Enablement</div>
-      <h1>Build a CodeMender remediation pipeline on GitHub Actions</h1>
-      <p class="lede">You'll package CodeMender into a container, push it to GHCR, and hand-write a GitHub Actions workflow that scans OWASP Juice&nbsp;Shop, <em>verifies</em> a real vulnerability, <em>fixes</em> it, and opens a Pull Request on your own fork &mdash; which you review, approve, and merge.</p>
+      <div class="eyebrow">Internal CE Enablement &middot; GitHub Actions &middot; public preview</div>
+      <h1>CodeMender CI Lab &mdash; Public Preview (GitHub Actions)</h1>
+      <p class="lede">The same lab as the <a href="/">Cloud Build guide</a>, on <b>GitHub Actions</b>. Scan Juice&nbsp;Shop, verify a real vulnerability, fix it, open a PR. Because a GitHub runner lives <em>outside</em> Google Cloud, it can't pick up a build service account &mdash; so <code class="inline">cm</code> authenticates with your <b>injected <code class="inline">@google.com</code> credentials</b>, billed to the shared preview project <code class="inline">cloud-llm-preview1</code>.</p>
       <div class="meta">
-        <span class="pill">&#9201; <b>~45&nbsp;min</b></span>
+        <span class="pill">&#9201; <b>~40&nbsp;min</b></span>
         <span class="pill">&#9670; <b>Intermediate</b></span>
-        <span class="pill">&#9095; <b>GitHub</b> &middot; Actions &middot; GHCR &middot; Packages</span>
-        <span class="pill">&#128273; <b>1 secret</b> (a PAT)</span>
+        <span class="pill">&#9095; <b>GitHub Actions</b></span>
+        <span class="pill">&#9729; <b>GCP</b> &middot; CodeMender Interaction API</span>
       </div>
-      <div class="callout note"><div class="ct">&#128260; This is the GitHub Actions port of the <a href="https://cm-ci-lab.cedemo.app">Cloud Build lab</a></div>
-        <p>Same CodeMender, same four phase scripts &mdash; a different CI driver. The interesting part is what <em>disappears</em>: because every step of a GHA job runs in <b>one container</b>, the CodeMender state that Cloud Build had to persist in a gcsfuse-mounted GCS bucket now just lives on the job filesystem. No bucket, no gcsfuse, no GCP.</p></div>
-      <div class="diagram" role="img" aria-label="A single GitHub Actions job runs in the CodeMender container pulled from GHCR. Its steps clone, find, verify, fix and open-pr share one filesystem, so CodeMender state persists with no gcsfuse. The job opens a Pull Request on the GitHub fork.">
-        <svg viewBox="0 0 720 320" font-family="var(--f-sans)">
-          <defs>
-            <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
-            <marker id="ara" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
-          </defs>
-          <rect x="14" y="118" width="150" height="80" rx="9" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
-          <text x="26" y="142" font-size="11" font-weight="700" fill="var(--ink)">GHCR</text>
-          <text x="26" y="160" font-size="10.5" fill="var(--ink-2)">codemender-ci</text>
-          <text x="26" y="175" font-size="10.5" fill="var(--ink-2)">image :v0.2.0</text>
-          <text x="26" y="190" font-size="9" fill="var(--muted)">pulled by GITHUB_TOKEN</text>
-          <rect x="196" y="40" width="360" height="250" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>
-          <text x="216" y="66" font-size="12" font-weight="700" fill="var(--accent-ink)">One GHA job &mdash; the CodeMender container</text>
-          <g font-size="11" text-anchor="middle">
-            <g><rect x="216" y="80" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="99" fill="var(--ink)">0 &middot; clone your fork</text></g>
-            <g><rect x="216" y="116" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="135" fill="var(--ink)">1 &middot; cm find  (scan)</text></g>
-            <g><rect x="216" y="152" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="171" fill="var(--ink)">2 &middot; cm find verify  (reproduce)</text></g>
-            <g><rect x="216" y="188" width="320" height="30" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="207" fill="var(--ink)">3 &middot; cm fix  (apply patch)</text></g>
-            <g><rect x="216" y="224" width="320" height="30" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="376" y="243" fill="var(--accent-ink)" font-weight="650">4 &middot; push branch + open PR</text></g>
-          </g>
-          <text x="376" y="278" font-size="9.5" fill="var(--muted)" text-anchor="middle">steps share one filesystem &mdash; no gcsfuse</text>
-          <rect x="588" y="120" width="124" height="72" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
-          <text x="602" y="146" font-size="12" font-weight="700" fill="var(--ink)">GitHub fork</text>
-          <text x="602" y="165" font-size="10.5" fill="var(--ink-2)">Pull Request</text>
-          <text x="602" y="180" font-size="10.5" fill="var(--ink-2)">review &rarr; merge</text>
-          <line x1="164" y1="150" x2="212" y2="150" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
-          <text x="188" y="142" font-size="9" fill="var(--muted)" text-anchor="middle">pull</text>
-          <line x1="556" y1="240" x2="586" y2="170" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ara)"/>
-        </svg>
-      </div>
+
+      <div class="callout warn"><div class="ct">&#9888; Staging draft &mdash; not tested on GitHub Actions</div><p>The interactive path (download &rarr; <code class="inline">cm init</code> &rarr; <code class="inline">cm find</code>) is <span class="chip ok">verified</span> in <code class="inline">cloud-llm-preview1</code> with a <code class="inline">@google.com</code> identity, and the <a href="/">Cloud Build</a> fan-out scripts were validated against a real binary. This <b>GitHub Actions</b> variant has <b>not</b> been run &mdash; the auth wiring below (injected ADC) is written from what works interactively, not proven in a runner. Treat it as the plan.</p></div>
     </header>
 
     <section id="flow">
-      <h2><span class="kicker">The big picture</span>What you are building</h2>
-      <p>CodeMender (<code class="inline">cm</code>) is an AI security agent: a thin client that streams a codebase to a hardened backend which reasons about vulnerabilities and generates <em>validated</em> patches. You'll drive it from CI as five steps of a single GitHub Actions job:</p>
+      <div class="step"><span class="num">&#9670;</span><h2>How it works</h2></div>
+      <p>One GitHub Actions job on <code class="inline">ubuntu-latest</code> does the whole flow &mdash; no container, no state bucket. That's the big simplification over Cloud Build:</p>
       <ul>
-        <li><b>clone</b> &mdash; shallow-clone your fork into <code class="inline">/workspace/repo</code> using your PAT.</li>
-        <li><b>find</b> &mdash; <code class="inline">cm find</code> scans a file and records vulnerabilities (severity, CWE, analysis).</li>
-        <li><b>verify</b> &mdash; <code class="inline">cm find verify</code> <em>reproduces</em> the top finding (it may build &amp; run the app) to confirm it's real. This is why the image ships with node/npm.</li>
-        <li><b>fix</b> &mdash; <code class="inline">cm fix</code> generates the patch; your script applies it deterministically.</li>
-        <li><b>open-pr</b> &mdash; commit to a branch, push to your fork, open a PR whose body is CodeMender's own analysis.</li>
+        <li><b>Single job = state just works.</b> CodeMender's SQLite <code class="inline">state.db</code> lives on the runner's disk for the life of the job, so <code class="inline">find</code> &rarr; <code class="inline">verify</code> &rarr; <code class="inline">fix</code> share it with <b>no gcsfuse</b> and no cross-step hand-off.</li>
+        <li><b>node, git, jq are preinstalled</b> on the runner, and <code class="inline">cm verify</code> can build &amp; run Juice Shop there &mdash; so there's <b>no toolbox image to build</b> either. You just download the <code class="inline">cm</code> binary in a step.</li>
+        <li><b>Fan-out is still available</b> &mdash; scan many files, then verify/fix across findings; each parallel worker gets its own <b>independent clone</b> (not a git worktree &mdash; that shares <code class="inline">.git</code> and deadlocks). See the caveat in <a href="#s5">Step&nbsp;5</a>.</li>
       </ul>
-      <div class="callout note"><div class="ct">&#128190; Why there's <em>no</em> state bucket here</div>
-        <p>On Cloud Build each step is a fresh container, so CodeMender's <code class="inline">~/.codemender</code> (config, identity key, findings SQLite DB) had to be persisted in a gcsfuse-mounted GCS bucket. On GitHub Actions every step of a job runs in the <b>same container</b>, so that directory simply survives from <code class="inline">find</code> to <code class="inline">verify</code> to <code class="inline">fix</code>. We point <code class="inline">$HOME</code> at a per-run folder and move on &mdash; the one real simplification of this port.</p></div>
-      <div class="callout note"><div class="ct">&#128273; No CodeMender secret to manage &mdash; for now (EAP)</div>
-        <p>The CodeMender server endpoint and credential are baked into the <code class="inline">cm</code> binary, so the only secret <em>you</em> create is a GitHub token to push and open a PR. That's an <b>EAP convenience</b>. The <b>public preview and GA won't</b> ship auth in the binary &mdash; they'll authenticate with <b>standard methods</b> you wire into the same one setup step: a <b>service account</b>, <b>Workload Identity Federation</b>, or a <b>scoped API key</b> (least secure of the three). See <a href="#production">Production &amp; EAP notes</a>.</p></div>
-
-      <h3>The five scripts &mdash; identical to the Cloud Build lab</h3>
-      <p>The CodeMender knowledge lives in the container image and four phase scripts. Those are <b>byte-for-byte the same</b> across platforms. Only <code class="inline">cm-env.sh</code> (the shared setup the others <code class="inline">source</code>) changed &mdash; its gcsfuse mount block is gone, because state persistence is free here:</p>
-      <ul>
-        <li><code class="inline">cm-env.sh</code> &mdash; not a step of its own. It points <code class="inline">$HOME</code> at a per-run folder, runs <code class="inline">cm init</code> once, and defines <code class="inline">top_finding_id()</code>, the <code class="inline">jq</code> helper that picks the highest-severity finding. <code class="inline">find</code>/<code class="inline">verify</code>/<code class="inline">fix</code> each <code class="inline">source</code> it first.</li>
-        <li><code class="inline">find.sh</code> &rarr; <code class="inline">verify.sh</code> &rarr; <code class="inline">fix.sh</code> &rarr; <code class="inline">open-pr.sh</code> &mdash; one workflow step each, run in order, all in the same container.</li>
-      </ul>
-      <p><b>In sync without passing arguments.</b> No step tells the next <em>which</em> finding to work on. Every step independently re-runs <code class="inline">top_finding_id()</code> &mdash; it greps <code class="inline">cm report -f json</code>, keeps findings at or above <code class="inline">MIN_SEVERITY</code>, and returns the single top one. Because all steps read the <em>same</em> findings DB on the shared filesystem, they agree on the same finding without ever exchanging an ID. That decoupling is why any step can be re-run on its own, and why the &ldquo;confirm remediation&rdquo; pass naturally opens no PR once the top finding is gone.</p>
     </section>
 
-    <section id="design">
-      <h2><span class="kicker">Why it's built this way</span>Design decisions</h2>
-      <table class="tbl"><thead><tr><th>Decision</th><th>Why</th></tr></thead><tbody>
-        <tr><td><b>One job, five steps</b> (not five jobs)</td><td>Steps of a job share a container and filesystem, so CodeMender state persists for free. Splitting into jobs would reintroduce the cross-container state problem (and need <code class="inline">actions/cache</code> or artifacts).</td></tr>
-        <tr><td><b>Container image</b> from GHCR</td><td>The image is the transferable unit: the same Dockerfile runs on Cloud Build, GHA, and GitLab, and pins the exact toolchain (node 22, build-essential) regardless of the runner. Pulled with the built-in <code class="inline">GITHUB_TOKEN</code> &mdash; no registry credentials to manage.</td></tr>
-        <tr><td><b>Full verification</b>, not skipped</td><td>CodeMender reproduces the exploit (it builds &amp; runs the app), so a fix targets a <em>confirmed</em> bug. This is why the image ships node/npm and why verify is the slow step.</td></tr>
-        <tr><td><b>15-min verify cap + PR flag</b></td><td><code class="inline">cm find verify</code> is thorough but <em>variable</em>. <b>The cap is a lab convenience, not a product limit.</b> When it's hit we still generate the fix and <b>flag the PR as UNVERIFIED</b> so the human reviewer scrutinises it. Automated verification assists the human gate &mdash; it never replaces it.</td></tr>
-        <tr><td><b>Deterministic patch apply</b></td><td>The fix step prefers the change CodeMender actually made to the target file, falling back to its <em>stored</em> patch &mdash; so the result is reproducible.</td></tr>
-        <tr><td><b>Human-in-the-loop PR</b></td><td>The pipeline never writes to <code class="inline">master</code>. CodeMender proposes; you review, approve, and merge. Nothing in the pipeline ever closes a PR, so the review PR stays open until a person acts on it.</td></tr>
-        <tr><td><b>Same-file concurrency guard</b></td><td>A <code class="inline">concurrency:</code> group serialises runs that target the same file, so two <code class="inline">cm fix</code> runs never produce divergent patches / conflicting PRs. See <a href="#concurrency">Concurrency &amp; safety</a>.</td></tr>
-        <tr><td><b>Single-file scan target</b></td><td>A one-file target keeps CodeMender's sandbox scoped &mdash; fast and deterministic for the lab.</td></tr>
-        <tr><td><b>Severity gate</b> (<code class="inline">min_severity</code>, default CRITICAL)</td><td>Only findings at/above the threshold are auto-remediated. Lower-severity findings are reported but don't open PRs.</td></tr>
-      </tbody></table>
-    </section>
-
-    <section id="prereq">
-      <h2><span class="kicker">Before you start</span>Prerequisites</h2>
-      <p>You drive this lab from <b>your own laptop</b> and <b>your own GitHub account</b>. The heavy lifting &mdash; building the image, running CodeMender, opening the PR &mdash; happens on GitHub-hosted runners, so you need <b>no local Docker and no GCP</b>. What you do locally is set up the repo and push the files into it.</p>
-      <table class="tbl"><thead><tr><th>You need</th><th>Notes</th></tr></thead><tbody>
-        <tr><td>Your <b>GitHub account</b></td><td>You'll fork Juice Shop and host the pipeline repo under it. GHCR (Packages) is included &mdash; nothing to enable.</td></tr>
-        <tr><td><b>git</b> + <b>gh</b> on your laptop</td><td>To create the repo, add the files (including the <code class="inline">cm-linux</code> binary), and push. <code class="inline">gh</code> also powers the optional copy-paste commands; anything <code class="inline">gh</code> does you can also do in the GitHub web UI. (<a href="https://cli.github.com" target="_blank" rel="noopener">install gh</a>, then <code class="inline">gh auth login</code>.)</td></tr>
-        <tr><td>The <b>CodeMender binary</b> (<code class="inline">cm-linux</code>)</td><td>Provided by your facilitator during EAP. You commit it into your repo and bake it into the image in Step&nbsp;5. (At public preview you'll download your own.)</td></tr>
-      </tbody></table>
-      <div class="callout warn"><div class="ct">&#9888; Use a throwaway fork</div><p>Juice Shop is <em>deliberately vulnerable</em>. Keep it in an isolated fork; never expose it publicly.</p></div>
-    </section>
-
-    <section id="image">
-      <h2><span class="kicker">The transferable unit</span>The CodeMender image</h2>
-      <p>The toolbox image is a deliberately minimal container: the <code class="inline">cm</code> client plus the build/runtime tools the pipeline needs (node/npm so <code class="inline">cm find verify</code> can build &amp; run Juice Shop, git, jq). It carries <b>no orchestration</b> &mdash; you author the scripts and the workflow.</p>
-      <p>It's identical to the Cloud Build lab's image (it even still contains gcsfuse &mdash; harmless here, and it keeps <b>one</b> image working across every platform). You build it once with the workflow in Step&nbsp;5; here's the recipe for reference:</p>
-      <details class="fac"><summary>container/Dockerfile &mdash; reference only <span class="tw">&#9656;</span></summary><div class="body"><figure class="code"><figcaption><span class="lbl">container/Dockerfile</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># CodeMender CI toolbox image (same recipe as the Cloud Build lab).</span>
-<span class="c"># Base: Debian-based Node.js (glibc). cm is glibc-linked; Juice Shop runs on Node 22.</span>
-<span class="k">FROM</span> node:22-bookworm-slim
-
-<span class="c"># git/ca-certs: clone+push+TLS · curl/jq: GitHub API + parse cm report</span>
-<span class="c"># build-essential/python3: node-gyp · fuse3/gcsfuse: unused here, kept for portability</span>
-<span class="k">RUN</span> apt-get update \
- &amp;&amp; apt-get install -y --no-install-recommends \
-      git ca-certificates curl jq gnupg build-essential python3 fuse3 \
- &amp;&amp; curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-      | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
- &amp;&amp; echo <span class="v">"deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt gcsfuse-bookworm main"</span> \
-      &gt; /etc/apt/sources.list.d/gcsfuse.list \
- &amp;&amp; apt-get update &amp;&amp; apt-get install -y --no-install-recommends gcsfuse \
- &amp;&amp; rm -rf /var/lib/apt/lists/*
-
-<span class="k">COPY</span> cm-linux /usr/local/bin/cm
-<span class="k">RUN</span> chmod 0755 /usr/local/bin/cm
-<span class="k">WORKDIR</span> /workspace</pre></figure></div></details>
+    <section id="access">
+      <div class="step"><span class="num">&#9670;</span><h2>Access model &mdash; inject your <code class="inline">@google.com</code> credentials</h2></div>
+      <p>Preview access is a <b>human</b> <code class="inline">@google.com</code> entitlement, and a GitHub runner has no way to <em>be</em> you on its own. So you hand it your Application Default Credentials as a secret, and point CodeMender's quota at the shared entitled project.</p>
+      <table class="tbl">
+        <thead><tr><th>Piece</th><th>Who / what</th></tr></thead>
+        <tbody>
+        <tr><td><b>Entitled project</b></td><td><code class="inline">cloud-llm-preview1</code> &mdash; the shared, preview-entitled project. All CodeMender usage bills here.</td></tr>
+        <tr><td><b>Calling identity</b></td><td>Your <code class="inline"><span class="p">ldap</span>@google.com</code>, injected into the runner as ADC.</td></tr>
+        <tr><td><b>Quota project</b></td><td><code class="inline">cloud-llm-preview1</code> &mdash; set on the ADC so <code class="inline">cm</code> attributes usage to the entitled project.</td></tr>
+        <tr><td><b>Secrets</b></td><td><code class="inline">CM_ADC</code> (base64 of your ADC JSON) and <code class="inline">GH_PAT</code> (to push + open the PR).</td></tr>
+        </tbody>
+      </table>
+      <div class="callout warn"><div class="ct">&#9888; That ADC is a live human credential</div><p><code class="inline">CM_ADC</code> holds your user refresh token &mdash; broad, long-lived Google Cloud access, not a scoped key. It's the cost of a human-only allowlist on an <em>external</em> runner. Fine for a time-boxed lab; revoke after with <code class="inline">gcloud auth application-default revoke</code> and delete the secret. <b>Production hardening:</b> use <b>Workload Identity Federation</b> to an entitled service account in <code class="inline">cloud-llm-preview1</code> instead &mdash; no human token in CI (needs that SA entitled to the <code class="inline">codemender-preview</code> agent).</p></div>
     </section>
 
     <section id="s1">
-      <div class="step"><span class="num">1</span><h2>Fork Juice Shop</h2></div>
-      <p>Fork <a href="https://github.com/juice-shop/juice-shop" target="_blank" rel="noopener">OWASP Juice Shop</a> into your account &mdash; this is the code CodeMender will scan and open a PR against. Base branch is <code class="inline">master</code>.</p>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; optional (gh)</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo fork juice-shop/juice-shop --clone=false
-<span class="c"># -> creates <span class="p">YOUR_USER</span>/juice-shop</span></pre></figure>
-      <label class="done-toggle"><input type="checkbox" data-step="1"> Mark complete</label>
+      <div class="step"><span class="num">1</span><h2>Sign in &amp; smoke-test the CLI</h2></div>
+      <p><span class="chip ok">verified</span> On your laptop, prove the CLI reaches the backend &mdash; and produce the ADC file you'll inject.</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-linux-amd64.zip --destination=./
+unzip cm-linux-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm
+
+gcloud auth application-default login <span class="p">ldap</span>@google.com
+gcloud auth application-default set-quota-project cloud-llm-preview1
+
+cd /tmp &amp;&amp; git clone --depth 1 https://github.com/juice-shop/juice-shop js
+cd js &amp;&amp; cm init &amp;&amp; cm find routes/login.ts -y --bypass-warning   <span class="c"># expect 1 CRITICAL</span></pre></figure>
     </section>
 
     <section id="s2">
-      <div class="step"><span class="num">2</span><h2>Create the pipeline repo</h2></div>
-      <p>The workflow lives in its <em>own</em> repo (kept separate from the code it scans, mirroring how you'd run a remediation pipeline against many targets). Create a <b>private</b> repo and add these files &mdash; the layout you'll fill in over the next steps:</p>
-      <figure class="code"><figcaption><span class="lbl">repo layout</span><button class="copy" type="button">Copy</button></figcaption><pre>cm-ci-lab-gha/
-&#9500;&#9472; container/
-&#9474;  &#9500;&#9472; Dockerfile          <span class="c"># the toolbox recipe (Step 5)</span>
-&#9474;  &#9492;&#9472; cm-linux            <span class="c"># the cm binary from your facilitator</span>
-&#9500;&#9472; scripts/
-&#9474;  &#9500;&#9472; cm-env.sh           <span class="c"># shared setup (gcsfuse removed)</span>
-&#9474;  &#9500;&#9472; find.sh  verify.sh   <span class="c"># -- identical to the Cloud Build lab --</span>
-&#9474;  &#9492;&#9472; fix.sh   open-pr.sh
-&#9492;&#9472; .github/workflows/
-   &#9500;&#9472; image.yml           <span class="c"># build container/ -> GHCR (Step 5)</span>
-   &#9492;&#9472; codemender.yml      <span class="c"># the pipeline (Step 7)</span></pre></figure>
-      <p>Create it and clone it to your laptop, then you'll add these files over the next steps and push. (Prefer the browser? Create the repo on github.com and use <b>Add file &rarr; Upload files</b> instead &mdash; but the <code class="inline">cm-linux</code> binary is ~29&nbsp;MB, so pushing with git is smoother.)</p>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; on your laptop</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo create <span class="p">YOUR_USER</span>/cm-ci-lab-gha --private --clone
-cd cm-ci-lab-gha
-<span class="c"># ...add container/, scripts/, and .github/workflows/ over Steps 5&ndash;7, then:</span>
-git add . &amp;&amp; git commit -m <span class="v">"codemender gha pipeline"</span> &amp;&amp; git push</pre></figure>
-      <label class="done-toggle"><input type="checkbox" data-step="2"> Mark complete</label>
+      <div class="step"><span class="num">2</span><h2>Fork Juice Shop</h2></div>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo fork juice-shop/juice-shop --clone --fork-name juice-shop
+cd juice-shop</pre></figure>
+      <p class="small">The workflow runs in <em>your fork</em>, and the PR lands on it. Each participant's fork is independent &mdash; nothing to namespace.</p>
     </section>
 
     <section id="s3">
-      <div class="step"><span class="num">3</span><h2>Create a fine-grained PAT</h2></div>
-      <p>The pipeline's job-scoped <code class="inline">GITHUB_TOKEN</code> can't reach a <em>different</em> repo, so the <code class="inline">open-pr</code> step needs a token that can push a branch and open a PR on your fork. Create a <b>fine-grained personal access token</b> scoped to just that fork:</p>
-      <ul>
-        <li>GitHub &rarr; <b>Settings</b> &rarr; <b>Developer settings</b> &rarr; <b>Personal access tokens</b> &rarr; <b>Fine-grained tokens</b> &rarr; <b>Generate new token</b>.</li>
-        <li><b>Repository access</b> &rarr; <em>Only select repositories</em> &rarr; your <code class="inline">juice-shop</code> fork.</li>
-        <li><b>Repository permissions</b>: <span class="chip ok">Contents: Read and write</span> <span class="chip ok">Pull requests: Read and write</span></li>
-        <li>Set a short expiry and generate. Copy the token &mdash; you'll paste it in Step&nbsp;4.</li>
-      </ul>
-      <div class="callout note"><div class="ct">&#128273; Why not the built-in token?</div><p><code class="inline">GITHUB_TOKEN</code> is automatically scoped to the repo the workflow runs in (the pipeline repo), so it can't push to your <em>fork</em>. A scoped PAT is the least-privilege way to cross that boundary. (If you put the workflow <em>inside</em> the fork instead, <code class="inline">GITHUB_TOKEN</code> would suffice &mdash; but keeping the pipeline in its own repo is the more portable, real-world shape.)</p></div>
-      <label class="done-toggle"><input type="checkbox" data-step="3"> Mark complete</label>
+      <div class="step"><span class="num">3</span><h2>Add the workflow &amp; scripts</h2></div>
+      <p>Commit <code class="inline">.github/workflows/codemender.yml</code> (Step&nbsp;5) plus the four phase scripts under <code class="inline">scripts/</code> &mdash; the same scripts as the <a href="/#s8">Cloud Build lab</a>, with two changes: <code class="inline">cm-env.sh</code> drops the gcsfuse mount (below), and everything else is identical (multi-file scan, <code class="inline">_VERIFY_FANOUT</code> / <code class="inline">_FIX_FANOUT</code>, per-worker independent clones).</p>
     </section>
 
     <section id="s4">
-      <div class="step"><span class="num">4</span><h2>Set the GH_PAT secret</h2></div>
-      <p>Store the token as an <b>Actions secret</b> named <code class="inline">GH_PAT</code> in the pipeline repo. This is the GHA equivalent of the Cloud Build lab's Secret Manager <code class="inline">gh-pat</code>.</p>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; or repo Settings &rarr; Secrets &rarr; Actions</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your github secret&gt;</span>
-gh secret set GH_PAT --body <span class="v">"$GH_PAT"</span> --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha</pre></figure>
-      <p class="small">&#128273; <code class="inline">export</code> records the token in your shell history &mdash; clear it when done with <code class="inline">history -c</code>.</p>
-      <label class="done-toggle"><input type="checkbox" data-step="4"> Mark complete</label>
+      <div class="step"><span class="num">4</span><h2>Set the two secrets</h2></div>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; GitHub token</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># fine-grained PAT on your fork: Contents R/W + Pull requests R/W</span>
+gh secret set GH_PAT --repo "<span class="p">YOUR_USER</span>/juice-shop"</pre></figure>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; your ADC, base64'd</span><button class="copy" type="button">Copy</button></figcaption><pre>base64 -w0 ~/.config/gcloud/application_default_credentials.json \
+  | gh secret set CM_ADC --repo "<span class="p">YOUR_USER</span>/juice-shop"</pre></figure>
+      <div class="callout note"><div class="ct">&#8505; The ADC must carry the quota project</div><p>You ran <code class="inline">set-quota-project cloud-llm-preview1</code> in Step&nbsp;1, so the JSON already has <code class="inline">quota_project_id</code>. The workflow also exports <code class="inline">GOOGLE_CLOUD_QUOTA_PROJECT</code> as belt-and-suspenders.</p></div>
     </section>
 
     <section id="s5">
-      <div class="step"><span class="num">5</span><h2>Build the toolbox image &rarr; GHCR</h2></div>
-      <p>Add <code class="inline">container/Dockerfile</code> and the <code class="inline">cm-linux</code> binary, then add this workflow. It builds the image and pushes it to GHCR using the built-in <code class="inline">GITHUB_TOKEN</code> (granted <code class="inline">packages: write</code>) &mdash; no local Docker, no registry login, no GCP.</p>
-      <figure class="code"><figcaption><span class="lbl">.github/workflows/image.yml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Build the CodeMender toolbox image and push it to GHCR.</span>
-<span class="k">name</span>: build-image
-<span class="k">on</span>: { workflow_dispatch: {}, push: { paths: [ container/**, .github/workflows/image.yml ] } }
-<span class="k">env</span>: { IMAGE: ghcr.io/<span class="p">YOUR_USER</span>/codemender-ci }
-<span class="k">jobs</span>:
-  build:
-    runs-on: ubuntu-latest
-    permissions: { contents: read, packages: write }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
-        with: { registry: ghcr.io, username: <span class="v">"${{ github.actor }}"</span>, password: <span class="v">"${{ secrets.GITHUB_TOKEN }}"</span> }
-      - uses: docker/build-push-action@v6
-        with:
-          context: container
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:v0.2.0
-            ${{ env.IMAGE }}:latest</pre></figure>
-      <p>Run it: <b>Actions</b> &rarr; <b>build-image</b> &rarr; <b>Run workflow</b>. It finishes in ~90&nbsp;s and produces <code class="inline">ghcr.io/<span class="p">YOUR_USER</span>/codemender-ci:v0.2.0</code>. The package is private and linked to the repo, so the pipeline pulls it with the same <code class="inline">GITHUB_TOKEN</code>.</p>
-      <label class="done-toggle"><input type="checkbox" data-step="5"> Mark complete</label>
-    </section>
-
-    <section id="s6">
-      <div class="step"><span class="num">6</span><h2>Write the phase scripts</h2></div>
-      <p><b>Four of the five scripts are identical to the <a href="https://cm-ci-lab.cedemo.app">Cloud Build lab</a></b> &mdash; copy <code class="inline">find.sh</code>, <code class="inline">verify.sh</code>, <code class="inline">fix.sh</code>, and <code class="inline">open-pr.sh</code> unchanged into <code class="inline">scripts/</code>. They're pure CodeMender logic and don't care what CI drives them. The only edit is <code class="inline">cm-env.sh</code>: its gcsfuse mount block is gone, because state persists on the job filesystem.</p>
-      <figure class="code"><figcaption><span class="lbl">scripts/cm-env.sh &middot; the one changed file</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c">#!/usr/bin/env bash</span>
-<span class="c"># cm-env.sh — shared setup, sourced by find/verify/fix.</span>
-<span class="c">#</span>
-<span class="c"># GHA vs Cloud Build — the ONE platform difference: every step of a GHA job runs</span>
-<span class="c"># in the SAME container, so ~/.codemender already persists across find→verify→fix.</span>
-<span class="c"># We just point HOME at a per-run dir — no bucket, no gcsfuse. STATE_ID keeps</span>
-<span class="c"># concurrent runs isolated (and underpins the same-file concurrency guard).</span>
-<span class="k">set</span> -euo pipefail
-: <span class="v">"${STATE_ID:?set STATE_ID (e.g. the GHA \$GITHUB_RUN_ID)}"</span>
-
-<span class="k">export</span> WORKSPACE=<span class="v">"${WORKSPACE:-/workspace}"</span>
-<span class="k">export</span> REPO_DIR=<span class="v">"${REPO_DIR:-$WORKSPACE/repo}"</span>
-<span class="k">export</span> HOME=<span class="v">"/cmstate/${STATE_ID}"</span>          <span class="c"># cm writes ~/.codemender here</span>
-mkdir -p <span class="v">"$HOME"</span>
-
-<span class="k">if</span> [[ ! -f <span class="v">"$HOME/.codemender/config.yaml"</span> ]]; <span class="k">then</span>
-  cm init
-  cat &gt; <span class="v">"$HOME/.codemender/config.yaml"</span> &lt;&lt;<span class="v">'YAML'</span>
-server: {}
-scan: { extensions: { include: [".ts",".js"], exclude: [".min.js",".spec.ts",".test.ts"] }, incremental: false }
-output: { format: table }
-tools:  { confirm_commands: false, confirm_writes: false }
-vcs:    { type: git }
-build:  { command: "" }
-YAML
-<span class="k">fi</span>
-
-<span class="k">case</span> <span class="v">"${MIN_SEVERITY:-CRITICAL}"</span> <span class="k">in</span>
-  CRITICAL) <span class="k">export</span> SEV_RANK=4;; HIGH) <span class="k">export</span> SEV_RANK=3;;
-  MEDIUM)   <span class="k">export</span> SEV_RANK=2;; *)    <span class="k">export</span> SEV_RANK=1;;
-<span class="k">esac</span>
-
-<span class="c"># highest-severity finding UUID at/above MIN_SEVERITY (empty if none)</span>
-top_finding_id() {
-  cm report -f json 2&gt;/dev/null | jq -r --argjson min <span class="v">"${SEV_RANK:-4}"</span> <span class="v">'
-    def rank: {CRITICAL:4,HIGH:3,MEDIUM:2,LOW:1}[(.Severity|ascii_upcase)] // 0;
-    (if type=="array" then . else [] end) | map(select(rank &gt;= $min))
-    | sort_by(rank) | reverse | (.[0].FindingID // "")'</span>
-}</pre></figure>
-      <details class="fac"><summary>The four unchanged scripts &mdash; full source (copy into <code class="inline">scripts/</code>) <span class="tw">&#9656;</span></summary><div class="body">
-        <table class="tbl"><thead><tr><th>Script</th><th>Does</th></tr></thead><tbody>
-          <tr><td><code class="inline">find.sh</code></td><td><code class="inline">source cm-env.sh</code>; <code class="inline">cm find $SCAN_PATH -y</code>; write <code class="inline">cm report -f json</code>; pick the top finding.</td></tr>
-          <tr><td><code class="inline">verify.sh</code></td><td><code class="inline">cm find verify</code> the top finding under a 15-min <code class="inline">timeout</code>; record the verdict (VERIFIED / OPEN) to a hand-off file. Hitting the cap does <em>not</em> skip fix.</td></tr>
-          <tr><td><code class="inline">fix.sh</code></td><td><code class="inline">cm fix --auto-apply</code>; prefer the change made to the target file, else apply the stored patch; write <code class="inline">cm-status.txt</code> (FIXED / DISMISSED / NONE).</td></tr>
-          <tr><td><code class="inline">open-pr.sh</code></td><td>If FIXED: commit to <code class="inline">codemender/&lt;cwe&gt;-&lt;id&gt;</code>, push with <code class="inline">GH_TOKEN</code>, open a PR whose body is CodeMender's analysis (flagged UNVERIFIED if verify hit the cap).</td></tr>
-        </tbody></table>
-        <p class="small">These are identical to the Cloud Build lab &mdash; copy each into <code class="inline">scripts/</code> exactly as-is. Only <code class="inline">cm-env.sh</code> (above) differs.</p>
-        <figure class="code"><figcaption><span class="lbl">scripts/find.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-#
-# find.sh — STEP 1: scan one file with CodeMender and record the findings.
-# State (findings DB) is written to the gcsfuse-mounted bucket so the verify
-# and fix steps can read it.
-source "$(dirname "$0")/cm-env.sh"
-
-: "${SCAN_PATH:?set SCAN_PATH (file to scan, relative to the repo)}"
-cd "$REPO_DIR"
-
-echo "🔍 cm find ${SCAN_PATH}"
-cm find "${SCAN_PATH}" -y
-
-echo "── findings ──────────────────────────────────────────"
-cm report                                   # human-readable table in the log
-cm report -f json &gt; "$WORKSPACE/cm-findings.json" || echo 'null' &gt; "$WORKSPACE/cm-findings.json"
-
-FID=$(top_finding_id)
-if [[ -z "$FID" ]]; then
-  echo "No findings at or above ${MIN_SEVERITY:-CRITICAL} — the verify/fix steps will no-op."
-else
-  echo "Top finding (&gt;= ${MIN_SEVERITY:-CRITICAL}) selected for verify/fix: $FID"
-fi</pre></figure>
-        <figure class="code"><figcaption><span class="lbl">scripts/verify.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-#
-# verify.sh — STEP 2: verify the highest-severity finding, capped at 15 minutes.
-#
-# cm find verify runs CodeMender's FULL verification — it may build and run the
-# app to reproduce the exploit. That is powerful but VARIABLE: usually a few
-# minutes, occasionally 40+ as the agent keeps retrying to stand up the app.
-# We cap it so the pipeline always finishes. Hitting the cap does NOT skip the
-# fix — we proceed, record the verdict, and the open-pr step flags the PR as
-# UNVERIFIED so the human reviewer knows to scrutinise it (human-in-the-loop).
-source "$(dirname "$0")/cm-env.sh"
-cd "$REPO_DIR"
-
-FID=$(top_finding_id)
-if [[ -z "$FID" ]]; then echo "No findings to verify."; exit 0; fi
-
-VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-900}"          # 15 minutes
-echo "🔬 cm find verify ${FID}  (capped at ${VERIFY_TIMEOUT}s)"
-if timeout "${VERIFY_TIMEOUT}s" cm find verify "${FID}"; then
-  echo "✅ verification finished within the cap"
-else
-  rc=$?
-  if [[ $rc -eq 124 ]]; then
-    echo "⏱️  verification hit the ${VERIFY_TIMEOUT}s cap — proceeding to fix; the PR will be flagged UNVERIFIED for human review"
-    # Cancel any session the cap interrupted so the fix session starts cleanly.
-    for s in $(cm session list 2&gt;/dev/null | awk 'NR&gt;2 &amp;&amp; /RUNNING/ {print $1}'); do
-      cm session cancel "$s" &gt;/dev/null 2&gt;&amp;1 || true
-    done
-  else
-    echo "verify exited ($rc) — proceeding"
-  fi
-fi
-
-# Record the verdict for the PR body: VERIFIED / DISMISSED / OPEN (=not confirmed).
-STATUS=$(cm report -f json | jq -r --arg id "$FID" '.[]|select(.FindingID==$id)|.Status' 2&gt;/dev/null)
-echo "${STATUS:-OPEN}" &gt; "$WORKSPACE/cm-verify-status.txt"
-echo "── status after verification (verdict: ${STATUS:-OPEN}) ──"
-cm report</pre></figure>
-        <figure class="code"><figcaption><span class="lbl">scripts/fix.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-#
-# fix.sh — STEP 3: generate the fix for the highest-severity finding, then apply
-# CodeMender's stored patch deterministically and leave metadata for open-pr.
-source "$(dirname "$0")/cm-env.sh"
-cd "$REPO_DIR"
-
-FID=$(top_finding_id)
-if [[ -z "$FID" ]]; then
-  echo "No findings to fix."; echo "NONE" &gt; "$WORKSPACE/cm-status.txt"; exit 0
-fi
-
-# Grab finding metadata for the PR body NOW (before cm fix touches the tree).
-cm report -f json | jq --arg id "$FID" '.[]|select(.FindingID==$id)' &gt; "$WORKSPACE/cm-finding.json"
-STATUS=$(jq -r '.Status' "$WORKSPACE/cm-finding.json")
-FILE=$(jq -r '.FilePath' "$WORKSPACE/cm-finding.json" | sed "s#^$REPO_DIR/##")
-if [[ "$STATUS" == "DISMISSED" ]]; then
-  echo "Finding $FID was DISMISSED during verification — not fixing."
-  echo "DISMISSED" &gt; "$WORKSPACE/cm-status.txt"; exit 0
-fi
-
-echo "🩹 cm fix ${FID} --auto-apply -y"
-cm fix "${FID}" --auto-apply -y 2&gt;&amp;1 | tee "$WORKSPACE/cm-fix.out"
-
-# CodeMender prints a one-line headline tagged [Summary]; capture the last one.
-SUMMARY=$(grep -aoE '\[Summary\][[:space:]]+.*' "$WORKSPACE/cm-fix.out" | tail -1 | sed -E 's/^\[Summary\][[:space:]]+//')
-[[ -z "$SUMMARY" ]] &amp;&amp; SUMMARY="Applied CodeMender remediation for finding ${FID}."
-printf '%s\n' "$SUMMARY" &gt; "$WORKSPACE/cm-summary.txt"
-
-# CodeMender's fix agent applies its patch to the working tree (often via
-# `git add -A`) and may leave exploit scaffolding behind from testing. Prefer the
-# change it actually made to the target file. Only if the tree is clean (the
-# agent reset it after testing) do we fall back to its STORED patch from
-# `cm report --patches`.
-git reset -q 2&gt;/dev/null || true          # unstage anything cm staged; keep the working-tree edits
-rm -rf "$REPO_DIR"/.exploit "$REPO_DIR"/.cm_project "$REPO_DIR"/routes/.exploit 2&gt;/dev/null || true
-
-if git diff --quiet -- "$FILE"; then
-  echo "Tree clean for ${FILE} after cm fix — applying CodeMender's stored patch."
-  git checkout -- . 2&gt;/dev/null || true
-  cm report --patches 2&gt;/dev/null | awk '
-    /^  diff --git /{cap=1}
-    cap &amp;&amp; /^  /{print; next}
-    cap &amp;&amp; !/^  /{cap=0}
-  ' | sed 's/^  //' &gt; "$WORKSPACE/cm.patch"
-  sed -i -e :a -e '/^[[:space:]]*$/{$d;N;ba}' "$WORKSPACE/cm.patch"   # trim trailing blanks
-  if [[ ! -s "$WORKSPACE/cm.patch" ]]; then
-    echo "❌ CodeMender produced no patch."; echo "NO_PATCH" &gt; "$WORKSPACE/cm-status.txt"; exit 1
-  fi
-  git apply --whitespace=nowarn "$WORKSPACE/cm.patch"
-else
-  echo "✅ Using the fix CodeMender applied to ${FILE}."
-fi
-
-if git diff --quiet -- "$FILE"; then
-  echo "❌ patch did not change ${FILE}."; echo "NO_CHANGE" &gt; "$WORKSPACE/cm-status.txt"; exit 1
-fi
-
-echo "FIXED" &gt; "$WORKSPACE/cm-status.txt"
-echo "✅ Fix applied to ${FILE}"
-git --no-pager diff -- "$FILE"</pre></figure>
-        <figure class="code"><figcaption><span class="lbl">scripts/open-pr.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-#
-# open-pr.sh — STEP 4: commit CodeMender's fix to a branch, push it to the
-# fork, and open a Pull Request whose body is CodeMender's own analysis.
-#
-# Does NOT touch CodeMender state — only git + the GitHub API — so it needs no
-# gcsfuse mount. Reads the metadata that fix.sh left in $WORKSPACE.
-set -euo pipefail
-
-WORKSPACE="${WORKSPACE:-/workspace}"
-REPO_DIR="${REPO_DIR:-$WORKSPACE/repo}"
-BASE_BRANCH="${BASE_BRANCH:-master}"
-GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-codemender-bot}"
-GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-codemender-bot@users.noreply.github.com}"
-
-: "${GH_OWNER:?set GH_OWNER}"; : "${GH_REPO:?set GH_REPO}"; : "${GH_TOKEN:?set GH_TOKEN (from Secret Manager)}"
-# Secret values often carry a trailing newline; strip all whitespace so it
-# can't corrupt the push URL or the auth header.
-GH_TOKEN=$(printf '%s' "$GH_TOKEN" | tr -d '[:space:]')
-
-STATUS=$(cat "$WORKSPACE/cm-status.txt" 2&gt;/dev/null || echo UNKNOWN)
-if [[ "$STATUS" != "FIXED" ]]; then
-  echo "cm-status is '$STATUS' (not FIXED) — nothing to open a PR for."; exit 0
-fi
-
-# --- Read the finding metadata ----------------------------------------------
-F="$WORKSPACE/cm-finding.json"
-FID=$(jq -r '.FindingID' "$F")
-TITLE=$(jq -r '.Title' "$F")
-SEV=$(jq -r '.Severity|ascii_upcase' "$F")
-CWE=$(jq -r '.VulnID // "CWE-unknown"' "$F")
-VTYPE=$(jq -r '.VulnType // "Vulnerability"' "$F")
-CONF=$(jq -r '.Confidence // 0' "$F")
-FILE=$(jq -r '.FilePath' "$F" | sed "s#^$REPO_DIR/##")
-ANALYSIS=$(jq -r '.Analysis // ""' "$F")
-SUMMARY=$(cat "$WORKSPACE/cm-summary.txt")
-
-# Verification verdict recorded by verify.sh (VERIFIED / DISMISSED / OPEN).
-VSTATUS=$(cat "$WORKSPACE/cm-verify-status.txt" 2&gt;/dev/null || echo "OPEN")
-if [[ "$VSTATUS" == "VERIFIED" ]]; then
-  VERIFY_LINE="✅ Reproduced &amp;amp; confirmed by CodeMender"
-  VERIFY_BANNER=""
-else
-  VERIFY_LINE="⚠️ NOT confirmed — verification did not complete within the 15-min cap"
-  VERIFY_BANNER=$'&gt; [!WARNING]\n&gt; **Human review required.** Automated verification did not confirm this finding within the 15-minute cap, so treat it as **UNVERIFIED**. Confirm the vulnerability and the fix from the analysis and diff below before approving.\n'
-fi
-
-SHORT="${FID:0:8}"
-CWE_SLUG=$(echo "$CWE" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9-')
-BRANCH="codemender/${CWE_SLUG}-${SHORT}"
-PR_TITLE="security: fix ${VTYPE} in ${FILE} (${CWE})"
-
-# --- Commit ------------------------------------------------------------------
-cd "$REPO_DIR"
-git config user.name  "$GIT_AUTHOR_NAME"
-git config user.email "$GIT_AUTHOR_EMAIL"
-git checkout -b "$BRANCH"
-git add -u                                   # tracked modifications only
-git commit -F - &lt;&lt;EOF
-${PR_TITLE}
-
-${SUMMARY}
-
-Finding:  ${TITLE}
-Severity: ${SEV}   Confidence: ${CONF}%   ${CWE}
-Detected &amp; remediated by CodeMender (finding ${FID}).
-EOF
-
-# --- Push (token redacted from any output) ----------------------------------
-PUSH_URL="https://x-access-token:${GH_TOKEN}@github.com/${GH_OWNER}/${GH_REPO}.git"
-set +e
-PUSH_OUT=$(git push "$PUSH_URL" "$BRANCH" 2&gt;&amp;1); PUSH_RC=$?
-set -e
-echo "${PUSH_OUT//${GH_TOKEN}/***}"
-[[ $PUSH_RC -eq 0 ]] || { echo "❌ git push failed"; exit 1; }
-
-# --- Compose the PR body -----------------------------------------------------
-{
-  echo "## 🛡️ CodeMender automated security fix"
-  echo
-  [[ -n "$VERIFY_BANNER" ]] &amp;&amp; { printf '%s\n' "$VERIFY_BANNER"; echo; }
-  echo "&gt; ${SUMMARY}"
-  echo
-  echo "| | |"
-  echo "|---|---|"
-  echo "| **Finding** | ${TITLE} |"
-  echo "| **Severity** | ${SEV} |"
-  echo "| **Type** | ${VTYPE} (${CWE}) |"
-  echo "| **Confidence** | ${CONF}% |"
-  echo "| **Verification** | ${VERIFY_LINE} |"
-  echo "| **File** | \`${FILE}\` |"
-  echo
-  echo "### Analysis"
-  echo
-  echo "${ANALYSIS}"
-  echo
-  echo "### Change"
-  echo '```diff'
-  git --no-pager diff "${BASE_BRANCH}..${BRANCH}" -- "$FILE"
-  echo '```'
-  echo
-  echo "---"
-  echo "_Generated by CodeMender. Review the diff before approving; merging applies the fix to \`${BASE_BRANCH}\`._"
-} &gt; "$WORKSPACE/cm-pr-body.md"
-
-# --- Open the PR -------------------------------------------------------------
-jq -n --arg t "$PR_TITLE" --arg h "$BRANCH" --arg b "$BASE_BRANCH" \
-      --rawfile body "$WORKSPACE/cm-pr-body.md" \
-      '{title:$t, head:$h, base:$b, body:$body, maintainer_can_modify:true}' &gt; "$WORKSPACE/pr-request.json"
-
-HTTP=$(curl -sS -o "$WORKSPACE/pr-response.json" -w '%{http_code}' -X POST \
-  -H "Authorization: Bearer ${GH_TOKEN}" \
-  -H "Accept: application/vnd.github+json" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  "https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/pulls" \
-  -d @"$WORKSPACE/pr-request.json")
-
-if [[ "$HTTP" == "201" ]]; then
-  echo "✅ Pull Request opened: $(jq -r '.html_url' "$WORKSPACE/pr-response.json")"
-elif [[ "$HTTP" == "422" ]]; then
-  echo "ℹ️  A PR for this branch already exists (HTTP 422):"
-  jq -r '.errors[]?.message // .message' "$WORKSPACE/pr-response.json"
-else
-  echo "❌ GitHub API returned HTTP $HTTP"
-  jq -r '.message' "$WORKSPACE/pr-response.json" 2&gt;/dev/null || cat "$WORKSPACE/pr-response.json"
-  exit 1
-fi</pre></figure>
-      </div></details>
-      <label class="done-toggle"><input type="checkbox" data-step="6"> Mark complete</label>
-    </section>
-
-    <section id="s7">
-      <div class="step"><span class="num">7</span><h2>Write the workflow</h2></div>
-      <p>This is the driver &mdash; the GHA counterpart of <code class="inline">cloudbuild.yaml</code>. One job, running inside the toolbox container, with the five steps as <code class="inline">run:</code> steps. Note three things: the <code class="inline">container:</code> block (pulls from GHCR with <code class="inline">GITHUB_TOKEN</code>), the <code class="inline">concurrency:</code> guard (<a href="#concurrency">same-file safety</a>), and <code class="inline">STATE_ID: ${{ github.run_id }}</code> (per-run state isolation).</p>
+      <div class="step"><span class="num">5</span><h2>The workflow</h2></div>
+      <p>Download <code class="inline">cm</code>, materialise the ADC, then run find (many files) &rarr; verify &rarr; fix &rarr; open one PR &mdash; all in one job.</p>
       <figure class="code"><figcaption><span class="lbl">.github/workflows/codemender.yml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">name</span>: codemender
-<span class="k">on</span>:
-  workflow_dispatch:
-    inputs:
-      gh_owner:     { default: <span class="v">"<span class="p">YOUR_USER</span>"</span> }
-      gh_repo:      { default: <span class="v">"juice-shop"</span> }
-      base_branch:  { default: <span class="v">"master"</span> }
-      scan_path:    { default: <span class="v">"routes/login.ts"</span> }
-      min_severity: { default: <span class="v">"CRITICAL"</span> }
-
-<span class="c"># ── Same-file concurrency guard ──────────────────────────────</span>
-<span class="c"># Serialize runs per (owner, repo, scan_path) so two cm-fix runs never work the</span>
-<span class="c"># same file at once. cancel-in-progress:false => queue, don't kill a fix.</span>
-<span class="k">concurrency</span>:
-  group: cm-${{ inputs.gh_owner }}-${{ inputs.gh_repo }}-${{ inputs.scan_path }}
-  cancel-in-progress: false
+<span class="k">on</span>: { workflow_dispatch: {} }
+<span class="k">permissions</span>: { contents: write, pull-requests: write }
 
 <span class="k">jobs</span>:
   remediate:
     runs-on: ubuntu-latest
-    permissions: { contents: read, packages: read }
-    container:
-      image: ghcr.io/<span class="p">YOUR_USER</span>/codemender-ci:v0.2.0
-      credentials: { username: <span class="v">"${{ github.actor }}"</span>, password: <span class="v">"${{ secrets.GITHUB_TOKEN }}"</span> }
+    concurrency: { group: codemender-${{ github.ref }}, cancel-in-progress: false }
     env:
-      STATE_ID:  ${{ github.run_id }}      <span class="c"># per-run state isolation</span>
-      WORKSPACE: /workspace
-      REPO_DIR:  /workspace/repo
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/adc.json
+      GOOGLE_CLOUD_QUOTA_PROJECT: cloud-llm-preview1
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+      SCAN_PATH: routes/            # a dir or space-separated files
+      MIN_SEVERITY: CRITICAL
+      VERIFY_FANOUT: "1"            # port-bound (see caveat) - keep at 1
+      FIX_FANOUT: "1"
     steps:
       - uses: actions/checkout@v4
-      - name: clone fork
-        env: { GH_PAT: <span class="v">"${{ secrets.GH_PAT }}"</span>, GH_OWNER: <span class="v">"${{ inputs.gh_owner }}"</span>, GH_REPO: <span class="v">"${{ inputs.gh_repo }}"</span>, BASE_BRANCH: <span class="v">"${{ inputs.base_branch }}"</span> }
+      - name: Auth &mdash; materialise injected ADC
+        run: echo "${{ secrets.CM_ADC }}" | base64 -d &gt; /tmp/adc.json
+      - name: Install the CodeMender CLI
         run: |
-          set -e; mkdir -p "$WORKSPACE"; rm -rf "$REPO_DIR"
-          git config --global credential.helper \
-            '!f() { echo username=x-access-token; echo "password=${GH_PAT}"; }; f'
-          git clone --depth 1 --branch "$BASE_BRANCH" \
-            "https://github.com/${GH_OWNER}/${GH_REPO}.git" "$REPO_DIR"
-      - name: find
-        env: { SCAN_PATH: <span class="v">"${{ inputs.scan_path }}"</span>, MIN_SEVERITY: <span class="v">"${{ inputs.min_severity }}"</span> }
-        run: bash scripts/find.sh
-      - name: verify
-        env: { MIN_SEVERITY: <span class="v">"${{ inputs.min_severity }}"</span> }
-        run: bash scripts/verify.sh
-      - name: fix
-        env: { MIN_SEVERITY: <span class="v">"${{ inputs.min_severity }}"</span> }
-        run: bash scripts/fix.sh
-      - name: open-pr
-        env: { GH_TOKEN: <span class="v">"${{ secrets.GH_PAT }}"</span>, GH_OWNER: <span class="v">"${{ inputs.gh_owner }}"</span>, GH_REPO: <span class="v">"${{ inputs.gh_repo }}"</span>, BASE_BRANCH: <span class="v">"${{ inputs.base_branch }}"</span> }
-        run: bash scripts/open-pr.sh</pre></figure>
-      <label class="done-toggle"><input type="checkbox" data-step="7"> Mark complete</label>
+          TOKEN="$(python3 - &lt;&lt;'PY'
+import json,urllib.request,urllib.parse
+c=json.load(open('/tmp/adc.json'))
+d=urllib.parse.urlencode({'client_id':c['client_id'],'client_secret':c['client_secret'],
+  'refresh_token':c['refresh_token'],'grant_type':'refresh_token'}).encode()
+print(json.load(urllib.request.urlopen('https://oauth2.googleapis.com/token',d))['access_token'])
+PY
+)"
+          curl -sSL -H "Authorization: Bearer $TOKEN" -o cm.zip \
+            "https://artifactregistry.googleapis.com/download/v1/projects/cmoc-prod/locations/us/repositories/codemender-cli-production/files/cm%3Astable%3Acm-linux-amd64.zip:download?alt=media"
+          unzip -q cm.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm
+      - name: Remediate (find &rarr; verify &rarr; fix &rarr; PR)
+        run: |
+          bash scripts/find.sh
+          bash scripts/verify.sh
+          bash scripts/fix.sh
+          bash scripts/open-pr.sh
+        env:
+          GH_OWNER: ${{ github.repository_owner }}
+          GH_REPO: juice-shop
+          BASE_BRANCH: master</pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; Validated: fan-out is port-bound on a single-server target</div><p>Testing the Cloud Build scripts with a real binary showed two things. Parallel workers need <b>independent clones</b> (a git <em>worktree</em> shares <code class="inline">.git</code> and collides on <code class="inline">index.lock</code>). <b>And</b> <code class="inline">cm verify</code>/<code class="inline">cm fix</code> build &amp; run Juice Shop on a <b>fixed port (3000)</b> to reproduce the exploit &mdash; so two in parallel collide on the port regardless of git isolation. For one app, keep <code class="inline">VERIFY_FANOUT</code>/<code class="inline">FIX_FANOUT</code> at <b>1</b>, or fan out <b>static</b> verification with <code class="inline">cm verify --skip-exploit-verification</code> (no app, no port). The machinery scales; the single shared app is the limit.</p></div>
+      <figure class="code"><figcaption><span class="lbl">scripts/cm-env.sh &middot; GHA (no mount)</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
+set -euo pipefail
+export WORKSPACE="${WORKSPACE:-$PWD}"
+export REPO_DIR="${REPO_DIR:-$PWD}"           # the checked-out fork
+if [[ ! -f "$HOME/.codemender/config.yaml" ]]; then
+  cm init
+  cat &gt; "$HOME/.codemender/config.yaml" &lt;&lt;'YAML'
+vcs: { type: "git" }
+build: { command: "" }
+tools: { confirm_execution: false, confirm_writes: false }
+YAML
+fi
+finding_ids() { cm report --format json --status "$1" --severity "${MIN_SEVERITY:-CRITICAL}" | jq -r '.[].FindingID'; }</pre></figure>
+      <p class="small">Copy <code class="inline">find.sh</code> / <code class="inline">verify.sh</code> / <code class="inline">fix.sh</code> / <code class="inline">open-pr.sh</code> from the <a href="/#s8">Cloud Build guide, Step&nbsp;8</a> unchanged &mdash; they already use independent clones and read <code class="inline">SCAN_PATH</code>/<code class="inline">*_FANOUT</code> from the env set above.</p>
     </section>
 
-    <section id="s8">
-      <div class="step"><span class="num">8</span><h2>Run the pipeline</h2></div>
-      <p><b>Actions</b> &rarr; <b>codemender</b> &rarr; <b>Run workflow</b>. Keep the defaults (scan <code class="inline">routes/login.ts</code>) or set <code class="inline">min_severity</code>. Watch the steps stream in the job log.</p>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; optional (gh)</span><button class="copy" type="button">Copy</button></figcaption><pre>gh workflow run codemender.yml --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha
-gh run watch $(gh run list --workflow codemender.yml --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha -L1 --json databaseId -q '.[0].databaseId') \
-  --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha</pre></figure>
-      <div class="callout note"><div class="ct">&#128200; What "success" means on each step</div><p>The step goes green if its <em>script</em> exits 0. For <code class="inline">verify</code> that includes the case where the 15-min cap was hit &mdash; the pipeline proceeds and flags the PR UNVERIFIED. Green on <code class="inline">verify</code> is not the same as &ldquo;CodeMender confirmed it&rdquo;; read the PR banner.</p></div>
-      <label class="done-toggle"><input type="checkbox" data-step="8"> Mark complete</label>
+    <section id="s6">
+      <div class="step"><span class="num">6</span><h2>Run it</h2></div>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>git add .github scripts &amp;&amp; git commit -m "add CodeMender workflow" &amp;&amp; git push
+gh workflow run codemender.yml --repo "<span class="p">YOUR_USER</span>/juice-shop"
+gh run watch --repo "<span class="p">YOUR_USER</span>/juice-shop"</pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; If it fails on auth</div><p><code class="inline">Unsupported agent interaction: codemender-preview</code> &rarr; your injected identity isn't entitled &mdash; re-check you signed in as <code class="inline">@google.com</code> and the quota project is <code class="inline">cloud-llm-preview1</code>. <code class="inline">invalid_grant</code> when minting the token &rarr; the ADC secret is stale; regenerate it (Step&nbsp;1) and re-set <code class="inline">CM_ADC</code>.</p></div>
     </section>
 
-    <section id="s9">
-      <div class="step"><span class="num">9</span><h2>Review the fix &amp; the PR</h2></div>
-      <p>The <code class="inline">open-pr</code> step logs the PR URL. Open it on your fork: the body is CodeMender's own analysis (finding, severity, confidence, verification verdict) and the diff. For the default <code class="inline">routes/login.ts</code> target the fix replaces a raw SQL string with a parameterised query &mdash; the correct SQL-injection remediation.</p>
-      <div class="callout warn"><div class="ct">&#9888; The commit may touch more than the scan file</div><p>To reproduce the exploit, <code class="inline">cm find verify</code> can edit other files (e.g. disabling a startup precondition so the app boots). Because <code class="inline">open-pr.sh</code> commits all tracked modifications (<code class="inline">git add -u</code>), that scaffolding can ride along in the PR. Review the full diff. To scope the commit to just the finding's file, change <code class="inline">git add -u</code> to <code class="inline">git add -- "$FILE"</code> in <code class="inline">open-pr.sh</code> &mdash; a good <a href="#production">hardening</a>.</p></div>
-      <label class="done-toggle"><input type="checkbox" data-step="9"> Mark complete</label>
+    <section id="s7">
+      <div class="step"><span class="num">7</span><h2>Review, approve &amp; merge</h2></div>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr list --repo "<span class="p">YOUR_USER</span>/juice-shop"
+gh pr view <span class="p">N</span> --repo "<span class="p">YOUR_USER</span>/juice-shop" --web
+gh pr merge <span class="p">N</span> --repo "<span class="p">YOUR_USER</span>/juice-shop" --squash</pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; Preview terms: supervise it</div><p>Pre-GA CodeMender is for testing and evaluation, not production. The workflow disables interactive confirmations to run non-interactively; the human merge gate keeps a person in the loop.</p></div>
     </section>
 
-    <section id="s10">
-      <div class="step"><span class="num">10</span><h2>Approve &amp; merge the Pull Request</h2></div>
-      <p>You are the gate. Read the analysis, confirm the diff, then <b>Merge</b>. The pipeline never writes to <code class="inline">master</code> and never closes the PR &mdash; it stays open until you act, so a reviewer always makes the final call.</p>
-      <label class="done-toggle"><input type="checkbox" data-step="10"> Mark complete</label>
+    <section id="cheatsheet">
+      <div class="step"><span class="num">&#9670;</span><h2><code class="inline">cm</code> cheat sheet</h2></div>
+      <table class="tbl">
+        <thead><tr><th>Command</th><th>Does</th></tr></thead>
+        <tbody>
+        <tr><td><code class="inline">cm find PATH -y</code></td><td>Scan a file or directory (10&ndash;50 files/scan)</td></tr>
+        <tr><td><code class="inline">cm verify FINDING_ID -y</code></td><td>Build &amp; run a PoC exploit; <code class="inline">--skip-exploit-verification</code> for static only (no port)</td></tr>
+        <tr><td><code class="inline">cm fix FINDING_ID -y</code></td><td>Generate, build-test, apply a patch</td></tr>
+        <tr><td><code class="inline">cm report --format table|md|json|sarif</code></td><td>Findings; SARIF &rarr; GitHub code scanning</td></tr>
+        <tr><td><code class="inline">cm vcs status|diff|stage|reset</code></td><td>Inspect / stage / discard changes</td></tr>
+        <tr><td><code class="inline">cm session list|resume|cancel</code></td><td>Track / resume / stop</td></tr>
+        </tbody>
+      </table>
     </section>
 
-    <section id="s11">
-      <div class="step"><span class="num">11</span><h2>Confirm the remediation</h2></div>
-      <p>Re-run the workflow after merging. <code class="inline">find</code> re-scans the now-fixed file; <code class="inline">top_finding_id()</code> finds nothing at/above the gate, so <code class="inline">fix</code> writes <code class="inline">NONE</code> and <code class="inline">open-pr</code> logs &ldquo;nothing to open a PR for.&rdquo; A clean confirm run &mdash; no PR &mdash; is the proof the vulnerability is gone.</p>
-      <label class="done-toggle"><input type="checkbox" data-step="11"> Mark complete</label>
-    </section>
-
-    <section id="concurrency">
-      <h2><span class="kicker">Reference</span>Concurrency &amp; same-file safety</h2>
-      <p>Two <code class="inline">cm fix</code> runs working the <em>same</em> source file at once would generate divergent patches, race on the branch, and open conflicting PRs. The workflow closes all three race surfaces:</p>
-      <table class="tbl"><thead><tr><th>Race surface</th><th>Guard</th></tr></thead><tbody>
-        <tr><td><b>The target file / branch</b></td><td><code class="inline">concurrency:</code> group keyed by <code class="inline">(owner, repo, scan_path)</code> with <code class="inline">cancel-in-progress:&nbsp;false</code> &mdash; same-file runs queue and run one at a time; <em>different</em> files still run in parallel.</td></tr>
-        <tr><td><b>CodeMender state DB</b></td><td><code class="inline">STATE_ID = github.run_id</code> &rarr; each run gets its own <code class="inline">~/.codemender</code>, so the findings SQLite DBs never collide.</td></tr>
-        <tr><td><b>The working tree</b></td><td>Each run clones the fork fresh into its own container filesystem &mdash; no shared checkout to corrupt.</td></tr>
-      </tbody></table>
-      <p>Scaling to many files? Drive a <b>matrix</b> over scan paths and set the concurrency <code class="inline">group</code> from <code class="inline">matrix.scan_path</code>. Same-file legs serialise; different-file legs run concurrently &mdash; safe fan-out with no extra machinery.</p>
-    </section>
-
-    <section id="production">
-      <h2><span class="kicker">Beyond the lab</span>Production &amp; EAP notes</h2>
-      <p>The lab is deliberately transparent so you see every step. A real deployment would harden it:</p>
-      <ul>
-        <li><b>CodeMender auth (post-EAP).</b> The baked-in credential goes away at public preview. Wire auth into the one <code class="inline">cm init</code> step in <code class="inline">cm-env.sh</code> &mdash; a <b>service account</b>, <b>Workload Identity Federation</b> (keyless; GHA issues an OIDC token GCP can federate), or a <b>scoped API key</b> stored as another Actions secret. WIF is the most portable and needs no long-lived secret.</li>
-        <li><b>Scope the commit.</b> Change <code class="inline">git add -u</code> to <code class="inline">git add -- "$FILE"</code> so verification scaffolding can't ride along in the PR (see Step&nbsp;9).</li>
-        <li><b>Pin the image by digest</b> (<code class="inline">@sha256:…</code>) instead of a tag, and least-privilege the PAT (fine-grained, short expiry) or use a GitHub App.</li>
-        <li><b>Emit SARIF</b> (<code class="inline">cm report -f sarif</code>) into <b>GitHub code scanning</b> instead of ad-hoc <code class="inline">jq</code> parsing.</li>
-        <li><b>Put the workflow in the target repo</b> to drop the PAT entirely (native checkout + <code class="inline">GITHUB_TOKEN</code> for the PR) &mdash; less portable across CIs, but simplest when you guard a single repo.</li>
-        <li><b>Set <code class="inline">build.command</code></b> so <code class="inline">cm</code> rejects patches that don't compile/test, and widen scans from a file to a directory.</li>
-      </ul>
+    <section id="cb">
+      <div class="step"><span class="num">&#9670;</span><h2>vs the Cloud Build lab</h2></div>
+      <table class="tbl">
+        <thead><tr><th>Aspect</th><th><a href="/">Cloud Build</a></th><th>GitHub Actions (here)</th></tr></thead>
+        <tbody>
+        <tr><td><b>Runs in</b></td><td>Inside <code class="inline">cloud-llm-preview1</code></td><td>On a GitHub runner, outside GCP</td></tr>
+        <tr><td><b>cm identity</b></td><td>The build service account (metadata server)</td><td>Your injected <code class="inline">@google.com</code> ADC</td></tr>
+        <tr><td><b>State</b></td><td>gcsfuse-mounted GCS bucket across steps</td><td>Runner disk &mdash; one job, no bucket</td></tr>
+        <tr><td><b>Toolbox image</b></td><td>Built &amp; pushed to Artifact Registry</td><td>None &mdash; download <code class="inline">cm</code> in a step</td></tr>
+        <tr><td><b>Fan-out limit</b></td><td colspan="2">Same &mdash; port-bound to 1 per shared app (validated)</td></tr>
+        </tbody>
+      </table>
     </section>
 
     <section id="cleanup">
-      <h2><span class="kicker">Wrap up</span>Cleanup</h2>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Close/merge the demo PR, delete the branch, remove the secret and image if done.</span>
-gh secret delete GH_PAT --repo <span class="p">YOUR_USER</span>/cm-ci-lab-gha
-<span class="c"># Delete the GHCR package and the pipeline repo from the GitHub UI when finished.</span></pre></figure>
+      <div class="step"><span class="num">&#9670;</span><h2>Cleanup</h2></div>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh secret delete CM_ADC --repo "<span class="p">YOUR_USER</span>/juice-shop"
+gh secret delete GH_PAT --repo "<span class="p">YOUR_USER</span>/juice-shop"
+gcloud auth application-default revoke   <span class="c"># kill the injected credential</span></pre></figure>
     </section>
-    <footer>CodeMender CI Lab &mdash; GitHub Actions variant. Same CodeMender, same scripts; a thinner driver and one less moving part. Built and validated end-to-end: image pushed to GHCR, one-job pipeline opened a real PR on a Juice Shop fork, CodeMender state persisted across steps with no gcsfuse.</footer>
-  </div></main>
+
+    <footer>
+      <p><b>CodeMender CI Lab &mdash; Public Preview (GitHub Actions)</b> &middot; staging draft. Juice Shop is &copy; OWASP, MIT-licensed, intentionally vulnerable &mdash; lab use only.</p>
+      <p class="small">No secrets appear in this guide. The GitHub Actions path is <b>not yet run</b> &mdash; the injected-ADC auth is written from the verified interactive path. Replace every <code class="inline" style="color:var(--muted)">placeholder</code> with your own values.</p>
+    </footer>
+   </div></main>
+</div>
 </div>
 <script>
 (function(){
