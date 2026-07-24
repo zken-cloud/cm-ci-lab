@@ -281,17 +281,18 @@ runsc --version</pre></figure>
           <button class="tab active" data-tab="glob" type="button">Global &middot; all workspaces</button>
           <button class="tab" data-tab="ws" type="button">Workspace &middot; this project</button>
         </div>
-        <div class="tabpane active" data-pane="glob"><figure class="code"><figcaption><span class="lbl">~/.gemini/config/skills/</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># get the skill folder (from the lab repo your facilitator shares)</span>
-git clone https://github.com/zken-cloud/cm-ci-lab
+        <div class="tabpane active" data-pane="glob"><figure class="code"><figcaption><span class="lbl">~/.gemini/config/skills/</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># the skills live in the public cm-skills repo</span>
+git clone https://github.com/zken-cloud/cm-skills
 
 mkdir -p ~/.gemini/config/skills
-cp -R cm-ci-lab/skills/codemender-fanout ~/.gemini/config/skills/
+cp -R cm-skills/codemender-fanout ~/.gemini/config/skills/
 chmod +x ~/.gemini/config/skills/codemender-fanout/scripts/*.sh
 
 ls ~/.gemini/config/skills/codemender-fanout/SKILL.md   <span class="c"># should exist</span></pre></figure></div>
         <div class="tabpane" data-pane="ws"><figure class="code"><figcaption><span class="lbl">&lt;repo&gt;/.agents/skills/</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># from the root of the repo you want CodeMender to work on</span>
+git clone https://github.com/zken-cloud/cm-skills
 mkdir -p .agents/skills
-cp -R /path/to/cm-ci-lab/skills/codemender-fanout .agents/skills/
+cp -R cm-skills/codemender-fanout .agents/skills/
 chmod +x .agents/skills/codemender-fanout/scripts/*.sh</pre></figure></div>
       </div>
       <div class="callout note"><div class="ct">&#9670; One skill, all three AGY surfaces</div><p>AGY, AGY&nbsp;CLI, and AGY&nbsp;IDE share the same <code class="inline">SKILL.md</code> format and each read the two locations above &mdash; so a single install covers the CLI, 2.0, and the IDE. (Variant-specific paths also exist &mdash; <code class="inline">~/.gemini/antigravity/skills/</code>, <code class="inline">~/.gemini/antigravity-cli/skills/</code> &mdash; but the two universal ones avoid the guesswork.)</p></div>
