@@ -3,193 +3,71 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CodeMender CI Lab &mdash; Public Preview (GitHub Actions)</title>
+<title>CodeMender CI Lab — GitHub Actions (Qwiklab)</title>
 <style>
-/* ============================ Design tokens ============================ */
 :root{
-  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3;
   --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
   --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
-  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b;
-  --code-ink:#dbe7e6; --code-muted:#7f9a99; --code-add:#7fdcae; --code-del:#f09195;
   --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
-  --maxw:820px;
   --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --f-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325;
     --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
     --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
-    --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be;
-    --code-ink:#d6e5e3; --code-muted:#6f8a89; --code-add:#7fdcae; --code-del:#f09195;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
   }
 }
 :root[data-theme="light"]{
-  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3;
   --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
   --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
-  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b; --code-ink:#dbe7e6; --code-muted:#7f9a99;
   --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
 }
 :root[data-theme="dark"]{
-  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325;
   --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
   --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
-  --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be; --code-ink:#d6e5e3; --code-muted:#6f8a89;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);
-  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;flex-direction:column}
 a{color:var(--accent-ink);text-decoration:none}
 a:hover{text-decoration:underline}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 
-/* ============================ Layout ============================ */
-.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
-.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
-  padding:1.6rem 1.1rem 2rem;border-right:1px solid var(--hair)}
-.main{min-width:0;padding:0 clamp(1.1rem,4vw,3rem) 6rem}
-.col{max-width:var(--maxw)}
-@media (max-width:880px){
-  .wrap{grid-template-columns:1fr}
-  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--hair)}
-  .rail-scroll{max-height:none}
-}
-
-/* ============================ Rail nav ============================ */
-.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.2rem}
-.brand svg{width:22px;height:22px;flex:none}
-.brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted)}
-.railnav{margin-top:1.4rem;font-size:.86rem}
-.railnav a{display:block;color:var(--ink-2);padding:.28rem .5rem;border-radius:7px;
-  border-left:2px solid transparent}
-.railnav a:hover{background:var(--surface-2);text-decoration:none}
-.railnav a.active{color:var(--accent-ink);border-left-color:var(--accent);background:var(--surface-2);font-weight:600}
-.railnav .grp{margin:1rem .5rem .3rem;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
-.railnav a .n{display:inline-block;width:1.5em;color:var(--muted);font-variant-numeric:tabular-nums}
-.themebtn{margin-top:1.5rem;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2);
-  border-radius:8px;padding:.4rem .7rem;font:inherit;font-size:.8rem;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
-.themebtn:hover{border-color:var(--accent)}
-
-/* ============================ Hero ============================ */
-.hero{padding:2.6rem 0 1.4rem}
-.eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
-h1{font-size:clamp(1.9rem,4.4vw,2.75rem);line-height:1.08;letter-spacing:-.025em;
-  margin:.5rem 0 .4rem;text-wrap:balance;font-weight:750}
-.lede{font-size:1.12rem;color:var(--ink-2);max-width:60ch;margin:.2rem 0 1.3rem}
-.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem}
-.pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:500;
-  padding:.3rem .7rem;border-radius:999px;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2)}
-.pill b{color:var(--ink);font-weight:650}
-
-/* ============================ Diagram ============================ */
-.diagram{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:1.1rem;
-  margin:1.4rem 0;box-shadow:var(--shadow);overflow-x:auto}
-.diagram svg{display:block;width:100%;min-width:640px;height:auto}
-
-/* ============================ Sections ============================ */
-section{padding:1.7rem 0;border-top:1px solid var(--hair)}
-section:first-of-type{border-top:none}
-h2{font-size:1.5rem;letter-spacing:-.02em;margin:.2rem 0 .3rem;font-weight:700;scroll-margin-top:1rem}
-h2 .kicker{display:block;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:.35rem}
-h3{font-size:1.08rem;margin:1.6rem 0 .4rem;letter-spacing:-.01em}
-p{margin:.6rem 0}
-ul,ol{margin:.6rem 0;padding-left:1.3rem}
-li{margin:.3rem 0}
-.small{font-size:.9rem;color:var(--muted)}
-
-/* Step header */
-.step{display:flex;gap:.8rem;align-items:baseline;margin:0 0 .2rem}
-.step .num{flex:none;width:2rem;height:2rem;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);
-  display:grid;place-items:center;font-weight:700;font-size:.95rem;font-variant-numeric:tabular-nums;transform:translateY(.25rem)}
-.step h2{margin:0}
-
-/* ============================ Code blocks ============================ */
-figure.code{margin:1rem 0;border:1px solid var(--hair-strong);border-radius:11px;overflow:hidden;background:var(--code-bg)}
-figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:1rem;
-  padding:.5rem .5rem .5rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07)}
-figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;color:var(--code-muted);text-transform:uppercase}
-.copy{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--code-ink);
-  font:inherit;font-size:.74rem;padding:.28rem .6rem;border-radius:7px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
-.copy:hover{border-color:var(--accent);color:var(--accent)}
-.copy.done{color:var(--ok);border-color:var(--ok)}
-.tabrow{display:flex;flex-wrap:wrap;gap:.35rem;margin:.4rem 0 .5rem}
-.tab{appearance:none;border:1px solid var(--hair-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:.78rem;padding:.32rem .75rem;border-radius:999px;cursor:pointer}
-.tab:hover{border-color:var(--accent)}
-.tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
-.tabpane{display:none}
-.tabpane.active{display:block}
-/* site top nav */
-.topnav{display:flex;align-items:center;gap:1rem;padding:.65rem clamp(1rem,4vw,2rem);background:var(--surface);border-bottom:1px solid var(--hair-strong)}
-.topnav .home{display:flex;align-items:center;gap:.5rem;font-weight:750;color:var(--ink);letter-spacing:-.01em;font-size:.98rem}
-.topnav .home svg{width:20px;height:20px;color:var(--accent)}
-.topnav .links{display:flex;gap:.4rem;margin-left:auto}
-.topnav .links a{padding:.5rem 1rem;border-radius:9px;font-size:.92rem;font-weight:650;color:var(--ink-2)}
+/* ============================ Top nav ============================ */
+.topnav{display:flex;align-items:center;gap:1.5rem;padding:.7rem clamp(1rem,4vw,2.2rem);
+  background:var(--surface);border-bottom:1px solid var(--hair)}
+.topnav .home{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.topnav .home svg{width:22px;height:22px;color:var(--accent)}
+.topnav .home:hover{text-decoration:none}
+.topnav .links{display:flex;gap:.35rem;margin-left:auto;flex-wrap:wrap}
+.topnav .links a{padding:.4rem .85rem;border-radius:8px;color:var(--ink-2);font-weight:550;font-size:.92rem}
 .topnav .links a:hover{background:var(--surface-2);text-decoration:none}
 .topnav .links a.active{background:var(--accent);color:#fff}
-@media(max-width:560px){.topnav{flex-wrap:wrap;gap:.5rem}.topnav .links{margin-left:0;width:100%}.topnav .links a{flex:1;text-align:center;padding:.5rem .35rem;font-size:.84rem}}
-figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
-pre .c{color:var(--code-muted)}      /* comment */
-pre .k{color:#7fd7c8}                 /* keyword/cmd */
-pre .v{color:#e9c17a}                 /* value/string */
-pre .p{color:#c99be0}                 /* placeholder */
-pre .add{color:var(--code-add)}
-pre .del{color:var(--code-del)}
-code.inline{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);
-  border:1px solid var(--hair);padding:.08em .38em;border-radius:5px;color:var(--ink);word-break:break-word}
 
-/* ============================ Callouts ============================ */
-.callout{margin:1.1rem 0;padding:.85rem 1rem .85rem 1.05rem;border-radius:10px;border:1px solid var(--hair);
-  background:var(--surface);border-left:3px solid var(--muted);box-shadow:var(--shadow)}
-.callout .ct{font-weight:650;font-size:.82rem;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem}
-.callout p{margin:.2rem 0}
-.callout.note{border-left-color:var(--accent)}
-.callout.note .ct{color:var(--accent-ink)}
-.callout.warn{border-left-color:var(--high)}
-.callout.warn .ct{color:var(--high)}
-.callout.sec{border-left-color:var(--crit);background:linear-gradient(0deg,var(--surface),var(--surface))}
-.callout.sec .ct{color:var(--crit)}
-.callout.chal{border-left-color:var(--accent);background:var(--accent-soft)}
-:root[data-theme="dark"] .callout.chal,@media (prefers-color-scheme:dark){.callout.chal{background:var(--accent-soft)}}
-.callout.chal .ct{color:var(--accent-ink)}
-.callout.chal .ct::before{content:"◆"}
-
-/* ============================ Chips / table ============================ */
-.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:650;padding:.12rem .5rem;
-  border-radius:6px;letter-spacing:.02em;text-transform:uppercase;font-family:var(--f-mono)}
-.chip.crit{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}
-.chip.high{background:color-mix(in srgb,var(--high) 18%,transparent);color:var(--high)}
-.chip.med{background:color-mix(in srgb,var(--med) 20%,transparent);color:var(--med)}
-.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
-.tbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;overflow-x:auto;display:block}
-.tbl thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
-  border-bottom:1px solid var(--hair-strong);padding:.5rem .6rem;font-weight:600}
-.tbl td{padding:.5rem .6rem;border-bottom:1px solid var(--hair);vertical-align:top}
-.tbl code{font-family:var(--f-mono);font-size:.85em}
-
-/* Collapsible facilitator */
-details.fac{border:1px solid var(--hair-strong);border-radius:12px;background:var(--surface);margin:1rem 0;box-shadow:var(--shadow)}
-details.fac>summary{cursor:pointer;list-style:none;padding:1rem 1.1rem;font-weight:650;display:flex;align-items:center;gap:.6rem}
-details.fac>summary::-webkit-details-marker{display:none}
-details.fac>summary .tw{margin-left:auto;color:var(--muted);transition:transform .2s}
-details.fac[open]>summary .tw{transform:rotate(90deg)}
-details.fac .body{padding:0 1.1rem 1.1rem}
-
-/* progress checkbox */
-.done-toggle{display:inline-flex;align-items:center;gap:.5rem;margin:.6rem 0 0;font-size:.85rem;color:var(--muted);cursor:pointer;user-select:none}
-.done-toggle input{accent-color:var(--accent);width:1.05em;height:1.05em}
-
-footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
-.kbd{font-family:var(--f-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--hair-strong);
-  border-bottom-width:2px;border-radius:5px;padding:.05em .4em}
-hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
+/* ============================ Hero card ============================ */
+.stage{flex:1;display:grid;place-items:center;padding:clamp(2rem,6vw,5rem) 1.2rem}
+.card{max-width:640px;width:100%;background:var(--surface);border:1px solid var(--hair);
+  border-radius:18px;box-shadow:var(--shadow);padding:clamp(1.8rem,5vw,3rem);text-align:center}
+.eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.1;letter-spacing:-.025em;
+  margin:.6rem 0 .5rem;text-wrap:balance;font-weight:750}
+.lede{font-size:1.1rem;color:var(--ink-2);margin:.2rem auto 1.7rem;max-width:48ch}
+.cta{display:inline-flex;align-items:center;gap:.6rem;background:var(--accent);color:#fff;
+  font-weight:650;font-size:1.02rem;padding:.85rem 1.5rem;border-radius:11px;box-shadow:var(--shadow)}
+.cta:hover{text-decoration:none;filter:brightness(1.05)}
+.cta svg{width:18px;height:18px}
+.sub{margin-top:1.4rem;font-size:.9rem;color:var(--muted)}
+.sub code{font-family:var(--f-mono);font-size:.85em;background:var(--surface-2);
+  border:1px solid var(--hair);border-radius:5px;padding:.1em .4em}
+.alt{margin-top:1.9rem;padding-top:1.4rem;border-top:1px solid var(--hair);font-size:.95rem;color:var(--ink-2)}
 </style>
 </head>
 <body>
@@ -198,262 +76,22 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
   <div class="links">
     <a href="/smoke">Smoke Test</a>
-    <a href="/">Cloud Build</a>
     <a href="/gha" class="active">GitHub Actions</a>
   </div>
 </div>
 
-<div class="wrap">
-  <aside class="rail">
-    <div class="brand">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
-      <div>CodeMender Lab<small>Public Preview &middot; GitHub Actions</small></div>
-    </div>
-    <nav class="railnav" aria-label="Lab contents">
-      <a href="#overview"><span class="n">&#9670;</span>Overview &amp; status</a>
-      <a href="#flow"><span class="n">&#9670;</span>How it works</a>
-      <a href="#access"><span class="n">&#9670;</span>Access model</a>
-      <div class="grp">The lab</div>
-      <a href="#s1"><span class="n">1</span>Capture your ADC</a>
-      <a href="#s2"><span class="n">2</span>Fork Juice Shop</a>
-      <a href="#s3"><span class="n">3</span>Add the workflow</a>
-      <a href="#s4"><span class="n">4</span>Secrets: PAT + ADC</a>
-      <a href="#s5"><span class="n">5</span>The workflow</a>
-      <a href="#s6"><span class="n">6</span>Run it</a>
-      <a href="#s7"><span class="n">7</span>Review &amp; merge</a>
-      <div class="grp">Reference</div>
-      <a href="#cheatsheet"><span class="n">&#9670;</span>cm cheat sheet</a>
-      <a href="#cb"><span class="n">&#9670;</span>vs the Cloud Build lab</a>
-      <a href="#cleanup"><span class="n">&#9670;</span>Cleanup</a>
-</nav>
-    <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-      <span id="themelbl">Theme</span>
-    </button>
-  </aside>
-  <main class="main"><div class="col">
-
-    <header class="hero" id="overview">
-      <div class="eyebrow">Internal CE Enablement &middot; GitHub Actions &middot; public preview</div>
-      <h1>CodeMender CI Lab &mdash; Public Preview (GitHub Actions)</h1>
-      <p class="lede">The same lab as the <a href="/">Cloud Build guide</a>, on <b>GitHub Actions</b>. Scan Juice&nbsp;Shop, verify a real vulnerability, fix it, open a PR. Because a GitHub runner lives <em>outside</em> Google Cloud, it can't pick up a build service account &mdash; so <code class="inline">cm</code> authenticates with your <b>injected <code class="inline">@google.com</code> credentials</b>, billed to the shared preview project <code class="inline">cloud-llm-preview1</code>.</p>
-      <div class="meta">
-        <span class="pill">&#9201; <b>~40&nbsp;min</b></span>
-        <span class="pill">&#9670; <b>Intermediate</b></span>
-        <span class="pill">&#9095; <b>GitHub Actions</b></span>
-        <span class="pill">&#9729; <b>GCP</b> &middot; CodeMender Interaction API</span>
-      </div>
-
-      <div class="callout warn"><div class="ct">&#9888; Staging draft &mdash; not tested on GitHub Actions</div><p>The interactive path (download &rarr; <code class="inline">cm init</code> &rarr; <code class="inline">cm find</code>) is <span class="chip ok">verified</span> in <code class="inline">cloud-llm-preview1</code> with a <code class="inline">@google.com</code> identity, and the <a href="/">Cloud Build</a> fan-out scripts were validated against a real binary. This <b>GitHub Actions</b> variant has <b>not</b> been run &mdash; the auth wiring below (injected ADC) is written from what works interactively, not proven in a runner. Treat it as the plan.</p></div>
-    </header>
-
-    <section id="flow">
-      <div class="step"><span class="num">&#9670;</span><h2>How it works</h2></div>
-      <p>One GitHub Actions job on <code class="inline">ubuntu-latest</code> does the whole flow &mdash; no container, no state bucket. That's the big simplification over Cloud Build:</p>
-      <ul>
-        <li><b>Single job = state just works.</b> CodeMender's SQLite <code class="inline">state.db</code> lives on the runner's disk for the life of the job, so <code class="inline">find</code> &rarr; <code class="inline">verify</code> &rarr; <code class="inline">fix</code> share it with <b>no gcsfuse</b> and no cross-step hand-off.</li>
-        <li><b>node, git, jq are preinstalled</b> on the runner, and <code class="inline">cm verify</code> can build &amp; run Juice Shop there &mdash; so there's <b>no toolbox image to build</b> either. You just download the <code class="inline">cm</code> binary in a step.</li>
-        <li><b>Fan-out is still available</b> &mdash; scan many files, then verify/fix across findings; each parallel worker gets its own <b>independent clone</b> (not a git worktree &mdash; that shares <code class="inline">.git</code> and deadlocks). See the caveat in <a href="#s5">Step&nbsp;5</a>.</li>
-      </ul>
-    </section>
-
-    <section id="access">
-      <div class="step"><span class="num">&#9670;</span><h2>Access model &mdash; inject your <code class="inline">@google.com</code> credentials</h2></div>
-      <p>Preview access is a <b>human</b> <code class="inline">@google.com</code> entitlement, and a GitHub runner has no way to <em>be</em> you on its own. So you hand it your Application Default Credentials as a secret, and point CodeMender's quota at the shared entitled project.</p>
-      <table class="tbl">
-        <thead><tr><th>Piece</th><th>Who / what</th></tr></thead>
-        <tbody>
-        <tr><td><b>Entitled project</b></td><td><code class="inline">cloud-llm-preview1</code> &mdash; the shared, preview-entitled project. All CodeMender usage bills here.</td></tr>
-        <tr><td><b>Calling identity</b></td><td>Your <code class="inline"><span class="p">ldap</span>@google.com</code>, injected into the runner as ADC.</td></tr>
-        <tr><td><b>Quota project</b></td><td><code class="inline">cloud-llm-preview1</code> &mdash; set on the ADC so <code class="inline">cm</code> attributes usage to the entitled project.</td></tr>
-        <tr><td><b>Secrets</b></td><td><code class="inline">CM_ADC</code> (base64 of your ADC JSON) and <code class="inline">GH_PAT</code> (to push + open the PR).</td></tr>
-        </tbody>
-      </table>
-      <div class="callout warn"><div class="ct">&#9888; That ADC is a live human credential</div><p><code class="inline">CM_ADC</code> holds your user refresh token &mdash; broad, long-lived Google Cloud access, not a scoped key. It's the cost of a human-only allowlist on an <em>external</em> runner. Fine for a time-boxed lab; revoke after with <code class="inline">gcloud auth application-default revoke</code> and delete the secret. <b>Production hardening:</b> use <b>Workload Identity Federation</b> to an entitled service account in <code class="inline">cloud-llm-preview1</code> instead &mdash; no human token in CI (needs that SA entitled to the <code class="inline">codemender-preview</code> agent).</p></div>
-    </section>
-
-    <section id="s1">
-      <div class="step"><span class="num">1</span><h2>Capture your ADC</h2></div>
-      <p>Run the <a href="/smoke">Smoke Test</a> first &mdash; it downloads the CLI and confirms it works for you. It also leaves the one credential this workflow needs: your Application Default Credentials. Capture them pointed at the entitled project:</p>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; capture ADC</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com
-gcloud auth application-default set-quota-project cloud-llm-preview1
-<span class="c"># writes ~/.config/gcloud/application_default_credentials.json</span>
-<span class="c"># (with quota_project_id=cloud-llm-preview1) — you inject it as CM_ADC in Step 4</span></pre></figure>
-    </section>
-
-    <section id="s2">
-      <div class="step"><span class="num">2</span><h2>Fork Juice Shop</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo fork juice-shop/juice-shop --clone --fork-name juice-shop
-cd juice-shop</pre></figure>
-      <p class="small">The workflow runs in <em>your fork</em>, and the PR lands on it. Each participant's fork is independent &mdash; nothing to namespace.</p>
-    </section>
-
-    <section id="s3">
-      <div class="step"><span class="num">3</span><h2>Add the workflow &amp; scripts</h2></div>
-      <p>Commit <code class="inline">.github/workflows/codemender.yml</code> (Step&nbsp;5) plus the four phase scripts under <code class="inline">scripts/</code> &mdash; the same scripts as the <a href="/#s8">Cloud Build lab</a>, with two changes: <code class="inline">cm-env.sh</code> drops the gcsfuse mount (below), and everything else is identical (multi-file scan, <code class="inline">_VERIFY_FANOUT</code> / <code class="inline">_FIX_FANOUT</code>, per-worker independent clones).</p>
-    </section>
-
-    <section id="s4">
-      <div class="step"><span class="num">4</span><h2>Set the two secrets</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; GitHub token</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># fine-grained PAT on your fork: Contents R/W + Pull requests R/W</span>
-gh secret set GH_PAT --repo "<span class="p">YOUR_USER</span>/juice-shop"</pre></figure>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; your ADC, base64'd</span><button class="copy" type="button">Copy</button></figcaption><pre>base64 -w0 ~/.config/gcloud/application_default_credentials.json \
-  | gh secret set CM_ADC --repo "<span class="p">YOUR_USER</span>/juice-shop"</pre></figure>
-      <div class="callout note"><div class="ct">&#8505; The ADC must carry the quota project</div><p>You ran <code class="inline">set-quota-project cloud-llm-preview1</code> in Step&nbsp;1, so the JSON already has <code class="inline">quota_project_id</code>. The workflow also exports <code class="inline">GOOGLE_CLOUD_QUOTA_PROJECT</code> as belt-and-suspenders.</p></div>
-    </section>
-
-    <section id="s5">
-      <div class="step"><span class="num">5</span><h2>The workflow</h2></div>
-      <p>Download <code class="inline">cm</code>, materialise the ADC, then run find (many files) &rarr; verify &rarr; fix &rarr; open one PR &mdash; all in one job.</p>
-      <figure class="code"><figcaption><span class="lbl">.github/workflows/codemender.yml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">name</span>: codemender
-<span class="k">on</span>: { workflow_dispatch: {} }
-<span class="k">permissions</span>: { contents: write, pull-requests: write }
-
-<span class="k">jobs</span>:
-  remediate:
-    runs-on: ubuntu-latest
-    concurrency: { group: codemender-${{ github.ref }}, cancel-in-progress: false }
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS: /tmp/adc.json
-      GOOGLE_CLOUD_QUOTA_PROJECT: cloud-llm-preview1
-      GH_TOKEN: ${{ secrets.GH_PAT }}
-      SCAN_PATH: routes/            # a dir or space-separated files
-      MIN_SEVERITY: CRITICAL
-      VERIFY_FANOUT: "1"            # port-bound (see caveat) - keep at 1
-      FIX_FANOUT: "1"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Auth &mdash; materialise injected ADC
-        run: echo "${{ secrets.CM_ADC }}" | base64 -d &gt; /tmp/adc.json
-      - name: Install the CodeMender CLI
-        run: |
-          TOKEN="$(python3 - &lt;&lt;'PY'
-import json,urllib.request,urllib.parse
-c=json.load(open('/tmp/adc.json'))
-d=urllib.parse.urlencode({'client_id':c['client_id'],'client_secret':c['client_secret'],
-  'refresh_token':c['refresh_token'],'grant_type':'refresh_token'}).encode()
-print(json.load(urllib.request.urlopen('https://oauth2.googleapis.com/token',d))['access_token'])
-PY
-)"
-          curl -sSL -H "Authorization: Bearer $TOKEN" -o cm.zip \
-            "https://artifactregistry.googleapis.com/download/v1/projects/cmoc-prod/locations/us/repositories/codemender-cli-production/files/cm%3Astable%3Acm-linux-amd64.zip:download?alt=media"
-          unzip -q cm.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm
-      - name: Remediate (find &rarr; verify &rarr; fix &rarr; PR)
-        run: |
-          bash scripts/find.sh
-          bash scripts/verify.sh
-          bash scripts/fix.sh
-          bash scripts/open-pr.sh
-        env:
-          GH_OWNER: ${{ github.repository_owner }}
-          GH_REPO: juice-shop
-          BASE_BRANCH: master</pre></figure>
-      <div class="callout warn"><div class="ct">&#9888; Validated: fan-out is port-bound on a single-server target</div><p>Testing the Cloud Build scripts with a real binary showed two things. Parallel workers need <b>independent clones</b> (a git <em>worktree</em> shares <code class="inline">.git</code> and collides on <code class="inline">index.lock</code>). <b>And</b> <code class="inline">cm verify</code>/<code class="inline">cm fix</code> build &amp; run Juice Shop on a <b>fixed port (3000)</b> to reproduce the exploit &mdash; so two in parallel collide on the port regardless of git isolation. For one app, keep <code class="inline">VERIFY_FANOUT</code>/<code class="inline">FIX_FANOUT</code> at <b>1</b>, or fan out <b>static</b> verification with <code class="inline">cm verify --skip-exploit-verification</code> (no app, no port). The machinery scales; the single shared app is the limit.</p></div>
-      <figure class="code"><figcaption><span class="lbl">scripts/cm-env.sh &middot; GHA (no mount)</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-set -euo pipefail
-export WORKSPACE="${WORKSPACE:-$PWD}"
-export REPO_DIR="${REPO_DIR:-$PWD}"           # the checked-out fork
-if [[ ! -f "$HOME/.codemender/config.yaml" ]]; then
-  cm init
-  cat &gt; "$HOME/.codemender/config.yaml" &lt;&lt;'YAML'
-vcs: { type: "git" }
-build: { command: "" }
-tools: { confirm_execution: false, confirm_writes: false }
-YAML
-fi
-finding_ids() { cm report --format json --status "$1" --severity "${MIN_SEVERITY:-CRITICAL}" | jq -r '.[].FindingID'; }</pre></figure>
-      <p class="small">Copy <code class="inline">find.sh</code> / <code class="inline">verify.sh</code> / <code class="inline">fix.sh</code> / <code class="inline">open-pr.sh</code> from the <a href="/#s8">Cloud Build guide, Step&nbsp;8</a> unchanged &mdash; they already use independent clones and read <code class="inline">SCAN_PATH</code>/<code class="inline">*_FANOUT</code> from the env set above.</p>
-    </section>
-
-    <section id="s6">
-      <div class="step"><span class="num">6</span><h2>Run it</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>git add .github scripts &amp;&amp; git commit -m "add CodeMender workflow" &amp;&amp; git push
-gh workflow run codemender.yml --repo "<span class="p">YOUR_USER</span>/juice-shop"
-gh run watch --repo "<span class="p">YOUR_USER</span>/juice-shop"</pre></figure>
-      <div class="callout warn"><div class="ct">&#9888; If it fails on auth</div><p><code class="inline">Unsupported agent interaction: codemender-preview</code> &rarr; your injected identity isn't entitled &mdash; re-check you signed in as <code class="inline">@google.com</code> and the quota project is <code class="inline">cloud-llm-preview1</code>. <code class="inline">invalid_grant</code> when minting the token &rarr; the ADC secret is stale; regenerate it (Step&nbsp;1) and re-set <code class="inline">CM_ADC</code>.</p></div>
-    </section>
-
-    <section id="s7">
-      <div class="step"><span class="num">7</span><h2>Review, approve &amp; merge</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr list --repo "<span class="p">YOUR_USER</span>/juice-shop"
-gh pr view <span class="p">N</span> --repo "<span class="p">YOUR_USER</span>/juice-shop" --web
-gh pr merge <span class="p">N</span> --repo "<span class="p">YOUR_USER</span>/juice-shop" --squash</pre></figure>
-      <div class="callout warn"><div class="ct">&#9888; Preview terms: supervise it</div><p>Pre-GA CodeMender is for testing and evaluation, not production. The workflow disables interactive confirmations to run non-interactively; the human merge gate keeps a person in the loop.</p></div>
-    </section>
-
-    <section id="cheatsheet">
-      <div class="step"><span class="num">&#9670;</span><h2><code class="inline">cm</code> cheat sheet</h2></div>
-      <table class="tbl">
-        <thead><tr><th>Command</th><th>Does</th></tr></thead>
-        <tbody>
-        <tr><td><code class="inline">cm find PATH -y</code></td><td>Scan a file or directory (10&ndash;50 files/scan)</td></tr>
-        <tr><td><code class="inline">cm verify FINDING_ID -y</code></td><td>Build &amp; run a PoC exploit; <code class="inline">--skip-exploit-verification</code> for static only (no port)</td></tr>
-        <tr><td><code class="inline">cm fix FINDING_ID -y</code></td><td>Generate, build-test, apply a patch</td></tr>
-        <tr><td><code class="inline">cm report --format table|md|json|sarif</code></td><td>Findings; SARIF &rarr; GitHub code scanning</td></tr>
-        <tr><td><code class="inline">cm vcs status|diff|stage|reset</code></td><td>Inspect / stage / discard changes</td></tr>
-        <tr><td><code class="inline">cm session list|resume|cancel</code></td><td>Track / resume / stop</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section id="cb">
-      <div class="step"><span class="num">&#9670;</span><h2>vs the Cloud Build lab</h2></div>
-      <table class="tbl">
-        <thead><tr><th>Aspect</th><th><a href="/">Cloud Build</a></th><th>GitHub Actions (here)</th></tr></thead>
-        <tbody>
-        <tr><td><b>Runs in</b></td><td>Inside <code class="inline">cloud-llm-preview1</code></td><td>On a GitHub runner, outside GCP</td></tr>
-        <tr><td><b>cm identity</b></td><td>The build service account (metadata server)</td><td>Your injected <code class="inline">@google.com</code> ADC</td></tr>
-        <tr><td><b>State</b></td><td>gcsfuse-mounted GCS bucket across steps</td><td>Runner disk &mdash; one job, no bucket</td></tr>
-        <tr><td><b>Toolbox image</b></td><td>Built &amp; pushed to Artifact Registry</td><td>None &mdash; download <code class="inline">cm</code> in a step</td></tr>
-        <tr><td><b>Fan-out limit</b></td><td colspan="2">Same &mdash; port-bound to 1 per shared app (validated)</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section id="cleanup">
-      <div class="step"><span class="num">&#9670;</span><h2>Cleanup</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh secret delete CM_ADC --repo "<span class="p">YOUR_USER</span>/juice-shop"
-gh secret delete GH_PAT --repo "<span class="p">YOUR_USER</span>/juice-shop"
-gcloud auth application-default revoke   <span class="c"># kill the injected credential</span></pre></figure>
-    </section>
-
-    <footer>
-      <p><b>CodeMender CI Lab &mdash; Public Preview (GitHub Actions)</b> &middot; staging draft. Juice Shop is &copy; OWASP, MIT-licensed, intentionally vulnerable &mdash; lab use only.</p>
-      <p class="small">No secrets appear in this guide. The GitHub Actions path is <b>not yet run</b> &mdash; the injected-ADC auth is written from the verified interactive path. Replace every <code class="inline" style="color:var(--muted)">placeholder</code> with your own values.</p>
-    </footer>
-   </div></main>
+<div class="stage">
+  <div class="card">
+    <div class="eyebrow">Internal CE Enablement &middot; public preview</div>
+    <h1>The GitHub Actions lab is now a Qwiklab</h1>
+    <p class="lede">The full CodeMender-in-GitHub-Actions walkthrough &mdash; provisioned credentials, a live repo, and a graded environment &mdash; runs as a self-paced Qwiklab.</p>
+    <a class="cta" href="https://gcpstaging.qwiklabs.com/focuses/33826?parent=catalog" target="_blank" rel="noopener">
+      Open the Qwiklab
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M17 7H9M17 7v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <div class="alt">New to CodeMender? Run the <a href="/smoke">Smoke Test</a> on your laptop first.</div>
+  </div>
 </div>
-</div>
-<script>
-(function(){
-  "use strict";
-  var root=document.documentElement, btn=document.getElementById('themebtn'), lbl=document.getElementById('themelbl');
-  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
-  var saved=null; try{saved=localStorage.getItem('cm-theme');}catch(e){}
-  if(saved){root.setAttribute('data-theme',saved);}
-  function curDark(){var t=root.getAttribute('data-theme');return t?t==='dark':sysDark();}
-  function syncLbl(){lbl.textContent=curDark()?'Light':'Dark';}
-  syncLbl();
-  btn.addEventListener('click',function(){var next=curDark()?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('cm-theme',next);}catch(e){}syncLbl();});
-  document.querySelectorAll('figure.code').forEach(function(fig){
-    var b=fig.querySelector('.copy'), pre=fig.querySelector('pre'); if(!b||!pre)return;
-    b.addEventListener('click',function(){navigator.clipboard.writeText(pre.innerText).then(function(){var o=b.textContent;b.textContent='Copied';b.classList.add('done');setTimeout(function(){b.textContent=o;b.classList.remove('done');},1400);}).catch(function(){});});
-  });
-  var links=Array.prototype.slice.call(document.querySelectorAll('.railnav a')), map={};
-  links.forEach(function(a){var id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)map[id]=a;});
-  var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
-  Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
-  document.querySelectorAll('.done-toggle input').forEach(function(cb){var k='cm-step-'+cb.getAttribute('data-step');try{if(localStorage.getItem(k)==='1')cb.checked=true;}catch(e){}cb.addEventListener('change',function(){try{localStorage.setItem(k,cb.checked?'1':'0');}catch(e){}});});
-  document.querySelectorAll('[data-tabs]').forEach(function(box){
-    var tabs=box.querySelectorAll('.tab');
-    tabs.forEach(function(t){t.addEventListener('click',function(){
-      var k=t.getAttribute('data-tab');
-      tabs.forEach(function(x){x.classList.toggle('active',x===t);});
-      box.querySelectorAll('.tabpane').forEach(function(p){p.classList.toggle('active',p.getAttribute('data-pane')===k);});
-    });});
-  });
-})();
-</script>
 
 </body>
 </html>

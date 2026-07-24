@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CodeMender Smoke Test &mdash; run it on your laptop</title>mdash; run it on your laptop</title>
+<title>CodeMender Smoke Test — run it on your laptop</title>
 <style>
 /* ============================ Design tokens ============================ */
 :root{
@@ -199,7 +199,6 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
   <div class="links">
     <a href="/smoke" class="active">Smoke Test</a>
-    <a href="/">Cloud Build</a>
     <a href="/gha">GitHub Actions</a>
   </div>
 </div>
@@ -232,7 +231,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
     <header class="hero" id="overview">
       <div class="eyebrow">Internal CE Enablement &middot; public preview</div>
       <h1>CodeMender Smoke Test</h1>
-      <p class="lede">Run CodeMender on your own machine first &mdash; download the CLI, scan OWASP Juice&nbsp;Shop, verify a real vulnerability, and generate the fix. Ten minutes, no CI. Once this works for you, automate it with <a href="/">Cloud Build</a> or <a href="/gha">GitHub Actions</a>.</p>
+      <p class="lede">Run CodeMender on your own machine first &mdash; download the CLI, scan OWASP Juice&nbsp;Shop, verify a real vulnerability, and generate the fix. Ten minutes, no CI. Once this works for you, automate it with <a href="/gha">GitHub Actions</a>.</p>
       <div class="meta">
         <span class="pill">&#9201; <b>~10&nbsp;min</b></span>
         <span class="pill">&#9729; <b>@google.com</b> &middot; cloud-llm-preview1</span>
@@ -319,8 +318,7 @@ cm vcs diff           <span class="c"># the parameterized-query fix</span></pre>
       <div class="step"><span class="num">&#9670;</span><h2>Automate it in CI</h2></div>
       <p>Now wrap these commands in a pipeline that clones a fork, runs find/verify/fix, and opens a PR you review and merge:</p>
       <ul>
-        <li><b><a href="/">Cloud Build</a></b> &mdash; runs inside <code class="inline">cloud-llm-preview1</code> as the build service account; gcsfuse-backed state; multi-file scan with fan-out.</li>
-        <li><b><a href="/gha">GitHub Actions</a></b> &mdash; runs on a GitHub runner with your injected <code class="inline">@google.com</code> credentials; single job, no bucket.</li>
+        <li><b><a href="/gha">GitHub Actions</a></b> &mdash; Qwiklab.</li>
       </ul>
     </section>
 

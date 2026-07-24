@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CodeMender CI Lab &mdash; Public Preview (Cloud Build)</title>
+<title>CodeMender CI Lab — Public Preview (Cloud Build)</title>
 <style>
 /* ============================ Design tokens ============================ */
 :root{
@@ -199,7 +199,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
   <div class="links">
     <a href="/smoke">Smoke Test</a>
-    <a href="/" class="active">Cloud Build</a>
+    <a href="/cloudbuild" class="active">Cloud Build</a>
     <a href="/gha">GitHub Actions</a>
   </div>
 </div>
@@ -218,16 +218,14 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <a href="#s1"><span class="n">1</span>Sign in (@google.com)</a>
       <a href="#s2"><span class="n">2</span>Fork &amp; clone Juice Shop</a>
       <a href="#s3"><span class="n">3</span>Namespace your workspace</a>
-      <a href="#s4"><span class="n">4</span>State bucket</a>
-      <a href="#s5"><span class="n">5</span>GitHub token</a>
-      <a href="#s6"><span class="n">6</span>Toolbox image</a>
-      <a href="#s7"><span class="n">7</span>Phase scripts</a>
-      <a href="#s8"><span class="n">8</span>The pipeline</a>
-      <a href="#s9"><span class="n">9</span>Run it</a>
-      <a href="#s10"><span class="n">10</span>Review &amp; merge</a>
+      <a href="#s4"><span class="n">4</span>GitHub token</a>
+      <a href="#s5"><span class="n">5</span>Toolbox image</a>
+      <a href="#s6"><span class="n">6</span>Phase scripts</a>
+      <a href="#s7"><span class="n">7</span>The pipeline</a>
+      <a href="#s8"><span class="n">8</span>Run it</a>
+      <a href="#s9"><span class="n">9</span>Review &amp; merge</a>
       <div class="grp">Reference</div>
       <a href="#cheatsheet"><span class="n">&#9670;</span>cm cheat sheet</a>
-      <a href="#facilitator"><span class="n">&#9670;</span>Facilitator notes</a>
       <a href="#cleanup"><span class="n">&#9670;</span>Cleanup</a>
 </nav>
     <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
@@ -244,25 +242,21 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <div class="meta">
         <span class="pill">&#9201; <b>~40&nbsp;min</b></span>
         <span class="pill">&#9670; <b>Intermediate</b></span>
-        <span class="pill">&#9729; <b>GCP</b> &middot; Cloud Build &middot; Artifact Registry &middot; GCS</span>
+        <span class="pill">&#9729; <b>GCP</b> &middot; Cloud Build &middot; Artifact Registry</span>
         <span class="pill">&#9095; <b>GitHub</b></span>
       </div>
 
-      <div class="callout note"><div class="ct">&#10003; Verified vs &#9888; not-yet-verified</div><p><span class="chip ok">verified</span> steps have been run for real. <span class="chip high">unverified</span> steps follow directly from what works but the <b>full Cloud Build pipeline has not been run end-to-end yet</b> &mdash; this run is the one that proves it. The interactive path (download &rarr; <code class="inline">cm init</code> &rarr; <code class="inline">cm find</code>) is <span class="chip ok">verified</span> in <code class="inline">cloud-llm-preview1</code> with a <code class="inline">@google.com</code> identity.</p></div>
-
-      <div class="callout warn"><div class="ct">&#9888; The one thing this run is testing</div><p>The pipeline runs <code class="inline">cm</code> as <code class="inline">cloud-llm-preview1</code>'s <b>Cloud Build service account</b>, not a human. We confirmed a service account clears the Interaction API's IAM check and provisioning; what is <b>not</b> yet confirmed is that the build SA is entitled to the <code class="inline">codemender-preview</code> <em>agent</em>. If Step&nbsp;9 fails with <code class="inline">Unsupported agent interaction: codemender-preview</code>, that entitlement is the gap &mdash; see <a href="#s9">Step&nbsp;9</a>.</p></div>
-
-      <div class="diagram" role="img" aria-label="Five Cloud Build steps in cloud-llm-preview1: clone the fork, cm find across many files, cm verify fanned out across the found vulnerabilities, cm fix fanned out across the verified ones, then open one PR. Steps share CodeMender state through a gcsfuse-mounted GCS bucket and open a PR on the GitHub fork.">
+      <div class="diagram" role="img" aria-label="Five Cloud Build steps in cloud-llm-preview1: clone the fork, cm find across many files, cm verify fanned out across the found vulnerabilities, cm fix fanned out across the verified ones, then open one PR. Steps share CodeMender state through Cloud Build's persisted /workspace volume and open a PR on the GitHub fork.">
         <svg viewBox="0 0 720 336" font-family="var(--f-sans)">
           <defs>
             <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
             <marker id="ara" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
           </defs>
           <rect x="14" y="128" width="150" height="80" rx="9" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
-          <text x="26" y="152" font-size="11" font-weight="700" fill="var(--ink)">GCS state bucket</text>
+          <text x="26" y="152" font-size="11" font-weight="700" fill="var(--ink)">/workspace volume</text>
           <text x="26" y="170" font-size="10" fill="var(--ink-2)">config &middot; identity</text>
           <text x="26" y="185" font-size="10" fill="var(--ink-2)">findings state.db</text>
-          <text x="26" y="200" font-size="9" fill="var(--muted)">ldap-cm-state</text>
+          <text x="26" y="200" font-size="9" fill="var(--muted)">persists across steps</text>
           <rect x="196" y="34" width="360" height="272" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>
           <text x="216" y="56" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Cloud Build &mdash; cloud-llm-preview1</text>
           <text x="216" y="70" font-size="9" fill="var(--muted)">runs as the entitled build service account</text>
@@ -280,7 +274,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
           <text x="602" y="186" font-size="10" fill="var(--ink-2)">review &rarr; merge</text>
           <line x1="164" y1="148" x2="212" y2="132" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
           <line x1="164" y1="184" x2="212" y2="205" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
-          <text x="90" y="120" font-size="9.5" fill="var(--muted)" text-anchor="middle">gcsfuse mount</text>
+          <text x="90" y="120" font-size="9.5" fill="var(--muted)" text-anchor="middle">persisted volume</text>
           <line x1="556" y1="226" x2="586" y2="176" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ara)"/>
         </svg>
       </div>
@@ -295,7 +289,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <li><code class="inline">fix.sh</code> &mdash; <b>fans out</b> <code class="inline">cm fix</code> across the <em>verified</em> vulnerabilities, <code class="inline">_FIX_FANOUT</code> at a time.</li>
         <li><code class="inline">open-pr.sh</code> &mdash; applies the collected patches and opens one PR whose body is CodeMender's analysis.</li>
       </ul>
-      <div class="diagram" role="img" aria-label="Five phase scripts run as separate Cloud Build steps. find, verify and fix each source cm-env.sh and share CodeMender findings state through a gcsfuse-mounted GCS bucket. verify and fix fan out across findings. All steps read and write small hand-off files in Cloud Build's persisted /workspace; open-pr reads those and opens the PR.">
+      <div class="diagram" role="img" aria-label="Five phase scripts run as separate Cloud Build steps. find, verify and fix each source cm-env.sh and share CodeMender findings state through Cloud Build's persisted /workspace. verify and fix fan out across findings. All steps read and write small hand-off files in Cloud Build's persisted /workspace; open-pr reads those and opens the PR.">
         <svg viewBox="0 0 760 320" font-family="var(--f-sans)">
           <defs>
             <marker id="fm" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
@@ -330,7 +324,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
             <g><rect x="550" y="118" width="150" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
               <text x="625" y="140" font-size="11.5" font-weight="700" fill="var(--accent-ink)" font-family="var(--f-mono)">4 &middot; open-pr.sh</text>
               <text x="625" y="156" font-size="10" fill="var(--accent-ink)">apply patches + PR</text>
-              <text x="625" y="171" font-size="8.5" fill="var(--accent-ink)">no cm-env &middot; no mount</text></g>
+              <text x="625" y="171" font-size="8.5" fill="var(--accent-ink)">no cm-env &middot; no cm</text></g>
           </g>
           <g stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fm)">
             <line x1="190" y1="153" x2="208" y2="153"/>
@@ -338,7 +332,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
             <line x1="530" y1="153" x2="548" y2="153"/>
           </g>
           <rect x="40" y="214" width="530" height="72" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
-          <text x="56" y="236" font-size="11" font-weight="700" fill="var(--ink)">GCS state bucket &middot; gcsfuse</text>
+          <text x="56" y="236" font-size="11" font-weight="700" fill="var(--ink)">state.db in /workspace &middot; ~/.codemender</text>
           <text x="56" y="252" font-size="9.5" fill="var(--ink-2)">the shared findings state.db from step&nbsp;1 &mdash; read by verify &amp; fix</text>
           <text x="56" y="268" font-size="9" fill="var(--muted)">fan-out workers copy it locally; nobody writes the shared DB concurrently</text>
           <g stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#fm)">
@@ -348,7 +342,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
           </g>
         </svg>
       </div>
-      <div class="callout note"><div class="ct">&#128452;&#65039; Why the state bucket &mdash; and why fan-out copies it</div><p>Each Cloud Build step is a fresh container, so CodeMender's findings <code class="inline">state.db</code> (SQLite, under <code class="inline">~/.codemender</code>) is carried across steps in a gcsfuse-mounted GCS bucket. But <b>SQLite is single-writer</b> and gcsfuse advisory locks are unreliable, so the fan-out workers in verify/fix must <b>not</b> write that shared DB in parallel &mdash; each copies it to local disk and runs in its own independent clone. That isolation is what makes <code class="inline">_VERIFY_FANOUT</code> / <code class="inline">_FIX_FANOUT</code> safe. (On a single-container runner like GitHub Actions the bucket isn't needed.)</p></div>
+      <div class="callout note"><div class="ct">&#128452;&#65039; Why the shared state.db &mdash; and why fan-out copies it</div><p>Each Cloud Build step is a fresh container, but Cloud Build persists <code class="inline">/workspace</code> across steps &mdash; so CodeMender's findings <code class="inline">state.db</code> (SQLite, under <code class="inline">~/.codemender</code>, which we point at <code class="inline">/workspace/cmstate</code>) is carried step to step with <b>no external storage</b> &mdash; only the Vertex AI access the preview needs. <b>SQLite is still single-writer</b>, so the fan-out workers in verify/fix must <b>not</b> write that shared DB in parallel &mdash; each copies it to local disk and runs in its own independent clone. That isolation is what makes <code class="inline">_VERIFY_FANOUT</code> / <code class="inline">_FIX_FANOUT</code> safe.</p></div>
     </section>
 
     <section id="access">
@@ -363,7 +357,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         </tbody>
       </table>
       <div class="callout note"><div class="ct">&#10003; Cloud Build here already runs as the entitled SA</div><p>In <code class="inline">cloud-llm-preview1</code>, <code class="inline">gcloud builds submit</code> runs your build as the project's <b>compute service account</b> (<code class="inline">PROJNUM-compute@developer.gserviceaccount.com</code>) &mdash; the identity that carries the AI roles and can call the Interaction API. So a plain submit just works; <b>no <code class="inline">--service-account</code> needed</b>. (In a project whose Cloud Build default is instead the legacy <code class="inline">PROJNUM@cloudbuild</code> SA &mdash; which lacks the AI roles &mdash; you'd pin the compute SA explicitly.)</p></div>
-      <div class="callout note"><div class="ct">&#8505; Because the project is shared, namespace everything</div><p>Everything you create lives in one project for the whole cohort, so bind names to your <b>ldap</b> &mdash; not the project id (same for everyone) or region. Bucket <code class="inline"><span class="p">ldap</span>-cm-state</code>, secret <code class="inline">gh-pat-<span class="p">ldap</span></code>, image tag <code class="inline">cm-ci-preview:<span class="p">ldap</span></code>, PR branch <code class="inline">codemender/fix-<span class="p">ldap</span></code>. Your Juice Shop fork is on your own GitHub, so PRs never collide.</p></div>
+      <div class="callout note"><div class="ct">&#8505; Because the project is shared, namespace everything</div><p>Everything you create lives in one project for the whole cohort, so bind names to your <b>ldap</b> &mdash; not the project id (same for everyone) or region. Image tag <code class="inline">cm-ci-preview:<span class="p">ldap</span></code> in the shared <code class="inline">codemender</code> repo, PR branch <code class="inline">codemender/fix-<span class="p">ldap</span></code>. Your Juice Shop fork is on your own GitHub, so PRs never collide.</p></div>
     </section>
 
     <section id="s1">
@@ -387,42 +381,36 @@ git remote -v    <span class="c"># origin -&gt; your fork; upstream -&gt; juice-
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export CM_PROJECT=cloud-llm-preview1
 export REGION=us-central1
 export LDAP="$(gcloud config get-value account | cut -d@ -f1)"
-export CM_STATE_BUCKET="${LDAP}-cm-state"
 export GH_OWNER="$(gh api user --jq .login)"
-echo "project=$CM_PROJECT  bucket=$CM_STATE_BUCKET  owner=$GH_OWNER"</pre></figure>
+echo "project=$CM_PROJECT  ldap=$LDAP  owner=$GH_OWNER"</pre></figure>
     </section>
 
     <section id="s4">
-      <div class="step"><span class="num">4</span><h2>Create your state bucket</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud storage buckets create "gs://$CM_STATE_BUCKET" \
-  --project="$CM_PROJECT" --location="$REGION" --uniform-bucket-level-access</pre></figure>
+      <div class="step"><span class="num">4</span><h2>Prepare your GitHub token</h2></div>
+      <p>A <b>fine-grained</b> PAT scoped to your fork &mdash; <b>Contents: R/W</b> and <b>Pull requests: R/W</b>. Participants have no Secret Manager in the shared project, so you pass it to the build at submit time (Step&nbsp;8) rather than storing it.</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your fine-grained github PAT&gt;</span>   <span class="c"># Contents R/W + Pull requests R/W, your fork</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; The PAT lands in build metadata</div><p>Passed as a substitution, the token is stored in the build's config in the shared <code class="inline">cloud-llm-preview1</code> project &mdash; readable by anyone who can view builds there. Keep it <b>fine-grained, scoped to your own fork, and short-lived</b>, and <b>revoke it</b> after the lab (see Cleanup).</p></div>
     </section>
 
     <section id="s5">
-      <div class="step"><span class="num">5</span><h2>Store your GitHub token</h2></div>
-      <p>A fine-grained PAT scoped to your fork &mdash; <b>Contents: R/W</b> and <b>Pull requests: R/W</b>. Namespace the secret with your ldap.</p>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your github secret&gt;</span>
-printf '%s' "$GH_PAT" | gcloud secrets create "gh-pat-${LDAP}" \
-  --project="$CM_PROJECT" --data-file=-
-unset GH_PAT; history -c</pre></figure>
-    </section>
+      <div class="step"><span class="num">5</span><h2>Build the toolbox image</h2></div>
+      <p>A minimal image: <code class="inline">cm</code> + node/npm (so <code class="inline">cm verify</code> can build &amp; run Juice Shop) + git/jq. It holds <b>no credential</b>. You build it from a <code class="inline">container/</code> folder holding this Dockerfile and a <b>linux/amd64</b> <code class="inline">cm</code> saved as <code class="inline">cm-linux</code> &mdash; the image runs on linux/amd64 in Cloud Build, so fetch the Linux binary below rather than reusing your Mac <a href="/smoke">Smoke&nbsp;Test</a> binary.</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; create the build context</span><button class="copy" type="button">Copy</button></figcaption><pre>mkdir -p container
 
-    <section id="s6">
-      <div class="step"><span class="num">6</span><h2>Build the toolbox image</h2></div>
-      <p><span class="chip ok">verified</span> A minimal image: <code class="inline">cm</code> + node/npm (so <code class="inline">cm verify</code> can build &amp; run Juice Shop) + git/jq/gcsfuse. It holds <b>no credential</b>. Put the <code class="inline">cm</code> binary from the <a href="/smoke">Smoke Test</a> next to this Dockerfile as <code class="inline">cm-linux</code>.</p>
+<span class="c"># the image runs on linux/amd64 in Cloud Build — fetch the LINUX cm (not your Mac one)</span>
+gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-linux-amd64.zip --destination=./container
+( cd container &amp;&amp; unzip -o cm-linux-amd64.zip &amp;&amp; mv cm cm-linux &amp;&amp; rm cm-linux-amd64.zip )</pre></figure>
+      <p class="small">Then save the Dockerfile below as <code class="inline">container/Dockerfile</code> &mdash; that folder now has exactly two files, <code class="inline">Dockerfile</code> and <code class="inline">cm-linux</code>.</p>
       <figure class="code"><figcaption><span class="lbl">container/Dockerfile</span><button class="copy" type="button">Copy</button></figcaption><pre>FROM node:22-bookworm-slim
 RUN apt-get update \
  &amp;&amp; apt-get install -y --no-install-recommends \
-      git ca-certificates curl jq gnupg build-essential python3 fuse3 \
- &amp;&amp; curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-      | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
- &amp;&amp; echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt gcsfuse-bookworm main" \
-      &gt; /etc/apt/sources.list.d/gcsfuse.list \
- &amp;&amp; apt-get update &amp;&amp; apt-get install -y --no-install-recommends gcsfuse \
+      git ca-certificates curl jq build-essential python3 \
  &amp;&amp; rm -rf /var/lib/apt/lists/*
 COPY cm-linux /usr/local/bin/cm
 RUN chmod 0755 /usr/local/bin/cm
-RUN cm --version &amp;&amp; node --version &amp;&amp; gcsfuse --version
+RUN cm --version &amp;&amp; node --version
 WORKDIR /workspace</pre></figure>
       <figure class="code"><figcaption><span class="lbl">bash &middot; build &amp; push into the shared project</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts repositories create codemender \
   --repository-format=docker --location="$REGION" --project="$CM_PROJECT" 2>/dev/null || true
@@ -433,20 +421,16 @@ gcloud builds submit container/ --tag "$CM_IMAGE" --project="$CM_PROJECT"</pre><
       <div class="callout note"><div class="ct">&#8505; The image is identical for everyone &mdash; prefer the facilitator's</div><p>The toolbox is the same for the whole cohort, so the facilitator usually builds it <b>once</b> and hands out the URL &mdash; just <code class="inline">export CM_IMAGE=</code> that and skip the build. If you do build your own, the <code class="inline">:${LDAP}</code> tag keeps it from overwriting anyone else's in the shared <code class="inline">codemender</code> repo.</p></div>
     </section>
 
-    <section id="s7">
-      <div class="step"><span class="num">7</span><h2>Write the phase scripts</h2></div>
+    <section id="s6">
+      <div class="step"><span class="num">6</span><h2>Write the phase scripts</h2></div>
       <p>Five scripts under <code class="inline">scripts/</code> (four steps + the sourced <code class="inline">cm-env.sh</code>). Preview command surface: <code class="inline">cm verify</code>, <code class="inline">cm fix -y</code>, <code class="inline">cm report --format json</code>. <b>No auth step</b> &mdash; the build SA is the ADC identity.</p>
       <div class="callout note"><div class="ct">&#9889; Two knobs control fan-out</div><p><code class="inline">_VERIFY_FANOUT</code> &mdash; how many <b>found</b> vulnerabilities <code class="inline">verify.sh</code> reproduces in parallel. <code class="inline">_FIX_FANOUT</code> &mdash; how many <b>verified</b> vulnerabilities <code class="inline">fix.sh</code> patches in parallel. Each worker runs in a private state copy + an <b>independent git clone</b> (a worktree shares <code class="inline">.git</code> and deadlocks).</p></div>
-      <div class="callout warn"><div class="ct">&#9888; Validated: fan-out is port-bound on a single-server app &mdash; default is 1</div><p>Testing with a real binary confirmed two things. The clone isolation above is required (worktrees collide on <code class="inline">.git/index.lock</code>). And <code class="inline">cm verify</code>/<code class="inline">cm fix</code> <b>build &amp; run Juice Shop on a fixed port (3000)</b> to reproduce the exploit &mdash; so two in parallel collide on the port regardless of git isolation. For one target, keep both fan-outs at <b>1</b>. Raise them only when workers have isolated runtime (distinct targets, or per-worker network namespaces), or fan out <b>static</b> verification with <code class="inline">cm verify --skip-exploit-verification</code> (no app, no port). The machinery scales; the single shared app is the limit.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; Fan-out is port-bound on a single-server app &mdash; default is 1</div><p>The clone isolation above is required (worktrees collide on <code class="inline">.git/index.lock</code>). And <code class="inline">cm verify</code>/<code class="inline">cm fix</code> <b>build &amp; run Juice Shop on a fixed port (3000)</b> to reproduce the exploit &mdash; so two in parallel collide on the port regardless of git isolation. For one target, keep both fan-outs at <b>1</b>. Raise them only when workers have isolated runtime (distinct targets, or per-worker network namespaces), or fan out <b>static</b> verification with <code class="inline">cm verify --skip-exploit-verification</code> (no app, no port). The machinery scales; the single shared app is the limit.</p></div>
       <figure class="code"><figcaption><span class="lbl">scripts/cm-env.sh</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
 set -euo pipefail
-: "${CM_STATE_BUCKET:?}"; : "${STATE_ID:?}"
 export WORKSPACE="${WORKSPACE:-/workspace}"
 export REPO_DIR="${REPO_DIR:-$WORKSPACE/repo}"
-export HOME="/mnt/cmstate/${STATE_ID}"        # cm writes ~/.codemender (state.db) here
-
-mkdir -p /mnt/cmstate
-mount | grep -q ' /mnt/cmstate ' || gcsfuse --implicit-dirs "${CM_STATE_BUCKET}" /mnt/cmstate
+export HOME="$WORKSPACE/cmstate"              # cm writes ~/.codemender (state.db) here; /workspace persists across steps
 mkdir -p "$HOME"
 
 if [[ ! -f "$HOME/.codemender/config.yaml" ]]; then
@@ -485,7 +469,7 @@ echo "🧪 verifying ${#IDS[@]} finding(s), ${FANOUT} at a time"
 verify_one() {
   local fid="$1"
   # Isolation: private state copy + an INDEPENDENT clone (own .git). A git
-  # worktree shares .git and parallel cm resets deadlock on index.lock — verified.
+  # worktree shares .git and parallel cm resets deadlock on index.lock.
   local w="/tmp/cm-v-$fid"; rm -rf "$w"; mkdir -p "$w"
   cp -a "$HOME/.codemender" "$w/.codemender"
   git clone -q "$REPO_DIR" "$w/repo"
@@ -517,7 +501,7 @@ export -f fix_one; export HOME REPO_DIR WORKSPACE
 printf '%s\n' "${IDS[@]}" | xargs -r -P "$FANOUT" -I{} bash -c 'fix_one "$@"' _ {}
 echo "📦 produced $(ls "$WORKSPACE/patches" 2&gt;/dev/null | wc -l) patch(es)"</pre></figure>
       <figure class="code"><figcaption><span class="lbl">scripts/open-pr.sh &middot; apply patches, one PR</span><button class="copy" type="button">Copy</button></figcaption><pre>#!/usr/bin/env bash
-set -euo pipefail                             # no cm-env: no mount, no cm needed
+set -euo pipefail                             # no cm-env: no state setup, no cm needed
 : "${GH_OWNER:?}"; : "${GH_REPO:?}"; : "${GH_TOKEN:?}"; : "${BASE_BRANCH:?}"; : "${LDAP:?}"
 WORKSPACE="${WORKSPACE:-/workspace}"; cd "$WORKSPACE/repo"
 shopt -s nullglob; PATCHES=("$WORKSPACE"/patches/*.patch)
@@ -542,79 +526,72 @@ jq -n --arg t "security: CodeMender fixed ${#PATCHES[@]} findings" --arg h "$BRA
   | jq -r '.html_url // .message'</pre></figure>
     </section>
 
-    <section id="s8">
-      <div class="step"><span class="num">8</span><h2>Write the pipeline</h2></div>
-      <p>The GitHub token comes from your namespaced secret. CodeMender needs no secret &mdash; the build SA's identity is the credential.</p>
+    <section id="s7">
+      <div class="step"><span class="num">7</span><h2>Write the pipeline</h2></div>
+      <p>The GitHub token is injected at submit time (Step&nbsp;8) as the <code class="inline">_GH_TOKEN</code> substitution &mdash; participants have no Secret Manager. CodeMender itself needs no secret; the build SA's identity is its credential.</p>
       <figure class="code"><figcaption><span class="lbl">cloudbuild.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre>substitutions:
-  _CM_IMAGE: ""          # &#9664; from Step 6
-  _CM_STATE_BUCKET: ""   # &#9664; ldap-cm-state
+  _CM_IMAGE: ""          # &#9664; from Step 5
   _GH_OWNER: ""          # &#9664; your GitHub username
   _LDAP: ""              # &#9664; your ldap
+  _GH_TOKEN: ""          # &#9664; your PAT (Step 4) — passed at submit time
   _GH_REPO: juice-shop
   _BASE_BRANCH: master
   _SCAN_PATH: routes/          # &#9664; a directory, or a space-separated list of files
   _MIN_SEVERITY: CRITICAL
-  _VERIFY_FANOUT: "1"          # &#9664; verify N in parallel — but port-bound, see Step 7
+  _VERIFY_FANOUT: "1"          # &#9664; verify N in parallel — but port-bound, see Step 6
   _FIX_FANOUT: "1"             # &#9664; fix N in parallel — raise only with runtime isolation
 
 steps:
   - id: clone
     name: gcr.io/cloud-builders/git
     entrypoint: bash
-    secretEnv: ['GH_TOKEN']
     args: ['-c', 'git clone --depth 1 --branch "${_BASE_BRANCH}"
-             "https://x-access-token:$$GH_TOKEN@github.com/${_GH_OWNER}/${_GH_REPO}.git" /workspace/repo']
+             "https://github.com/${_GH_OWNER}/${_GH_REPO}.git" /workspace/repo']   # public fork — no token
 
   - id: find
     name: ${_CM_IMAGE}
     entrypoint: bash
-    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','SCAN_PATH=${_SCAN_PATH}','MIN_SEVERITY=${_MIN_SEVERITY}']
+    env: ['SCAN_PATH=${_SCAN_PATH}','MIN_SEVERITY=${_MIN_SEVERITY}']
     args: ['-c','scripts/find.sh']
 
   - id: verify
     name: ${_CM_IMAGE}
     entrypoint: bash
     timeout: 1800s
-    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','MIN_SEVERITY=${_MIN_SEVERITY}','VERIFY_FANOUT=${_VERIFY_FANOUT}']
+    env: ['MIN_SEVERITY=${_MIN_SEVERITY}','VERIFY_FANOUT=${_VERIFY_FANOUT}']
     args: ['-c','scripts/verify.sh']
 
   - id: fix
     name: ${_CM_IMAGE}
     entrypoint: bash
     timeout: 1800s
-    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','MIN_SEVERITY=${_MIN_SEVERITY}','FIX_FANOUT=${_FIX_FANOUT}']
+    env: ['MIN_SEVERITY=${_MIN_SEVERITY}','FIX_FANOUT=${_FIX_FANOUT}']
     args: ['-c','scripts/fix.sh']
 
   - id: open-pr
     name: ${_CM_IMAGE}
     entrypoint: bash
-    secretEnv: ['GH_TOKEN']
-    env: ['CM_STATE_BUCKET=${_CM_STATE_BUCKET}','STATE_ID=$BUILD_ID','LDAP=${_LDAP}',
+    env: ['GH_TOKEN=${_GH_TOKEN}','STATE_ID=$BUILD_ID','LDAP=${_LDAP}',
           'GH_OWNER=${_GH_OWNER}','GH_REPO=${_GH_REPO}','BASE_BRANCH=${_BASE_BRANCH}']
     args: ['-c','scripts/open-pr.sh']
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/cloud-llm-preview1/secrets/gh-pat-${_LDAP}/versions/latest
-      env: 'GH_TOKEN'
 
 options:
   logging: CLOUD_LOGGING_ONLY
 timeout: 3600s</pre></figure>
     </section>
 
-    <section id="s9">
-      <div class="step"><span class="num">9</span><h2>Run it</h2></div>
-      <p><span class="chip high">this is the run under test</span> Submit into the shared project. Cloud Build runs it as the compute SA (the entitled one), so a plain submit is all you need:</p>
+    <section id="s8">
+      <div class="step"><span class="num">8</span><h2>Run it</h2></div>
+      <p>Submit into the shared project. Cloud Build runs it as the compute SA (the entitled one), so a plain submit is all you need:</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud builds submit . --config cloudbuild.yaml \
   --project=cloud-llm-preview1 --region=global \
-  --substitutions=_CM_IMAGE="$CM_IMAGE",_CM_STATE_BUCKET="$CM_STATE_BUCKET",_GH_OWNER="$GH_OWNER",_LDAP="$LDAP",_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/,_VERIFY_FANOUT=1,_FIX_FANOUT=1</pre></figure>
+  --substitutions=_CM_IMAGE="$CM_IMAGE",_GH_OWNER="$GH_OWNER",_LDAP="$LDAP",_GH_TOKEN="$GH_PAT",_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/,_VERIFY_FANOUT=1,_FIX_FANOUT=1</pre></figure>
       <div class="callout warn"><div class="ct">&#9888; If it fails, read the error precisely</div><p><b><code class="inline">Unsupported agent interaction: codemender-preview</code></b> &rarr; the <em>build SA</em> isn't entitled to the agent even though the project is. Tell the facilitator; the fix is server-side. &nbsp;<b><code class="inline">aiplatform.interactions.create denied</code></b> &rarr; the build ran as an SA without the AI roles (e.g. the legacy <code class="inline">@cloudbuild</code> one). In <code class="inline">cloud-llm-preview1</code> the default is the compute SA; if you hit this, the project's build-SA default may be off &mdash; tell the facilitator. &nbsp;<b><code class="inline">Resource setup has just started</code></b> &rarr; first-use provisioning; just re-run in a couple of minutes.</p></div>
-      <div class="callout note"><div class="ct">&#9201; Expect ~20&ndash;30 minutes</div><p>Verification dominates &mdash; CodeMender builds Juice Shop and runs a PoC exploit. Resumable: <code class="inline">cm session list</code> then <code class="inline">cm session resume</code>.</p></div>
+      <div class="callout note"><div class="ct">&#9201; Expect ~20&ndash;30 minutes</div><p>Verification dominates &mdash; CodeMender builds Juice Shop and runs a PoC exploit. State lives in the build's <code class="inline">/workspace</code>, so a failed build restarts from a clean scan rather than resuming.</p></div>
     </section>
 
-    <section id="s10">
-      <div class="step"><span class="num">10</span><h2>Review, approve &amp; merge</h2></div>
+    <section id="s9">
+      <div class="step"><span class="num">9</span><h2>Review, approve &amp; merge</h2></div>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr list --repo "$GH_OWNER/juice-shop"
 gh pr view <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --web
 gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre></figure>
@@ -639,30 +616,17 @@ gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre
       </table>
     </section>
 
-    <section id="facilitator">
-      <div class="step"><span class="num">&#9670;</span><h2>Facilitator notes</h2></div>
-      <ul>
-        <li><b>Everything runs in <code class="inline">cloud-llm-preview1</code>.</b> Grant each participant <code class="inline">roles/cloudbuild.builds.editor</code> and <code class="inline">iam.serviceAccountUser</code> on the entitled build SA so they can submit builds that run as it.</li>
-        <li><b>Confirm the build SA is agent-entitled.</b> The project is entitled; verify the <em>compute</em> SA specifically can call the <code class="inline">codemender-preview</code> agent (a single <code class="inline">cm find</code> in a one-step build). This is the one unproven link.</li>
-        <li><b>Build the toolbox image once</b> and share its URL &mdash; it carries no credential, so a shared image is fine.</li>
-        <li><b>Namespacing is mandatory</b> in a shared project &mdash; bind to ldap, not project id/region: per-ldap buckets (<code class="inline">ldap-cm-state</code>), secrets (<code class="inline">gh-pat-ldap</code>), image tags (<code class="inline">cm-ci-preview:ldap</code>), and PR branches. <code class="inline">STATE_ID=$BUILD_ID</code> already isolates state per run.</li>
-        <li><b>Access is <code class="inline">@google.com</code>-only</b> for now (Googlers), inherited from the shared project. Customer/Argolis projects need their own preview entitlement before this model extends to them.</li>
-      </ul>
-    </section>
-
     <section id="cleanup">
       <div class="step"><span class="num">&#9670;</span><h2>Cleanup</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>: "${CM_STATE_BUCKET:?}" &amp;&amp; : "${LDAP:?}" &amp;&amp; {
-  gcloud secrets delete "gh-pat-${LDAP}" --project=cloud-llm-preview1 --quiet
-  gcloud storage rm -r "gs://$CM_STATE_BUCKET" --quiet
-  gh pr list --repo "$GH_OWNER/juice-shop"
-}</pre></figure>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr list --repo "$GH_OWNER/juice-shop"
+<span class="c"># revoke the fine-grained PAT you used: GitHub &rarr; Settings &rarr; Developer settings</span>
+<span class="c"># (it was passed into the build, so retire it once the lab is done)</span></pre></figure>
       <p class="small">Leave the shared toolbox image for the next participant unless you're tearing the cohort down.</p>
     </section>
 
     <footer>
       <p><b>CodeMender CI Lab &mdash; Public Preview (Cloud Build)</b> &middot; staging draft. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; lab use only.</p>
-      <p class="small">No secrets appear in this guide. The interactive path is facilitator-verified in <code class="inline">cloud-llm-preview1</code>; the full Cloud Build pipeline is being validated now. Replace every <code class="inline" style="color:var(--muted)">placeholder</code> with your own values.</p>
+      <p class="small">No secrets appear in this guide. Replace every <code class="inline" style="color:var(--muted)">placeholder</code> with your own values.</p>
     </footer>
    </div></main>
 </div>

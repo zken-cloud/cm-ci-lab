@@ -6,3 +6,6 @@ webapp/artifact.body.html
 # local CM state / logs
 **/.codemender/
 *.log
+
+# gated preview CLI binary + local validation scratch — never commit
+preview-test/
