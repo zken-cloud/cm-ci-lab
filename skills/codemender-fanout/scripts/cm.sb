@@ -1,0 +1,22 @@
+;; CodeMender macOS sandbox profile (sandbox-exec / SBPL).
+;; Permissive reads / exec / network; WRITES are denied except tmp + the worker
+;; dir(s) that sandbox-run.sh appends as `(allow file-write* (subpath "..."))`.
+;; SBPL is last-match-wins, so the deny below is overridden by the later allows.
+;; sandbox-exec is coarse and deprecated, but ships on every macOS.
+(version 1)
+
+(allow default)
+
+;; No writing anywhere...
+(deny file-write*)
+
+;; ...except transient/system spots every build needs. The worker's HOME lives
+;; inside its work dir (appended by sandbox-run.sh), so npm/node/cm caches are covered.
+(allow file-write*
+  (subpath "/private/tmp")
+  (subpath "/private/var/tmp")
+  (subpath "/private/var/folders")   ; $TMPDIR, mktemp, per-user caches
+  (subpath "/dev"))
+
+;; Per-run write roots are appended below by sandbox-run.sh:
+;;   (allow file-write* (subpath "<worker work dir>"))
