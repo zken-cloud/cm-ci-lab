@@ -190,6 +190,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <a href="#delta"><span class="n">&#9670;</span>What changes vs EAP</a>
       <a href="#unknowns"><span class="n">&#9670;</span>Open questions</a>
       <a href="#flow"><span class="n">&#9670;</span>How it works</a>
+      <a href="#access"><span class="n">&#9670;</span>Access model</a>
       <a href="#prereq"><span class="n">&#9670;</span>Prerequisites</a>
       <div class="grp">The lab</div>
       <a href="#s1"><span class="n">1</span>Get preview access</a>
@@ -227,7 +228,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <span class="pill">&#9095; <b>GitHub</b></span>
       </div>
 
-      <div class="callout warn"><div class="ct">&#9888; Staging draft &mdash; not yet runnable</div><p>CodeMender's public preview <b>documentation</b> is live, but <b>access is not</b>. The docs state the CLI is <em>"available to a limited set of customers in Public Preview &mdash; contact your sales team to get access."</em> Until our identities are allowlisted, every command below is <b>written from the documentation and has not been executed</b>. Treat this page as the migration plan, not a tested lab. The <a href="/">EAP lab</a> remains the one you deliver today.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; Staging draft &mdash; access is live, end-to-end run still pending</div><p><b>Project <code class="inline">zken-genai</code> is now allowlisted for the CodeMender public preview.</b> Access is granted to <b>human <code class="inline">ldap@gcp.altostrat.com</code> identities</b> &mdash; not service accounts &mdash; so the pipeline authenticates <em>as the participant</em> and bills usage to <code class="inline">zken-genai</code> (see <a href="#access">Access model</a>). Commands below are still transcribed from the docs and this exact CI wiring <b>has not yet been run end-to-end by us</b>; treat it as the near-final plan. The <a href="/">EAP lab</a> remains the one you deliver today.</p></div>
 
       <div class="callout note"><div class="ct">&#8505; Where each claim comes from</div><p>Everything marked <span class="chip ok">documented</span> is quoted from the public preview docs (<code class="inline">set-up-environment</code>, <code class="inline">scan-and-verify</code>, <code class="inline">fix-and-patch</code>, <code class="inline">manage-sessions</code>). Everything marked <span class="chip high">assumed</span> is our inference and needs testing on access day &mdash; they are collected in <a href="#unknowns">Open questions</a>.</p></div>
     </header>
@@ -241,7 +242,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <tr><td><b>Binary</b></td><td>Baked into a central image the facilitator publishes</td><td>Each participant downloads it from Artifact Registry project <code class="inline">cmoc-prod</code> <span class="chip ok">documented</span></td></tr>
         <tr><td><b>Credential</b></td><td>A Google API key <b>baked into the binary</b>, unrotatable, extractable with <code class="inline">strings</code></td><td><b>None in the artifact.</b> The CLI uses Application Default Credentials <span class="chip ok">documented</span></td></tr>
         <tr><td><b>Image sensitivity</b></td><td><b>Sensitive</b> &mdash; anyone who can pull it can call the backend</td><td><b>Not sensitive.</b> Nothing to steal from the image; the caller's own identity is checked</td></tr>
-        <tr><td><b>Facilitator job</b></td><td>Grant every participant's two build SAs reader on the image repo, then revoke after the cohort</td><td><b>Mostly gone.</b> No image to share &mdash; replaced by getting identities allowlisted for preview <span class="chip high">assumed</span></td></tr>
+        <tr><td><b>Facilitator job</b></td><td>Grant every participant's two build SAs reader on the image repo, then revoke after the cohort</td><td><b>Changed, not gone.</b> No image to share &mdash; instead grant each participant's <code class="inline">ldap@gcp.altostrat.com</code> <code class="inline">serviceUsageConsumer</code> on <code class="inline">zken-genai</code> so their pipeline can bill preview usage there <span class="chip ok">confirmed</span></td></tr>
         <tr><td><b>Verify command</b></td><td><code class="inline">cm find verify &lt;id&gt;</code></td><td><code class="inline">cm verify FINDING_ID</code> <span class="chip ok">documented</span></td></tr>
         <tr><td><b>Fix command</b></td><td><code class="inline">cm fix &lt;id&gt; --auto-apply -y</code></td><td><code class="inline">cm fix FINDING_ID -y</code> <span class="chip ok">documented</span></td></tr>
         <tr><td><b>Report format</b></td><td><code class="inline">cm report -f json</code></td><td><code class="inline">cm report --format json</code> <span class="chip ok">documented</span></td></tr>
@@ -261,7 +262,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <table class="tbl">
         <thead><tr><th>#</th><th>Question</th><th>Why it blocks the lab</th></tr></thead>
         <tbody>
-        <tr><td><b>1</b></td><td>Can a <b>service account</b> call CodeMender at all, and must it be allowlisted individually?</td><td><b>The whole CI lab depends on this.</b> In preview the caller is the Cloud Build SA, not the person. If the allowlist is per-human, the pipeline cannot run and the lab must become laptop-only.</td></tr>
+        <tr><td><b>1</b></td><td><s>Can a <b>service account</b> call CodeMender, and must it be allowlisted individually?</s> <span class="chip ok">answered &mdash; human-only</span></td><td><b>Preview access is granted to human identities, not service accounts.</b> That's why the pipeline authenticates <em>as the participant's ldap identity</em> rather than the build SA &mdash; see <a href="#access">Access model</a>. It's also why the build-SA route in <a href="#adc">Authenticating in CI</a> does not apply to CodeMender itself.</td></tr>
         <tr><td><b>2</b></td><td>Which <b>IAM role</b> grants access to the Interactions API?</td><td>Step 4 can't list a grant. Docs name no role anywhere.</td></tr>
         <tr><td><b>3</b></td><td>Which <b>API</b> must be enabled, and in which project?</td><td>Step 4's <code class="inline">gcloud services enable</code> list is incomplete. Docs never name the service.</td></tr>
         <tr><td><b>4</b></td><td>Does the build SA need <b>download access</b> to <code class="inline">cmoc-prod</code>?</td><td>Decides whether the image is built from a laptop-downloaded binary (Step 7) or pulls during the build.</td></tr>
@@ -270,7 +271,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <tr><td><b>7</b></td><td>Is it <code class="inline">tools.confirm_execution</code> or <code class="inline">confirm_writes</code> &mdash; or both?</td><td>The setup page documents the first, the fix page references the second. Non-interactive CI needs whichever disables prompts.</td></tr>
         </tbody>
       </table>
-      <div class="callout warn"><div class="ct">&#9888; Question 1 is the one to ask first</div><p>Every other unknown is a detail you can discover in ten minutes once access lands. Question&nbsp;1 is <b>architectural</b>: if preview access is granted to humans only, a CI lab is impossible in the preview window and this page becomes a laptop walkthrough instead. Ask the CodeMender team before access day, not after.</p></div>
+      <div class="callout note"><div class="ct">&#10003; Question 1 is resolved &mdash; and it shaped everything</div><p>Access is <b>human-only</b>. Rather than make the lab laptop-only, we keep the fully-automated pipeline and have it authenticate <em>as the participant's ldap identity</em> via injected credentials (<a href="#access">Access model</a>). That is the single biggest departure from the EAP design and the reason the remaining questions (2, 3) are now lower-stakes: the "which role / which API" answer is simply <code class="inline">serviceUsageConsumer</code> on the allowlisted project, <code class="inline">zken-genai</code>.</p></div>
     </section>
 
     <section id="flow">
@@ -285,13 +286,69 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <div class="callout note"><div class="ct">&#8505; Why the four Cloud Build steps stay</div><p>Findings still live in a <b>local SQLite <code class="inline">state.db</code></b>. Each Cloud Build step is a fresh container, so the state would vanish between find and fix &mdash; the gcsfuse-mounted bucket from the EAP lab is still the mechanism that carries it. (On a single-container runner such as GitHub Actions, this is unnecessary.)</p></div>
     </section>
 
+    <section id="access">
+      <div class="step"><span class="num">&#9670;</span><h2>Access model &mdash; the pipeline runs <code class="inline">cm</code> as <em>you</em></h2></div>
+      <p>Preview access is granted to <b>human <code class="inline">ldap@gcp.altostrat.com</code> identities, not service accounts</b>. A Cloud Build or GitHub Actions pipeline normally runs as a service account &mdash; which CodeMender will refuse &mdash; so the pipeline has to authenticate <em>as the participant</em>. That is done by injecting the participant's own <b>Application Default Credentials</b> and pointing CodeMender's quota at the allowlisted project, <code class="inline">zken-genai</code>.</p>
+
+      <table class="tbl">
+        <thead><tr><th>Piece</th><th>Who / what</th></tr></thead>
+        <tbody>
+        <tr><td><b>Allowlisted project</b></td><td><code class="inline">zken-genai</code> &mdash; the project on the preview allowlist. All participants' CodeMender usage bills here.</td></tr>
+        <tr><td><b>Calling identity</b></td><td>The participant's <code class="inline">ldap@gcp.altostrat.com</code> &mdash; a human, injected into the pipeline as ADC.</td></tr>
+        <tr><td><b>Grant needed</b></td><td><code class="inline">roles/serviceusage.serviceUsageConsumer</code> on <code class="inline">zken-genai</code>, so that identity may bill the API to a project it doesn't own. Facilitators apply it (participants can't grant on <code class="inline">zken-genai</code>).</td></tr>
+        <tr><td><b>Quota project</b></td><td><code class="inline">zken-genai</code> &mdash; set on the ADC so <code class="inline">cm</code> attributes usage to the allowlisted project, not the participant's own.</td></tr>
+        <tr><td><b>Participant's own project</b></td><td>Still theirs &mdash; fork, state bucket, GitHub secret, and the build all live there. <code class="inline">zken-genai</code> is used <em>only</em> as the CodeMender quota project.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1 &mdash; Facilitator: grant the participant's identity on <code class="inline">zken-genai</code></h3>
+      <p>Once per participant, before the lab. Mirrors how facilitators themselves were granted:</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; facilitator, run once per participant</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud projects add-iam-policy-binding zken-genai \
+  --member="user:<span class="p">ldap</span>@gcp.altostrat.com" \
+  --role="roles/serviceusage.serviceUsageConsumer" --condition=None</pre></figure>
+
+      <h3>2 &mdash; Participant: create ADC and pin the quota project</h3>
+      <p>On your laptop or Cloud Shell, sign in <b>as your ldap identity</b> and record credentials that the pipeline can reuse:</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login          <span class="c"># as ldap@gcp.altostrat.com</span>
+gcloud auth application-default set-quota-project zken-genai
+
+<span class="c"># this file now carries your credential AND quota_project_id=zken-genai</span>
+cat ~/.config/gcloud/application_default_credentials.json | head -c 40; echo</pre></figure>
+
+      <div class="callout warn"><div class="ct">&#9888; This ADC file is a live human credential &mdash; treat it like a password</div><p>Because the caller must be a person, the file above holds <b>your user refresh token</b> &mdash; broad, long-lived Google Cloud access, not a scoped service-account key. Injecting it into CI is the price of a human-only allowlist, and it is <b>more sensitive</b> than anything the EAP lab handled. For a time-boxed lab in a throwaway project this is acceptable; for anything real, don't. When the cohort ends, revoke it: <code class="inline">gcloud auth application-default revoke</code>, and delete the CI secret below.</p></div>
+
+      <h3>3 &mdash; Feed those credentials to the pipeline</h3>
+      <p>Store the ADC JSON as a secret, then have each <code class="inline">cm</code> step write it to a file and point <code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code> at it. The mechanics differ by platform; the result is identical.</p>
+
+      <figure class="code"><figcaption><span class="lbl">Cloud Build &middot; store the secret</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># in YOUR project — the pipeline reads it via availableSecrets</span>
+gcloud secrets create cm-adc \
+  --data-file="$HOME/.config/gcloud/application_default_credentials.json"</pre></figure>
+      <p class="small">Then in <code class="inline">cm-env.sh</code> (Step 8) the step materialises it before any <code class="inline">cm</code> call:</p>
+      <figure class="code"><figcaption><span class="lbl">cm-env.sh &middot; Cloud Build auth (excerpt)</span><button class="copy" type="button">Copy</button></figcaption><pre>printf '%s' "$CM_ADC" &gt; /tmp/adc.json
+export GOOGLE_APPLICATION_CREDENTIALS=/tmp/adc.json
+export GOOGLE_CLOUD_QUOTA_PROJECT=zken-genai   <span class="c"># belt-and-suspenders</span></pre></figure>
+
+      <figure class="code"><figcaption><span class="lbl">GitHub Actions &middot; store the secret</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># base64 so newlines survive the secret store</span>
+base64 -w0 ~/.config/gcloud/application_default_credentials.json | \
+  gh secret set CM_ADC --repo "<span class="p">YOUR_USER</span>/juice-shop"</pre></figure>
+      <figure class="code"><figcaption><span class="lbl">.github/workflows/codemender.yml &middot; GHA auth (excerpt)</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">env</span>:
+  GOOGLE_APPLICATION_CREDENTIALS: /tmp/adc.json
+  GOOGLE_CLOUD_QUOTA_PROJECT: zken-genai
+<span class="k">steps</span>:
+  - <span class="k">run</span>: echo "${{ secrets.CM_ADC }}" | base64 -d &gt; /tmp/adc.json</pre></figure>
+
+      <div class="callout note"><div class="ct">&#8505; Why <code class="inline">GOOGLE_CLOUD_QUOTA_PROJECT</code> as well</div><p><code class="inline">set-quota-project</code> already writes <code class="inline">quota_project_id</code> into the ADC file, so the env var is redundant belt-and-suspenders &mdash; but it makes the quota target obvious in the pipeline and survives if someone regenerates the ADC without re-pinning. Both point CodeMender at <code class="inline">zken-genai</code>; the participant's own project is never billed for the API.</p></div>
+
+      <div class="callout warn"><div class="ct">&#9888; Not yet run end-to-end</div><p>This wiring follows directly from the docs and our verified ADC test, but we have <b>not</b> executed a full pipeline against live preview access. The first real run may surface a wrong env-var name or a missing scope on the ADC. Do a single dry run before a cohort.</p></div>
+    </section>
+
     <section id="prereq">
       <div class="step"><span class="num">&#9670;</span><h2>Prerequisites</h2></div>
       <table class="tbl">
         <thead><tr><th>You need</th><th>Notes</th></tr></thead>
         <tbody>
-        <tr><td>CodeMender <b>preview access</b></td><td>The gating item. See Step 1 &mdash; without it nothing below runs.</td></tr>
-        <tr><td>A GCP project with billing</td><td>Data is isolated per <b>customer billing project</b>, so use the project you intend to be billed.</td></tr>
+        <tr><td>CodeMender <b>preview access</b></td><td>Your <code class="inline">ldap@gcp.altostrat.com</code> granted <code class="inline">serviceUsageConsumer</code> on <code class="inline">zken-genai</code> (facilitator does this). See <a href="#access">Access model</a>.</td></tr>
+        <tr><td>A GCP project with billing</td><td>Your own project for the fork, bucket, secret and build. CodeMender itself bills to <code class="inline">zken-genai</code>, not here.</td></tr>
         <tr><td>A GitHub account</td><td>You fork Juice Shop and the PR lands on your fork.</td></tr>
         <tr><td><code class="inline">gcloud</code>, <code class="inline">git</code>, <code class="inline">gh</code>, <code class="inline">unzip</code></td><td>On your laptop or Cloud Shell.</td></tr>
         </tbody>
@@ -632,7 +689,7 @@ gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre
 
       <div class="callout warn"><div class="ct">&#9888; Don't undo the win with a key file</div><p>The headline improvement of preview is that <b>no long-lived credential ships in the artifact</b>. Dropping an SA key JSON into a CI secret re-creates exactly the problem we just escaped &mdash; a static, stealable, manually-rotated credential &mdash; only now it's in your CI system instead of a container. Use WIF unless something genuinely blocks it.</p></div>
 
-      <div class="callout warn"><div class="ct">&#9888; Authentication is not authorization</div><p>Everything above solves <em>proving who you are</em>. It says nothing about whether that identity is <b>allowed</b> to call CodeMender. The docs gate preview on an allowlist and never say whether service accounts can be on it &mdash; that is still <a href="#unknowns">Open question&nbsp;1</a>, and it remains the one that decides whether a CI lab is possible at all. A build SA that authenticates perfectly and is then refused by the allowlist looks like a broken pipeline, so establish this before a cohort.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; For CodeMender specifically, the build-SA route does <em>not</em> apply</div><p>Everything above solves <em>proving who you are</em> &mdash; not whether that identity is <b>allowed</b> to call CodeMender. And the preview allowlist is <b>human-only</b> (<a href="#unknowns">Open question&nbsp;1</a>, resolved): a build SA authenticates perfectly and is then refused. So the "best: metadata-server SA" verdict in the table above holds for <em>other</em> Google Cloud APIs, but for CodeMender the pipeline must carry a human identity &mdash; see <a href="#access">Access model</a>. This section stays as the general ADC reference; the CodeMender-specific path is the injected-ADC approach.</p></div>
 
       <div class="callout note"><div class="ct">&#8505; Watch the quota / billing project</div><p>The docs say data is isolated per <b>customer billing project</b>. In CI the quota project resolves automatically to the build project (verified above). On a laptop it may not &mdash; if a user hits quota-project errors, <code class="inline">gcloud auth application-default set-quota-project PROJECT_ID</code> is the fix.</p></div>
     </section>
