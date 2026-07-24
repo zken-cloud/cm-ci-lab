@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CodeMender Smoke Test &mdash; run it on your laptop</title>mdash; run it on your laptop</title>
+<style>
+/* ============================ Design tokens ============================ */
+:root{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b;
+  --code-ink:#dbe7e6; --code-muted:#7f9a99; --code-add:#7fdcae; --code-del:#f09195;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+  --maxw:820px;
+  --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+    --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+    --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+    --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be;
+    --code-ink:#d6e5e3; --code-muted:#6f8a89; --code-add:#7fdcae; --code-del:#f09195;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b; --code-ink:#dbe7e6; --code-muted:#7f9a99;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+}
+:root[data-theme="dark"]{
+  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+  --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+  --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+  --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be; --code-ink:#d6e5e3; --code-muted:#6f8a89;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ============================ Layout ============================ */
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:1.6rem 1.1rem 2rem;border-right:1px solid var(--hair)}
+.main{min-width:0;padding:0 clamp(1.1rem,4vw,3rem) 6rem}
+.col{max-width:var(--maxw)}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--hair)}
+  .rail-scroll{max-height:none}
+}
+
+/* ============================ Rail nav ============================ */
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.2rem}
+.brand svg{width:22px;height:22px;flex:none}
+.brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.railnav{margin-top:1.4rem;font-size:.86rem}
+.railnav a{display:block;color:var(--ink-2);padding:.28rem .5rem;border-radius:7px;
+  border-left:2px solid transparent}
+.railnav a:hover{background:var(--surface-2);text-decoration:none}
+.railnav a.active{color:var(--accent-ink);border-left-color:var(--accent);background:var(--surface-2);font-weight:600}
+.railnav .grp{margin:1rem .5rem .3rem;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.railnav a .n{display:inline-block;width:1.5em;color:var(--muted);font-variant-numeric:tabular-nums}
+.themebtn{margin-top:1.5rem;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2);
+  border-radius:8px;padding:.4rem .7rem;font:inherit;font-size:.8rem;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.themebtn:hover{border-color:var(--accent)}
+
+/* ============================ Hero ============================ */
+.hero{padding:2.6rem 0 1.4rem}
+.eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+h1{font-size:clamp(1.9rem,4.4vw,2.75rem);line-height:1.08;letter-spacing:-.025em;
+  margin:.5rem 0 .4rem;text-wrap:balance;font-weight:750}
+.lede{font-size:1.12rem;color:var(--ink-2);max-width:60ch;margin:.2rem 0 1.3rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem}
+.pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:500;
+  padding:.3rem .7rem;border-radius:999px;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2)}
+.pill b{color:var(--ink);font-weight:650}
+
+/* ============================ Diagram ============================ */
+.diagram{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:1.1rem;
+  margin:1.4rem 0;box-shadow:var(--shadow);overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:640px;height:auto}
+
+/* ============================ Sections ============================ */
+section{padding:1.7rem 0;border-top:1px solid var(--hair)}
+section:first-of-type{border-top:none}
+h2{font-size:1.5rem;letter-spacing:-.02em;margin:.2rem 0 .3rem;font-weight:700;scroll-margin-top:1rem}
+h2 .kicker{display:block;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:.35rem}
+h3{font-size:1.08rem;margin:1.6rem 0 .4rem;letter-spacing:-.01em}
+p{margin:.6rem 0}
+ul,ol{margin:.6rem 0;padding-left:1.3rem}
+li{margin:.3rem 0}
+.small{font-size:.9rem;color:var(--muted)}
+
+/* Step header */
+.step{display:flex;gap:.8rem;align-items:baseline;margin:0 0 .2rem}
+.step .num{flex:none;width:2rem;height:2rem;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:700;font-size:.95rem;font-variant-numeric:tabular-nums;transform:translateY(.25rem)}
+.step h2{margin:0}
+
+/* ============================ Code blocks ============================ */
+figure.code{margin:1rem 0;border:1px solid var(--hair-strong);border-radius:11px;overflow:hidden;background:var(--code-bg)}
+figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.5rem .5rem .5rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07)}
+figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;color:var(--code-muted);text-transform:uppercase}
+.copy{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--code-ink);
+  font:inherit;font-size:.74rem;padding:.28rem .6rem;border-radius:7px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
+figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
+pre .c{color:var(--code-muted)}      /* comment */
+pre .k{color:#7fd7c8}                 /* keyword/cmd */
+pre .v{color:#e9c17a}                 /* value/string */
+pre .p{color:#c99be0}                 /* placeholder */
+pre .add{color:var(--code-add)}
+pre .del{color:var(--code-del)}
+code.inline{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);
+  border:1px solid var(--hair);padding:.08em .38em;border-radius:5px;color:var(--ink);word-break:break-word}
+
+/* ============================ Callouts ============================ */
+.callout{margin:1.1rem 0;padding:.85rem 1rem .85rem 1.05rem;border-radius:10px;border:1px solid var(--hair);
+  background:var(--surface);border-left:3px solid var(--muted);box-shadow:var(--shadow)}
+.callout .ct{font-weight:650;font-size:.82rem;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem}
+.callout p{margin:.2rem 0}
+.callout.note{border-left-color:var(--accent)}
+.callout.note .ct{color:var(--accent-ink)}
+.callout.warn{border-left-color:var(--high)}
+.callout.warn .ct{color:var(--high)}
+.callout.sec{border-left-color:var(--crit);background:linear-gradient(0deg,var(--surface),var(--surface))}
+.callout.sec .ct{color:var(--crit)}
+.callout.chal{border-left-color:var(--accent);background:var(--accent-soft)}
+:root[data-theme="dark"] .callout.chal,@media (prefers-color-scheme:dark){.callout.chal{background:var(--accent-soft)}}
+.callout.chal .ct{color:var(--accent-ink)}
+.callout.chal .ct::before{content:"◆"}
+
+/* ============================ Chips / table ============================ */
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:650;padding:.12rem .5rem;
+  border-radius:6px;letter-spacing:.02em;text-transform:uppercase;font-family:var(--f-mono)}
+.chip.crit{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}
+.chip.high{background:color-mix(in srgb,var(--high) 18%,transparent);color:var(--high)}
+.chip.med{background:color-mix(in srgb,var(--med) 20%,transparent);color:var(--med)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;overflow-x:auto;display:block}
+.tbl thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--hair-strong);padding:.5rem .6rem;font-weight:600}
+.tbl td{padding:.5rem .6rem;border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl code{font-family:var(--f-mono);font-size:.85em}
+
+/* Collapsible facilitator */
+details.fac{border:1px solid var(--hair-strong);border-radius:12px;background:var(--surface);margin:1rem 0;box-shadow:var(--shadow)}
+details.fac>summary{cursor:pointer;list-style:none;padding:1rem 1.1rem;font-weight:650;display:flex;align-items:center;gap:.6rem}
+details.fac>summary::-webkit-details-marker{display:none}
+details.fac>summary .tw{margin-left:auto;color:var(--muted);transition:transform .2s}
+details.fac[open]>summary .tw{transform:rotate(90deg)}
+details.fac .body{padding:0 1.1rem 1.1rem}
+
+/* progress checkbox */
+.done-toggle{display:inline-flex;align-items:center;gap:.5rem;margin:.6rem 0 0;font-size:.85rem;color:var(--muted);cursor:pointer;user-select:none}
+.done-toggle input{accent-color:var(--accent);width:1.05em;height:1.05em}
+/* OS toggle tabs */
+.tabrow{display:flex;flex-wrap:wrap;gap:.35rem;margin:.4rem 0 .5rem}
+.tab{appearance:none;border:1px solid var(--hair-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:.78rem;padding:.32rem .75rem;border-radius:999px;cursor:pointer}
+.tab:hover{border-color:var(--accent)}
+.tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
+.tabpane{display:none}
+.tabpane.active{display:block}
+/* site top nav */
+.topnav{display:flex;align-items:center;gap:1rem;padding:.65rem clamp(1rem,4vw,2rem);background:var(--surface);border-bottom:1px solid var(--hair-strong)}
+.topnav .home{display:flex;align-items:center;gap:.5rem;font-weight:750;color:var(--ink);letter-spacing:-.01em;font-size:.98rem}
+.topnav .home svg{width:20px;height:20px;color:var(--accent)}
+.topnav .links{display:flex;gap:.4rem;margin-left:auto}
+.topnav .links a{padding:.5rem 1rem;border-radius:9px;font-size:.92rem;font-weight:650;color:var(--ink-2)}
+.topnav .links a:hover{background:var(--surface-2);text-decoration:none}
+.topnav .links a.active{background:var(--accent);color:#fff}
+@media(max-width:560px){.topnav{flex-wrap:wrap;gap:.5rem}.topnav .links{margin-left:0;width:100%}.topnav .links a{flex:1;text-align:center;padding:.5rem .35rem;font-size:.84rem}}
+
+footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
+.kbd{font-family:var(--f-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--hair-strong);
+  border-bottom-width:2px;border-radius:5px;padding:.05em .4em}
+hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
+  <div class="links">
+    <a href="/smoke" class="active">Smoke Test</a>
+    <a href="/">Cloud Build</a>
+    <a href="/gha">GitHub Actions</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
+      <div>CodeMender Lab<small>Smoke Test &middot; local</small></div>
+    </div>
+    <nav class="railnav" aria-label="Smoke test steps">
+      <a href="#overview"><span class="n">&#9670;</span>Overview</a>
+      <div class="grp">Run it on your laptop</div>
+      <a href="#s1"><span class="n">1</span>Download the CLI</a>
+      <a href="#s2"><span class="n">2</span>Authenticate &amp; init</a>
+      <a href="#s3"><span class="n">3</span>Clone Juice Shop</a>
+      <a href="#s4"><span class="n">4</span>Find</a>
+      <a href="#s5"><span class="n">5</span>Verify</a>
+      <a href="#s6"><span class="n">6</span>Fix</a>
+      <div class="grp">Next</div>
+      <a href="#next"><span class="n">&#9670;</span>Automate it in CI</a>
+</nav>
+    <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span id="themelbl">Theme</span>
+    </button>
+  </aside>
+  <main class="main"><div class="col">
+
+    <header class="hero" id="overview">
+      <div class="eyebrow">Internal CE Enablement &middot; public preview</div>
+      <h1>CodeMender Smoke Test</h1>
+      <p class="lede">Run CodeMender on your own machine first &mdash; download the CLI, scan OWASP Juice&nbsp;Shop, verify a real vulnerability, and generate the fix. Ten minutes, no CI. Once this works for you, automate it with <a href="/">Cloud Build</a> or <a href="/gha">GitHub Actions</a>.</p>
+      <div class="meta">
+        <span class="pill">&#9201; <b>~10&nbsp;min</b></span>
+        <span class="pill">&#9729; <b>@google.com</b> &middot; cloud-llm-preview1</span>
+        <span class="pill">&#128421;&#65039; <b>your laptop</b></span>
+      </div>
+      <div class="callout note"><div class="ct">&#10003; This is the verified path</div><p>Everything here has been run for real with a <code class="inline">@google.com</code> identity against <code class="inline">cloud-llm-preview1</code>. If a step fails, fix it here before touching CI &mdash; the pipelines just wrap these same commands.</p></div>
+    </header>
+
+    <section id="s1">
+      <div class="step"><span class="num">1</span><h2>Download the CLI</h2></div>
+      <p><b>Pick your OS</b> (most run this on a Mac). The binary carries <b>no credential</b> &mdash; it authenticates as you.</p>
+      <div class="tabs" data-tabs>
+        <div class="tabrow" role="tablist">
+          <button class="tab active" data-tab="marm" type="button">Mac &middot; Apple silicon</button>
+          <button class="tab" data-tab="mint" type="button">Mac &middot; Intel</button>
+          <button class="tab" data-tab="lamd" type="button">Linux x86_64</button>
+          <button class="tab" data-tab="larm" type="button">Linux ARM64</button>
+        </div>
+        <div class="tabpane active" data-pane="marm"><figure class="code"><figcaption><span class="lbl">macOS &middot; Apple silicon</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-darwin-arm64.zip --destination=./
+unzip cm-darwin-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
+        <div class="tabpane" data-pane="mint"><figure class="code"><figcaption><span class="lbl">macOS &middot; Intel</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-darwin-amd64.zip --destination=./
+unzip cm-darwin-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
+        <div class="tabpane" data-pane="lamd"><figure class="code"><figcaption><span class="lbl">Linux x86_64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-linux-amd64.zip --destination=./
+unzip cm-linux-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
+        <div class="tabpane" data-pane="larm"><figure class="code"><figcaption><span class="lbl">Linux ARM64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-linux-arm64.zip --destination=./
+unzip cm-linux-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
+      </div>
+      <p class="small">Windows builds exist too (<code class="inline">cm-windows-amd64.zip</code> / <code class="inline">-arm64</code>) &mdash; install via PowerShell's <code class="inline">Expand-Archive</code> and add <code class="inline">cm.exe</code> to your PATH.</p>
+    </section>
+
+    <section id="s2">
+      <div class="step"><span class="num">2</span><h2>Authenticate &amp; init</h2></div>
+      <p>Sign in as your <code class="inline">@google.com</code> identity and bill CodeMender to the entitled project.</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com
+gcloud auth application-default set-quota-project cloud-llm-preview1
+
+cm init            <span class="c"># creates ~/.codemender state files</span>
+cm init --verify   <span class="c"># checks config &amp; backend connectivity</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; If you see <code class="inline">Unsupported agent interaction</code> later</div><p>Your identity or quota project isn't entitled to the preview agent. Confirm you signed in as <code class="inline">@google.com</code> and the quota project is <code class="inline">cloud-llm-preview1</code>, then ask the facilitator.</p></div>
+    </section>
+
+    <section id="s3">
+      <div class="step"><span class="num">3</span><h2>Clone Juice Shop</h2></div>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>cd /tmp &amp;&amp; rm -rf juice-shop
+git clone --depth 1 https://github.com/juice-shop/juice-shop
+cd juice-shop</pre></figure>
+      <p class="small">OWASP Juice Shop is intentionally vulnerable &mdash; the perfect target to see CodeMender find and fix something real.</p>
+    </section>
+
+    <section id="s4">
+      <div class="step"><span class="num">4</span><h2>Find</h2></div>
+      <p>Scan the login route. CodeMender streams only snippets to the backend; the reasoning runs in the cloud.</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>cm find routes/login.ts -y --bypass-warning
+cm report</pre></figure>
+      <div class="callout note"><div class="ct">&#10003; Expect 1 CRITICAL SQL Injection</div><p>Grab the finding id from <code class="inline">cm report</code> (or <code class="inline">cm report --format json | jq -r '.[0].FindingID'</code>) &mdash; you'll pass it to verify and fix.</p></div>
+    </section>
+
+    <section id="s5">
+      <div class="step"><span class="num">5</span><h2>Verify</h2></div>
+      <p>Ask CodeMender to <em>prove</em> it's exploitable &mdash; it builds and runs Juice Shop and fires a proof-of-concept exploit.</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>FID="$(cm report --format json | jq -r '.[0].FindingID')"
+cm verify "$FID" -y</pre></figure>
+      <p class="small">This is the long pole (a few minutes &mdash; it runs the app). <code class="inline">cm verify "$FID" --skip-exploit-verification</code> does a faster static-only pass.</p>
+    </section>
+
+    <section id="s6">
+      <div class="step"><span class="num">6</span><h2>Fix</h2></div>
+      <p>Generate and apply the patch, then read the diff &mdash; you're the human in the loop.</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>cm fix "$FID" -y      <span class="c"># patches, rebuilds, re-runs the exploit</span>
+cm vcs status
+cm vcs diff           <span class="c"># the parameterized-query fix</span></pre></figure>
+      <div class="callout note"><div class="ct">&#10003; That's the whole loop</div><p>find &rarr; verify &rarr; fix, running as you, billed to <code class="inline">cloud-llm-preview1</code>. The CI labs automate exactly this.</p></div>
+    </section>
+
+    <section id="next">
+      <div class="step"><span class="num">&#9670;</span><h2>Automate it in CI</h2></div>
+      <p>Now wrap these commands in a pipeline that clones a fork, runs find/verify/fix, and opens a PR you review and merge:</p>
+      <ul>
+        <li><b><a href="/">Cloud Build</a></b> &mdash; runs inside <code class="inline">cloud-llm-preview1</code> as the build service account; gcsfuse-backed state; multi-file scan with fan-out.</li>
+        <li><b><a href="/gha">GitHub Actions</a></b> &mdash; runs on a GitHub runner with your injected <code class="inline">@google.com</code> credentials; single job, no bucket.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p><b>CodeMender Smoke Test</b> &middot; public preview. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for lab use only.</p>
+      <p class="small">No secrets appear here. <code class="inline">cm</code> authenticates as your own <code class="inline">@google.com</code> identity via Application Default Credentials.</p>
+    </footer>
+   </div></main>
+</div>
+<script>
+(function(){
+  "use strict";
+  var root=document.documentElement, btn=document.getElementById('themebtn'), lbl=document.getElementById('themelbl');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('cm-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function curDark(){var t=root.getAttribute('data-theme');return t?t==='dark':sysDark();}
+  function syncLbl(){lbl.textContent=curDark()?'Light':'Dark';}
+  syncLbl();
+  btn.addEventListener('click',function(){var next=curDark()?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('cm-theme',next);}catch(e){}syncLbl();});
+  document.querySelectorAll('figure.code').forEach(function(fig){
+    var b=fig.querySelector('.copy'), pre=fig.querySelector('pre'); if(!b||!pre)return;
+    b.addEventListener('click',function(){navigator.clipboard.writeText(pre.innerText).then(function(){var o=b.textContent;b.textContent='Copied';b.classList.add('done');setTimeout(function(){b.textContent=o;b.classList.remove('done');},1400);}).catch(function(){});});
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('.railnav a')), map={};
+  links.forEach(function(a){var id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)map[id]=a;});
+  var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
+  Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
+  document.querySelectorAll('.done-toggle input').forEach(function(cb){var k='cm-step-'+cb.getAttribute('data-step');try{if(localStorage.getItem(k)==='1')cb.checked=true;}catch(e){}cb.addEventListener('change',function(){try{localStorage.setItem(k,cb.checked?'1':'0');}catch(e){}});});
+  document.querySelectorAll('[data-tabs]').forEach(function(box){
+    var tabs=box.querySelectorAll('.tab');
+    tabs.forEach(function(t){t.addEventListener('click',function(){
+      var k=t.getAttribute('data-tab');
+      tabs.forEach(function(x){x.classList.toggle('active',x===t);});
+      box.querySelectorAll('.tabpane').forEach(function(p){p.classList.toggle('active',p.getAttribute('data-pane')===k);});
+    });});
+  });
+})();
+</script>
+
+</body>
+</html>

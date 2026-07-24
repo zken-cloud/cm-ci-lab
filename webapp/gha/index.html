@@ -126,6 +126,15 @@ figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;
 .tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
 .tabpane{display:none}
 .tabpane.active{display:block}
+/* site top nav */
+.topnav{display:flex;align-items:center;gap:1rem;padding:.65rem clamp(1rem,4vw,2rem);background:var(--surface);border-bottom:1px solid var(--hair-strong)}
+.topnav .home{display:flex;align-items:center;gap:.5rem;font-weight:750;color:var(--ink);letter-spacing:-.01em;font-size:.98rem}
+.topnav .home svg{width:20px;height:20px;color:var(--accent)}
+.topnav .links{display:flex;gap:.4rem;margin-left:auto}
+.topnav .links a{padding:.5rem 1rem;border-radius:9px;font-size:.92rem;font-weight:650;color:var(--ink-2)}
+.topnav .links a:hover{background:var(--surface-2);text-decoration:none}
+.topnav .links a.active{background:var(--accent);color:#fff}
+@media(max-width:560px){.topnav{flex-wrap:wrap;gap:.5rem}.topnav .links{margin-left:0;width:100%}.topnav .links a{flex:1;text-align:center;padding:.5rem .35rem;font-size:.84rem}}
 figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
 pre .c{color:var(--code-muted)}      /* comment */
 pre .k{color:#7fd7c8}                 /* keyword/cmd */
@@ -185,6 +194,15 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
 </head>
 <body>
 
+<div class="topnav">
+  <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
+  <div class="links">
+    <a href="/smoke">Smoke Test</a>
+    <a href="/">Cloud Build</a>
+    <a href="/gha" class="active">GitHub Actions</a>
+  </div>
+</div>
+
 <div class="wrap">
   <aside class="rail">
     <div class="brand">
@@ -196,7 +214,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <a href="#flow"><span class="n">&#9670;</span>How it works</a>
       <a href="#access"><span class="n">&#9670;</span>Access model</a>
       <div class="grp">The lab</div>
-      <a href="#s1"><span class="n">1</span>Sign in &amp; smoke-test</a>
+      <a href="#s1"><span class="n">1</span>Capture your ADC</a>
       <a href="#s2"><span class="n">2</span>Fork Juice Shop</a>
       <a href="#s3"><span class="n">3</span>Add the workflow</a>
       <a href="#s4"><span class="n">4</span>Secrets: PAT + ADC</a>
@@ -255,37 +273,12 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
     </section>
 
     <section id="s1">
-      <div class="step"><span class="num">1</span><h2>Sign in &amp; smoke-test the CLI</h2></div>
-      <p><span class="chip ok">verified</span> On your laptop, prove the CLI reaches the backend &mdash; and produce the ADC file you'll inject. First download <code class="inline">cm</code> &mdash; <b>pick your OS</b> (most run this on a Mac):</p>
-      <div class="tabs" data-tabs>
-        <div class="tabrow" role="tablist">
-          <button class="tab active" data-tab="marm" type="button">Mac &middot; Apple silicon</button>
-          <button class="tab" data-tab="mint" type="button">Mac &middot; Intel</button>
-          <button class="tab" data-tab="lamd" type="button">Linux x86_64</button>
-          <button class="tab" data-tab="larm" type="button">Linux ARM64</button>
-        </div>
-        <div class="tabpane active" data-pane="marm"><figure class="code"><figcaption><span class="lbl">macOS &middot; Apple silicon</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-darwin-arm64.zip --destination=./
-unzip cm-darwin-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
-        <div class="tabpane" data-pane="mint"><figure class="code"><figcaption><span class="lbl">macOS &middot; Intel</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-darwin-amd64.zip --destination=./
-unzip cm-darwin-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
-        <div class="tabpane" data-pane="lamd"><figure class="code"><figcaption><span class="lbl">Linux x86_64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-linux-amd64.zip --destination=./
-unzip cm-linux-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
-        <div class="tabpane" data-pane="larm"><figure class="code"><figcaption><span class="lbl">Linux ARM64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-linux-arm64.zip --destination=./
-unzip cm-linux-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
-      </div>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; authenticate &amp; scan</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com
+      <div class="step"><span class="num">1</span><h2>Capture your ADC</h2></div>
+      <p>Run the <a href="/smoke">Smoke Test</a> first &mdash; it downloads the CLI and confirms it works for you. It also leaves the one credential this workflow needs: your Application Default Credentials. Capture them pointed at the entitled project:</p>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; capture ADC</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com
 gcloud auth application-default set-quota-project cloud-llm-preview1
-
-cd /tmp &amp;&amp; git clone --depth 1 https://github.com/juice-shop/juice-shop js
-cd js &amp;&amp; cm init &amp;&amp; cm find routes/login.ts -y --bypass-warning   <span class="c"># expect 1 CRITICAL</span></pre></figure>
+<span class="c"># writes ~/.config/gcloud/application_default_credentials.json</span>
+<span class="c"># (with quota_project_id=cloud-llm-preview1) — you inject it as CM_ADC in Step 4</span></pre></figure>
     </section>
 
     <section id="s2">

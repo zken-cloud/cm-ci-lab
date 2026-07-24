@@ -177,6 +177,15 @@ details.fac .body{padding:0 1.1rem 1.1rem}
 .tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
 .tabpane{display:none}
 .tabpane.active{display:block}
+/* site top nav */
+.topnav{display:flex;align-items:center;gap:1rem;padding:.65rem clamp(1rem,4vw,2rem);background:var(--surface);border-bottom:1px solid var(--hair-strong)}
+.topnav .home{display:flex;align-items:center;gap:.5rem;font-weight:750;color:var(--ink);letter-spacing:-.01em;font-size:.98rem}
+.topnav .home svg{width:20px;height:20px;color:var(--accent)}
+.topnav .links{display:flex;gap:.4rem;margin-left:auto}
+.topnav .links a{padding:.5rem 1rem;border-radius:9px;font-size:.92rem;font-weight:650;color:var(--ink-2)}
+.topnav .links a:hover{background:var(--surface-2);text-decoration:none}
+.topnav .links a.active{background:var(--accent);color:#fff}
+@media(max-width:560px){.topnav{flex-wrap:wrap;gap:.5rem}.topnav .links{margin-left:0;width:100%}.topnav .links a{flex:1;text-align:center;padding:.5rem .35rem;font-size:.84rem}}
 
 footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
 .kbd{font-family:var(--f-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--hair-strong);
@@ -185,6 +194,15 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
 </style>
 </head>
 <body>
+
+<div class="topnav">
+  <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
+  <div class="links">
+    <a href="/smoke">Smoke Test</a>
+    <a href="/" class="active">Cloud Build</a>
+    <a href="/gha">GitHub Actions</a>
+  </div>
+</div>
 
 <div class="wrap">
   <aside class="rail">
@@ -198,16 +216,15 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <a href="#access"><span class="n">&#9670;</span>Access model</a>
       <div class="grp">The lab</div>
       <a href="#s1"><span class="n">1</span>Sign in (@google.com)</a>
-      <a href="#s2"><span class="n">2</span>Install &amp; smoke-test the CLI</a>
-      <a href="#s3"><span class="n">3</span>Fork &amp; clone Juice Shop</a>
-      <a href="#s4"><span class="n">4</span>Namespace your workspace</a>
-      <a href="#s5"><span class="n">5</span>State bucket</a>
-      <a href="#s6"><span class="n">6</span>GitHub token</a>
-      <a href="#s7"><span class="n">7</span>Toolbox image</a>
-      <a href="#s8"><span class="n">8</span>Phase scripts</a>
-      <a href="#s9"><span class="n">9</span>The pipeline</a>
-      <a href="#s10"><span class="n">10</span>Run it</a>
-      <a href="#s11"><span class="n">11</span>Review &amp; merge</a>
+      <a href="#s2"><span class="n">2</span>Fork &amp; clone Juice Shop</a>
+      <a href="#s3"><span class="n">3</span>Namespace your workspace</a>
+      <a href="#s4"><span class="n">4</span>State bucket</a>
+      <a href="#s5"><span class="n">5</span>GitHub token</a>
+      <a href="#s6"><span class="n">6</span>Toolbox image</a>
+      <a href="#s7"><span class="n">7</span>Phase scripts</a>
+      <a href="#s8"><span class="n">8</span>The pipeline</a>
+      <a href="#s9"><span class="n">9</span>Run it</a>
+      <a href="#s10"><span class="n">10</span>Review &amp; merge</a>
       <div class="grp">Reference</div>
       <a href="#cheatsheet"><span class="n">&#9670;</span>cm cheat sheet</a>
       <a href="#facilitator"><span class="n">&#9670;</span>Facilitator notes</a>
@@ -233,7 +250,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
 
       <div class="callout note"><div class="ct">&#10003; Verified vs &#9888; not-yet-verified</div><p><span class="chip ok">verified</span> steps have been run for real. <span class="chip high">unverified</span> steps follow directly from what works but the <b>full Cloud Build pipeline has not been run end-to-end yet</b> &mdash; this run is the one that proves it. The interactive path (download &rarr; <code class="inline">cm init</code> &rarr; <code class="inline">cm find</code>) is <span class="chip ok">verified</span> in <code class="inline">cloud-llm-preview1</code> with a <code class="inline">@google.com</code> identity.</p></div>
 
-      <div class="callout warn"><div class="ct">&#9888; The one thing this run is testing</div><p>The pipeline runs <code class="inline">cm</code> as <code class="inline">cloud-llm-preview1</code>'s <b>Cloud Build service account</b>, not a human. We confirmed a service account clears the Interaction API's IAM check and provisioning; what is <b>not</b> yet confirmed is that the build SA is entitled to the <code class="inline">codemender-preview</code> <em>agent</em>. If Step&nbsp;10 fails with <code class="inline">Unsupported agent interaction: codemender-preview</code>, that entitlement is the gap &mdash; see <a href="#s10">Step&nbsp;10</a>.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; The one thing this run is testing</div><p>The pipeline runs <code class="inline">cm</code> as <code class="inline">cloud-llm-preview1</code>'s <b>Cloud Build service account</b>, not a human. We confirmed a service account clears the Interaction API's IAM check and provisioning; what is <b>not</b> yet confirmed is that the build SA is entitled to the <code class="inline">codemender-preview</code> <em>agent</em>. If Step&nbsp;9 fails with <code class="inline">Unsupported agent interaction: codemender-preview</code>, that entitlement is the gap &mdash; see <a href="#s9">Step&nbsp;9</a>.</p></div>
 
       <div class="diagram" role="img" aria-label="Five Cloud Build steps in cloud-llm-preview1: clone the fork, cm find across many files, cm verify fanned out across the found vulnerabilities, cm fix fanned out across the verified ones, then open one PR. Steps share CodeMender state through a gcsfuse-mounted GCS bucket and open a PR on the GitHub fork.">
         <svg viewBox="0 0 720 336" font-family="var(--f-sans)">
@@ -358,49 +375,14 @@ gcloud config get-value account   <span class="c"># must print ldap@google.com</
     </section>
 
     <section id="s2">
-      <div class="step"><span class="num">2</span><h2>Install &amp; smoke-test the CLI</h2></div>
-      <p><span class="chip ok">verified</span> Download the preview CLI &mdash; <b>pick your OS</b> (most run the smoke test on a Mac), then confirm it reaches the backend.</p>
-      <div class="tabs" data-tabs>
-        <div class="tabrow" role="tablist">
-          <button class="tab active" data-tab="marm" type="button">Mac &middot; Apple silicon</button>
-          <button class="tab" data-tab="mint" type="button">Mac &middot; Intel</button>
-          <button class="tab" data-tab="lamd" type="button">Linux x86_64</button>
-          <button class="tab" data-tab="larm" type="button">Linux ARM64</button>
-        </div>
-        <div class="tabpane active" data-pane="marm"><figure class="code"><figcaption><span class="lbl">macOS &middot; Apple silicon</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-darwin-arm64.zip --destination=./
-unzip cm-darwin-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
-        <div class="tabpane" data-pane="mint"><figure class="code"><figcaption><span class="lbl">macOS &middot; Intel</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-darwin-amd64.zip --destination=./
-unzip cm-darwin-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
-        <div class="tabpane" data-pane="lamd"><figure class="code"><figcaption><span class="lbl">Linux x86_64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-linux-amd64.zip --destination=./
-unzip cm-linux-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
-        <div class="tabpane" data-pane="larm"><figure class="code"><figcaption><span class="lbl">Linux ARM64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production --package=cm --version=stable \
-  --name=cm-linux-arm64.zip --destination=./
-unzip cm-linux-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
-      </div>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; init &amp; a real scan (the smoke test)</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com   <span class="c"># ADC = your identity</span>
-gcloud auth application-default set-quota-project cloud-llm-preview1
-
-cd /tmp &amp;&amp; rm -rf js &amp;&amp; git clone --depth 1 https://github.com/juice-shop/juice-shop js
-cd js &amp;&amp; cm init &amp;&amp; cm find routes/login.ts -y --bypass-warning</pre></figure>
-      <div class="callout note"><div class="ct">&#10003; Expected: 1 CRITICAL SQL Injection</div><p>Confirmed with a <code class="inline">@google.com</code> identity in <code class="inline">cloud-llm-preview1</code>. If you see <code class="inline">Unsupported agent interaction</code> here, your identity/project isn't entitled &mdash; stop and tell the facilitator before going further.</p></div>
-    </section>
-
-    <section id="s3">
-      <div class="step"><span class="num">3</span><h2>Fork &amp; clone Juice Shop</h2></div>
+      <div class="step"><span class="num">2</span><h2>Fork &amp; clone Juice Shop</h2></div>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh repo fork juice-shop/juice-shop --clone --fork-name juice-shop
 cd juice-shop
 git remote -v    <span class="c"># origin -&gt; your fork; upstream -&gt; juice-shop</span></pre></figure>
     </section>
 
-    <section id="s4">
-      <div class="step"><span class="num">4</span><h2>Namespace your workspace</h2></div>
+    <section id="s3">
+      <div class="step"><span class="num">3</span><h2>Namespace your workspace</h2></div>
       <p>One shared project for the cohort &mdash; pin your names once and reuse them.</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export CM_PROJECT=cloud-llm-preview1
 export REGION=us-central1
@@ -410,14 +392,14 @@ export GH_OWNER="$(gh api user --jq .login)"
 echo "project=$CM_PROJECT  bucket=$CM_STATE_BUCKET  owner=$GH_OWNER"</pre></figure>
     </section>
 
-    <section id="s5">
-      <div class="step"><span class="num">5</span><h2>Create your state bucket</h2></div>
+    <section id="s4">
+      <div class="step"><span class="num">4</span><h2>Create your state bucket</h2></div>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud storage buckets create "gs://$CM_STATE_BUCKET" \
   --project="$CM_PROJECT" --location="$REGION" --uniform-bucket-level-access</pre></figure>
     </section>
 
-    <section id="s6">
-      <div class="step"><span class="num">6</span><h2>Store your GitHub token</h2></div>
+    <section id="s5">
+      <div class="step"><span class="num">5</span><h2>Store your GitHub token</h2></div>
       <p>A fine-grained PAT scoped to your fork &mdash; <b>Contents: R/W</b> and <b>Pull requests: R/W</b>. Namespace the secret with your ldap.</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your github secret&gt;</span>
 printf '%s' "$GH_PAT" | gcloud secrets create "gh-pat-${LDAP}" \
@@ -425,9 +407,9 @@ printf '%s' "$GH_PAT" | gcloud secrets create "gh-pat-${LDAP}" \
 unset GH_PAT; history -c</pre></figure>
     </section>
 
-    <section id="s7">
-      <div class="step"><span class="num">7</span><h2>Build the toolbox image</h2></div>
-      <p><span class="chip ok">verified</span> A minimal image: <code class="inline">cm</code> + node/npm (so <code class="inline">cm verify</code> can build &amp; run Juice Shop) + git/jq/gcsfuse. It holds <b>no credential</b>. Put the <code class="inline">cm</code> binary from Step&nbsp;2 next to this Dockerfile as <code class="inline">cm-linux</code>.</p>
+    <section id="s6">
+      <div class="step"><span class="num">6</span><h2>Build the toolbox image</h2></div>
+      <p><span class="chip ok">verified</span> A minimal image: <code class="inline">cm</code> + node/npm (so <code class="inline">cm verify</code> can build &amp; run Juice Shop) + git/jq/gcsfuse. It holds <b>no credential</b>. Put the <code class="inline">cm</code> binary from the <a href="/smoke">Smoke Test</a> next to this Dockerfile as <code class="inline">cm-linux</code>.</p>
       <figure class="code"><figcaption><span class="lbl">container/Dockerfile</span><button class="copy" type="button">Copy</button></figcaption><pre>FROM node:22-bookworm-slim
 RUN apt-get update \
  &amp;&amp; apt-get install -y --no-install-recommends \
@@ -451,8 +433,8 @@ gcloud builds submit container/ --tag "$CM_IMAGE" --project="$CM_PROJECT"</pre><
       <div class="callout note"><div class="ct">&#8505; The image is identical for everyone &mdash; prefer the facilitator's</div><p>The toolbox is the same for the whole cohort, so the facilitator usually builds it <b>once</b> and hands out the URL &mdash; just <code class="inline">export CM_IMAGE=</code> that and skip the build. If you do build your own, the <code class="inline">:${LDAP}</code> tag keeps it from overwriting anyone else's in the shared <code class="inline">codemender</code> repo.</p></div>
     </section>
 
-    <section id="s8">
-      <div class="step"><span class="num">8</span><h2>Write the phase scripts</h2></div>
+    <section id="s7">
+      <div class="step"><span class="num">7</span><h2>Write the phase scripts</h2></div>
       <p>Five scripts under <code class="inline">scripts/</code> (four steps + the sourced <code class="inline">cm-env.sh</code>). Preview command surface: <code class="inline">cm verify</code>, <code class="inline">cm fix -y</code>, <code class="inline">cm report --format json</code>. <b>No auth step</b> &mdash; the build SA is the ADC identity.</p>
       <div class="callout note"><div class="ct">&#9889; Two knobs control fan-out</div><p><code class="inline">_VERIFY_FANOUT</code> &mdash; how many <b>found</b> vulnerabilities <code class="inline">verify.sh</code> reproduces in parallel. <code class="inline">_FIX_FANOUT</code> &mdash; how many <b>verified</b> vulnerabilities <code class="inline">fix.sh</code> patches in parallel. Each worker runs in a private state copy + an <b>independent git clone</b> (a worktree shares <code class="inline">.git</code> and deadlocks).</p></div>
       <div class="callout warn"><div class="ct">&#9888; Validated: fan-out is port-bound on a single-server app &mdash; default is 1</div><p>Testing with a real binary confirmed two things. The clone isolation above is required (worktrees collide on <code class="inline">.git/index.lock</code>). And <code class="inline">cm verify</code>/<code class="inline">cm fix</code> <b>build &amp; run Juice Shop on a fixed port (3000)</b> to reproduce the exploit &mdash; so two in parallel collide on the port regardless of git isolation. For one target, keep both fan-outs at <b>1</b>. Raise them only when workers have isolated runtime (distinct targets, or per-worker network namespaces), or fan out <b>static</b> verification with <code class="inline">cm verify --skip-exploit-verification</code> (no app, no port). The machinery scales; the single shared app is the limit.</p></div>
@@ -560,11 +542,11 @@ jq -n --arg t "security: CodeMender fixed ${#PATCHES[@]} findings" --arg h "$BRA
   | jq -r '.html_url // .message'</pre></figure>
     </section>
 
-    <section id="s9">
-      <div class="step"><span class="num">9</span><h2>Write the pipeline</h2></div>
+    <section id="s8">
+      <div class="step"><span class="num">8</span><h2>Write the pipeline</h2></div>
       <p>The GitHub token comes from your namespaced secret. CodeMender needs no secret &mdash; the build SA's identity is the credential.</p>
       <figure class="code"><figcaption><span class="lbl">cloudbuild.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre>substitutions:
-  _CM_IMAGE: ""          # &#9664; from Step 7
+  _CM_IMAGE: ""          # &#9664; from Step 6
   _CM_STATE_BUCKET: ""   # &#9664; ldap-cm-state
   _GH_OWNER: ""          # &#9664; your GitHub username
   _LDAP: ""              # &#9664; your ldap
@@ -572,7 +554,7 @@ jq -n --arg t "security: CodeMender fixed ${#PATCHES[@]} findings" --arg h "$BRA
   _BASE_BRANCH: master
   _SCAN_PATH: routes/          # &#9664; a directory, or a space-separated list of files
   _MIN_SEVERITY: CRITICAL
-  _VERIFY_FANOUT: "1"          # &#9664; verify N in parallel — but port-bound, see Step 8
+  _VERIFY_FANOUT: "1"          # &#9664; verify N in parallel — but port-bound, see Step 7
   _FIX_FANOUT: "1"             # &#9664; fix N in parallel — raise only with runtime isolation
 
 steps:
@@ -621,8 +603,8 @@ options:
 timeout: 3600s</pre></figure>
     </section>
 
-    <section id="s10">
-      <div class="step"><span class="num">10</span><h2>Run it</h2></div>
+    <section id="s9">
+      <div class="step"><span class="num">9</span><h2>Run it</h2></div>
       <p><span class="chip high">this is the run under test</span> Submit into the shared project. Cloud Build runs it as the compute SA (the entitled one), so a plain submit is all you need:</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud builds submit . --config cloudbuild.yaml \
   --project=cloud-llm-preview1 --region=global \
@@ -631,8 +613,8 @@ timeout: 3600s</pre></figure>
       <div class="callout note"><div class="ct">&#9201; Expect ~20&ndash;30 minutes</div><p>Verification dominates &mdash; CodeMender builds Juice Shop and runs a PoC exploit. Resumable: <code class="inline">cm session list</code> then <code class="inline">cm session resume</code>.</p></div>
     </section>
 
-    <section id="s11">
-      <div class="step"><span class="num">11</span><h2>Review, approve &amp; merge</h2></div>
+    <section id="s10">
+      <div class="step"><span class="num">10</span><h2>Review, approve &amp; merge</h2></div>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gh pr list --repo "$GH_OWNER/juice-shop"
 gh pr view <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --web
 gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre></figure>
