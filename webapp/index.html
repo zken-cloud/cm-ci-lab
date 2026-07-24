@@ -170,6 +170,13 @@ details.fac .body{padding:0 1.1rem 1.1rem}
 /* progress checkbox */
 .done-toggle{display:inline-flex;align-items:center;gap:.5rem;margin:.6rem 0 0;font-size:.85rem;color:var(--muted);cursor:pointer;user-select:none}
 .done-toggle input{accent-color:var(--accent);width:1.05em;height:1.05em}
+/* OS toggle tabs */
+.tabrow{display:flex;flex-wrap:wrap;gap:.35rem;margin:.4rem 0 .5rem}
+.tab{appearance:none;border:1px solid var(--hair-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:.78rem;padding:.32rem .75rem;border-radius:999px;cursor:pointer}
+.tab:hover{border-color:var(--accent)}
+.tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
+.tabpane{display:none}
+.tabpane.active{display:block}
 
 footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
 .kbd{font-family:var(--f-mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--hair-strong);
@@ -352,16 +359,31 @@ gcloud config get-value account   <span class="c"># must print ldap@google.com</
 
     <section id="s2">
       <div class="step"><span class="num">2</span><h2>Install &amp; smoke-test the CLI</h2></div>
-      <p><span class="chip ok">verified</span> Download the preview CLI from Artifact Registry (Linux x86_64 shown), then confirm it reaches the backend.</p>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; download &amp; install</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download \
-  --project=cmoc-prod --location=us \
-  --repository=codemender-cli-production \
-  --package=cm --version=stable \
+      <p><span class="chip ok">verified</span> Download the preview CLI &mdash; <b>pick your OS</b> (most run the smoke test on a Mac), then confirm it reaches the backend.</p>
+      <div class="tabs" data-tabs>
+        <div class="tabrow" role="tablist">
+          <button class="tab active" data-tab="marm" type="button">Mac &middot; Apple silicon</button>
+          <button class="tab" data-tab="mint" type="button">Mac &middot; Intel</button>
+          <button class="tab" data-tab="lamd" type="button">Linux x86_64</button>
+          <button class="tab" data-tab="larm" type="button">Linux ARM64</button>
+        </div>
+        <div class="tabpane active" data-pane="marm"><figure class="code"><figcaption><span class="lbl">macOS &middot; Apple silicon</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-darwin-arm64.zip --destination=./
+unzip cm-darwin-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
+        <div class="tabpane" data-pane="mint"><figure class="code"><figcaption><span class="lbl">macOS &middot; Intel</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-darwin-amd64.zip --destination=./
+unzip cm-darwin-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm</pre></figure></div>
+        <div class="tabpane" data-pane="lamd"><figure class="code"><figcaption><span class="lbl">Linux x86_64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
   --name=cm-linux-amd64.zip --destination=./
-
-unzip cm-linux-amd64.zip
-chmod +x cm
-sudo mv cm /usr/local/bin/cm</pre></figure>
+unzip cm-linux-amd64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
+        <div class="tabpane" data-pane="larm"><figure class="code"><figcaption><span class="lbl">Linux ARM64</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-linux-arm64.zip --destination=./
+unzip cm-linux-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm</pre></figure></div>
+      </div>
       <figure class="code"><figcaption><span class="lbl">bash &middot; init &amp; a real scan (the smoke test)</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com   <span class="c"># ADC = your identity</span>
 gcloud auth application-default set-quota-project cloud-llm-preview1
 
@@ -687,6 +709,14 @@ gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre
   var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
   Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
   document.querySelectorAll('.done-toggle input').forEach(function(cb){var k='cm-step-'+cb.getAttribute('data-step');try{if(localStorage.getItem(k)==='1')cb.checked=true;}catch(e){}cb.addEventListener('change',function(){try{localStorage.setItem(k,cb.checked?'1':'0');}catch(e){}});});
+  document.querySelectorAll('[data-tabs]').forEach(function(box){
+    var tabs=box.querySelectorAll('.tab');
+    tabs.forEach(function(t){t.addEventListener('click',function(){
+      var k=t.getAttribute('data-tab');
+      tabs.forEach(function(x){x.classList.toggle('active',x===t);});
+      box.querySelectorAll('.tabpane').forEach(function(p){p.classList.toggle('active',p.getAttribute('data-pane')===k);});
+    });});
+  });
 })();
 </script>
 
