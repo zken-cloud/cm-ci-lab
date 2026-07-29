@@ -278,6 +278,13 @@ gcloud auth application-default set-quota-project cloud-llm-preview1
 
 cm init            <span class="c"># creates ~/.codemender state files</span>
 cm init --verify   <span class="c"># checks config &amp; backend connectivity</span></pre></figure>
+      <p style="margin-top:1rem"><b>Point CodeMender at git.</b> Add a <code class="inline">vcs</code> block to your config so <code class="inline">cm verify</code>, <code class="inline">cm fix</code>, and <code class="inline">cm vcs</code> can read your working tree:</p>
+      <figure class="code"><figcaption><span class="lbl">~/.codemender/config.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">vcs</span>:
+  <span class="k">type</span>: <span class="v">git</span>
+  <span class="k">commands</span>:
+    <span class="k">diff</span>: <span class="v">"git diff"</span>
+    <span class="k">status</span>: <span class="v">"git status"</span></pre></figure>
+      <p class="small">Without this, <code class="inline">cm vcs status</code> / <code class="inline">cm vcs diff</code> in Step&nbsp;6 have no VCS backend to call.</p>
       <div class="callout warn"><div class="ct">&#9888; If you see <code class="inline">Unsupported agent interaction</code> later</div><p>Your identity or quota project isn't entitled to the preview agent. Confirm you signed in as <code class="inline">@google.com</code> and the quota project is <code class="inline">cloud-llm-preview1</code>, then ask the facilitator.</p></div>
     </section>
 
@@ -302,7 +309,8 @@ cm report</pre></figure>
       <p>Ask CodeMender to <em>prove</em> it's exploitable &mdash; it builds and runs Juice Shop and fires a proof-of-concept exploit.</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>FID="$(cm report --format json | jq -r '.[0].FindingID')"
 cm verify "$FID" -y</pre></figure>
-      <p class="small">This is the long pole (a few minutes &mdash; it runs the app). <code class="inline">cm verify "$FID" --skip-exploit-verification</code> does a faster static-only pass.</p>
+      <p class="small">This is the long pole (a few minutes &mdash; it runs the app).</p>
+      <div class="callout note"><div class="ct">&#9889; Faster static-only pass</div><p>Skip the exploit build/run for a quick static check &mdash; don't forget the <code class="inline">-y</code>:</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>cm verify "$FID" <span class="k">--skip-exploit-verification</span> <span class="k">-y</span></pre></figure></div>
     </section>
 
     <section id="s6">

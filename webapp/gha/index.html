@@ -3,71 +3,176 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CodeMender CI Lab — GitHub Actions (Qwiklab)</title>
+<title>CodeMender CI Lab — GitHub Actions Guardrail</title>
 <style>
+/* ============================ Design tokens ============================ */
 :root{
-  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3;
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
   --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
   --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b;
+  --code-ink:#dbe7e6; --code-muted:#7f9a99; --code-add:#7fdcae; --code-del:#f09195;
   --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+  --maxw:820px;
   --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --f-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325;
+    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
     --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
     --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+    --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be;
+    --code-ink:#d6e5e3; --code-muted:#6f8a89; --code-add:#7fdcae; --code-del:#f09195;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
   }
 }
 :root[data-theme="light"]{
-  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3;
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
   --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
   --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b; --code-ink:#dbe7e6; --code-muted:#7f9a99;
   --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
 }
 :root[data-theme="dark"]{
-  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325;
+  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
   --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
   --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+  --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be; --code-ink:#d6e5e3; --code-muted:#6f8a89;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);
-  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;
-  min-height:100vh;display:flex;flex-direction:column}
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 a{color:var(--accent-ink);text-decoration:none}
 a:hover{text-decoration:underline}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 
-/* ============================ Top nav ============================ */
-.topnav{display:flex;align-items:center;gap:1.5rem;padding:.7rem clamp(1rem,4vw,2.2rem);
-  background:var(--surface);border-bottom:1px solid var(--hair)}
-.topnav .home{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
-.topnav .home svg{width:22px;height:22px;color:var(--accent)}
-.topnav .home:hover{text-decoration:none}
-.topnav .links{display:flex;gap:.35rem;margin-left:auto;flex-wrap:wrap}
-.topnav .links a{padding:.4rem .85rem;border-radius:8px;color:var(--ink-2);font-weight:550;font-size:.92rem}
-.topnav .links a:hover{background:var(--surface-2);text-decoration:none}
-.topnav .links a.active{background:var(--accent);color:#fff}
+/* ============================ Layout ============================ */
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:1.6rem 1.1rem 2rem;border-right:1px solid var(--hair)}
+.main{min-width:0;padding:0 clamp(1.1rem,4vw,3rem) 6rem}
+.col{max-width:var(--maxw)}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--hair)}
+  .rail-scroll{max-height:none}
+}
 
-/* ============================ Hero card ============================ */
-.stage{flex:1;display:grid;place-items:center;padding:clamp(2rem,6vw,5rem) 1.2rem}
-.card{max-width:640px;width:100%;background:var(--surface);border:1px solid var(--hair);
-  border-radius:18px;box-shadow:var(--shadow);padding:clamp(1.8rem,5vw,3rem);text-align:center}
+/* ============================ Rail nav ============================ */
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.2rem}
+.brand svg{width:22px;height:22px;flex:none}
+.brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.railnav{margin-top:1.4rem;font-size:.86rem}
+.railnav a{display:block;color:var(--ink-2);padding:.28rem .5rem;border-radius:7px;
+  border-left:2px solid transparent}
+.railnav a:hover{background:var(--surface-2);text-decoration:none}
+.railnav a.active{color:var(--accent-ink);border-left-color:var(--accent);background:var(--surface-2);font-weight:600}
+.railnav .grp{margin:1rem .5rem .3rem;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.railnav a .n{display:inline-block;width:1.5em;color:var(--muted);font-variant-numeric:tabular-nums}
+.themebtn{margin-top:1.5rem;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2);
+  border-radius:8px;padding:.4rem .7rem;font:inherit;font-size:.8rem;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.themebtn:hover{border-color:var(--accent)}
+
+/* ============================ Hero ============================ */
+.hero{padding:2.6rem 0 1.4rem}
 .eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
-h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.1;letter-spacing:-.025em;
-  margin:.6rem 0 .5rem;text-wrap:balance;font-weight:750}
-.lede{font-size:1.1rem;color:var(--ink-2);margin:.2rem auto 1.7rem;max-width:48ch}
+h1{font-size:clamp(1.9rem,4.4vw,2.75rem);line-height:1.08;letter-spacing:-.025em;
+  margin:.5rem 0 .4rem;text-wrap:balance;font-weight:750}
+.lede{font-size:1.12rem;color:var(--ink-2);max-width:60ch;margin:.2rem 0 1.3rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem}
+.pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:500;
+  padding:.3rem .7rem;border-radius:999px;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2)}
+.pill b{color:var(--ink);font-weight:650}
+
+/* ============================ Diagram ============================ */
+.diagram{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:1.1rem;
+  margin:1.4rem 0;box-shadow:var(--shadow);overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:640px;height:auto}
+
+/* ============================ Sections ============================ */
+section{padding:1.7rem 0;border-top:1px solid var(--hair)}
+section:first-of-type{border-top:none}
+h2{font-size:1.5rem;letter-spacing:-.02em;margin:.2rem 0 .3rem;font-weight:700;scroll-margin-top:1rem}
+h2 .kicker{display:block;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:.35rem}
+h3{font-size:1.08rem;margin:1.6rem 0 .4rem;letter-spacing:-.01em}
+p{margin:.6rem 0}
+ul,ol{margin:.6rem 0;padding-left:1.3rem}
+li{margin:.3rem 0}
+.small{font-size:.9rem;color:var(--muted)}
+
+/* Step header */
+.step{display:flex;gap:.8rem;align-items:baseline;margin:0 0 .2rem}
+.step .num{flex:none;width:2rem;height:2rem;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:700;font-size:.95rem;font-variant-numeric:tabular-nums;transform:translateY(.25rem)}
+.step h2{margin:0}
+
+/* ============================ Code blocks ============================ */
+figure.code{margin:1rem 0;border:1px solid var(--hair-strong);border-radius:11px;overflow:hidden;background:var(--code-bg)}
+figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.5rem .5rem .5rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07)}
+figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;color:var(--code-muted);text-transform:uppercase}
+.copy{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--code-ink);
+  font:inherit;font-size:.74rem;padding:.28rem .6rem;border-radius:7px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
+figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
+pre .c{color:var(--code-muted)}      /* comment */
+pre .k{color:#7fd7c8}                 /* keyword/cmd */
+pre .v{color:#e9c17a}                 /* value/string */
+pre .p{color:#c99be0}                 /* placeholder */
+pre .add{color:var(--code-add)}
+pre .del{color:var(--code-del)}
+code.inline{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);
+  border:1px solid var(--hair);padding:.08em .38em;border-radius:5px;color:var(--ink);word-break:break-word}
+
+/* ============================ Callouts ============================ */
+.callout{margin:1.1rem 0;padding:.85rem 1rem .85rem 1.05rem;border-radius:10px;border:1px solid var(--hair);
+  background:var(--surface);border-left:3px solid var(--muted);box-shadow:var(--shadow)}
+.callout .ct{font-weight:650;font-size:.82rem;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem}
+.callout p{margin:.2rem 0}
+.callout.note{border-left-color:var(--accent)}
+.callout.note .ct{color:var(--accent-ink)}
+.callout.warn{border-left-color:var(--high)}
+.callout.warn .ct{color:var(--high)}
+.callout.sec{border-left-color:var(--crit);background:linear-gradient(0deg,var(--surface),var(--surface))}
+.callout.sec .ct{color:var(--crit)}
+
+/* ============================ Chips / table ============================ */
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:650;padding:.12rem .5rem;
+  border-radius:6px;letter-spacing:.02em;text-transform:uppercase;font-family:var(--f-mono)}
+.chip.crit{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}
+.chip.high{background:color-mix(in srgb,var(--high) 18%,transparent);color:var(--high)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;overflow-x:auto;display:block}
+.tbl thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--hair-strong);padding:.5rem .6rem;font-weight:600}
+.tbl td{padding:.5rem .6rem;border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl code{font-family:var(--f-mono);font-size:.85em}
+
+/* ============================ Launch CTA ============================ */
+.launch{margin:1.2rem 0 .4rem;padding:1.6rem;border-radius:14px;border:1px solid var(--accent);
+  background:var(--accent-soft);box-shadow:var(--shadow);text-align:center}
 .cta{display:inline-flex;align-items:center;gap:.6rem;background:var(--accent);color:#fff;
-  font-weight:650;font-size:1.02rem;padding:.85rem 1.5rem;border-radius:11px;box-shadow:var(--shadow)}
+  font-weight:650;font-size:1.02rem;padding:.85rem 1.5rem;border-radius:11px;box-shadow:var(--shadow);margin-top:.4rem}
 .cta:hover{text-decoration:none;filter:brightness(1.05)}
 .cta svg{width:18px;height:18px}
-.sub{margin-top:1.4rem;font-size:.9rem;color:var(--muted)}
-.sub code{font-family:var(--f-mono);font-size:.85em;background:var(--surface-2);
-  border:1px solid var(--hair);border-radius:5px;padding:.1em .4em}
-.alt{margin-top:1.9rem;padding-top:1.4rem;border-top:1px solid var(--hair);font-size:.95rem;color:var(--ink-2)}
+
+/* site top nav */
+.topnav{display:flex;align-items:center;gap:1rem;padding:.65rem clamp(1rem,4vw,2rem);background:var(--surface);border-bottom:1px solid var(--hair-strong)}
+.topnav .home{display:flex;align-items:center;gap:.5rem;font-weight:750;color:var(--ink);letter-spacing:-.01em;font-size:.98rem}
+.topnav .home svg{width:20px;height:20px;color:var(--accent)}
+.topnav .links{display:flex;gap:.4rem;margin-left:auto}
+.topnav .links a{padding:.5rem 1rem;border-radius:9px;font-size:.92rem;font-weight:650;color:var(--ink-2)}
+.topnav .links a:hover{background:var(--surface-2);text-decoration:none}
+.topnav .links a.active{background:var(--accent);color:#fff}
+@media(max-width:560px){.topnav{flex-wrap:wrap;gap:.5rem}.topnav .links{margin-left:0;width:100%}.topnav .links a{flex:1;text-align:center;padding:.5rem .35rem;font-size:.84rem}}
+
+footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
 </style>
 </head>
 <body>
@@ -80,18 +185,207 @@ h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.1;letter-spacing:-.025em;
   </div>
 </div>
 
-<div class="stage">
-  <div class="card">
-    <div class="eyebrow">Internal CE Enablement &middot; public preview</div>
-    <h1>The GitHub Actions lab is now a Qwiklab</h1>
-    <p class="lede">The full CodeMender-in-GitHub-Actions walkthrough &mdash; provisioned credentials, a live repo, and a graded environment &mdash; runs as a self-paced Qwiklab.</p>
-    <a class="cta" href="https://gcpstaging.qwiklabs.com/focuses/33826?parent=catalog" target="_blank" rel="noopener">
-      Open the Qwiklab
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M17 7H9M17 7v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </a>
-    <div class="alt">New to CodeMender? Run the <a href="/smoke">Smoke Test</a> on your laptop first.</div>
-  </div>
+<div class="wrap">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
+      <div>CodeMender Lab<small>Public Preview &middot; GitHub Actions</small></div>
+    </div>
+    <nav class="railnav" aria-label="Lab contents">
+      <a href="#overview"><span class="n">&#9670;</span>Overview</a>
+      <a href="#launch"><span class="n">&#9656;</span>Open the Qwiklab</a>
+      <a href="#flow"><span class="n">&#9670;</span>How it works</a>
+      <a href="#stages"><span class="n">&#9670;</span>Pipeline stages</a>
+      <a href="#steps"><span class="n">&#9670;</span>What you'll do</a>
+      <a href="#criteria"><span class="n">&#9670;</span>Success criteria</a>
+</nav>
+    <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span id="themelbl">Theme</span>
+    </button>
+  </aside>
+  <main class="main"><div class="col">
+
+    <header class="hero" id="overview">
+      <div class="eyebrow">Internal CE Enablement &middot; GitHub Actions &middot; public preview</div>
+      <h1>CodeMender CI Lab &mdash; GitHub Actions Guardrail</h1>
+      <p class="lede">A security guardrail wired into GitHub Actions. On every push, CodeMender <b>scans</b> OWASP Juice&nbsp;Shop, <b>verifies</b> which findings are real by <b>reproducing the exploit</b> against the running app, <b>generates a fix and opens a pull request</b>, and <b>blocks the deployment</b> until an un-dismissed HIGH/CRITICAL is resolved. CodeMender proposes the change &mdash; <b>a human reviews and merges</b>. The hands-on lab runs as a self-paced <b>Qwiklab</b>; this page explains the pipeline first.</p>
+      <div class="meta">
+        <span class="pill">&#9201; <b>~30&ndash;90&nbsp;min</b></span>
+        <span class="pill">&#9670; <b>Intermediate</b></span>
+        <span class="pill">&#9881;&#65039; <b>GitHub Actions</b> &middot; ubuntu-latest</span>
+        <span class="pill">&#128737;&#65039; <b>scan &middot; verify &middot; fix &middot; PR</b></span>
+      </div>
+
+      <div class="diagram" role="img" aria-label="A push to main (or a manual Run workflow with verify_limit) triggers a GitHub-hosted ubuntu-latest runner. The runner checks out the code and runs npm install, authenticates a service account, downloads the cm binary from Google Artifact Registry and runs cm init, then cm find scans routes/ by uploading source to CodeMender on Vertex AI where a server-side agent reasons about vulnerabilities. A triage step ranks the HIGH/CRITICAL findings and selects the top N. cm verify builds and runs the app and fires a proof-of-concept exploit; cm fix then generates and build-tests a patch for each un-dismissed finding, and the pipeline opens a codemender/fix pull request for a human to review and merge. Finally the Security Gate fails the run red and blocks the deployment until the fix is merged.">
+        <svg viewBox="0 0 720 372" font-family="var(--f-sans)">
+          <defs>
+            <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
+            <marker id="ara" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
+            <marker id="arc" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--crit)"/></marker>
+          </defs>
+
+          <!-- trigger -->
+          <rect x="12" y="168" width="126" height="64" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="26" y="192" font-size="11" font-weight="700" fill="var(--ink)">push &rarr; main</text>
+          <text x="26" y="208" font-size="10" fill="var(--ink-2)">or Run workflow &#9656;</text>
+          <text x="26" y="222" font-size="9" fill="var(--muted)">input: verify_limit</text>
+          <line x1="138" y1="200" x2="164" y2="200" stroke="var(--muted)" stroke-width="1.4" marker-end="url(#ar)"/>
+
+          <!-- runner container -->
+          <rect x="166" y="24" width="368" height="326" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="186" y="44" font-size="11.5" font-weight="700" fill="var(--accent-ink)">GitHub-hosted runner &middot; ubuntu-latest</text>
+          <text x="186" y="58" font-size="9" fill="var(--muted)">GCP_SA_KEY + CM_PROJECT secrets &middot; permissions: contents/PR write</text>
+          <g font-size="11" text-anchor="middle">
+            <g><rect x="186" y="66"  width="330" height="26" rx="7" fill="var(--surface-2)" stroke="var(--hair)"/><text x="351" y="83"  fill="var(--ink)">0 &middot; checkout + npm install (run the app)</text></g>
+            <g><rect x="186" y="98"  width="330" height="26" rx="7" fill="var(--surface-2)" stroke="var(--hair)"/><text x="351" y="115" fill="var(--ink)">1 &middot; auth (SA key) &rarr; install cm (Artifact Reg.)</text></g>
+            <g><rect x="186" y="130" width="330" height="26" rx="7" fill="var(--surface-2)" stroke="var(--hair)"/><text x="351" y="147" fill="var(--ink)">2 &middot; cm find routes/ &mdash; upload + scan</text></g>
+            <g><rect x="186" y="162" width="330" height="26" rx="7" fill="var(--surface-2)" stroke="var(--hair)"/><text x="351" y="179" fill="var(--ink)">3 &middot; triage &mdash; rank HIGH/CRITICAL, top-N</text></g>
+            <g><rect x="186" y="194" width="330" height="26" rx="7" fill="var(--surface-2)" stroke="var(--hair)"/><text x="351" y="211" fill="var(--ink)">4 &middot; cm verify &mdash; build+run app, PoC</text></g>
+            <g><rect x="186" y="226" width="330" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="351" y="243" fill="var(--accent-ink)" font-weight="650">5 &middot; cm fix &mdash; patch + build-test</text></g>
+            <g><rect x="186" y="258" width="330" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="351" y="275" fill="var(--accent-ink)" font-weight="650">6 &middot; open PR &mdash; codemender/fix-* branch</text></g>
+            <g><rect x="186" y="290" width="330" height="26" rx="7" fill="color-mix(in srgb,var(--crit) 12%,transparent)" stroke="var(--crit)"/><text x="351" y="307" fill="var(--crit)" font-weight="650">7 &middot; Security Gate &mdash; block un-dismissed</text></g>
+          </g>
+
+          <!-- backend -->
+          <rect x="556" y="60" width="152" height="80" rx="10" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="570" y="82" font-size="11" font-weight="700" fill="var(--ink)">CodeMender &middot; Vertex AI</text>
+          <text x="570" y="98" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">aiplatform</text>
+          <text x="570" y="110" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">.googleapis.com</text>
+          <text x="570" y="128" font-size="9" fill="var(--muted)">server-side agent</text>
+          <line x1="516" y1="143" x2="554" y2="108" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#ara)"/>
+          <text x="536" y="96" font-size="8.5" fill="var(--accent-ink)" text-anchor="middle" font-family="var(--f-mono)">source &#8593;</text>
+
+          <!-- remediation PR -->
+          <rect x="556" y="170" width="152" height="74" rx="10" fill="var(--surface)" stroke="var(--accent)"/>
+          <text x="570" y="192" font-size="11" font-weight="700" fill="var(--accent-ink)">Remediation PR</text>
+          <text x="570" y="210" font-size="9" fill="var(--ink-2)" font-family="var(--f-mono)">codemender/fix-*</text>
+          <text x="570" y="227" font-size="9" fill="var(--ink-2)">human reviews &amp; merges</text>
+          <line x1="516" y1="271" x2="554" y2="212" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#ara)"/>
+
+          <!-- deployment gate -->
+          <rect x="556" y="262" width="152" height="80" rx="10" fill="var(--surface)" stroke="var(--crit)"/>
+          <text x="570" y="284" font-size="11" font-weight="700" fill="var(--ink)">Deployment gate</text>
+          <text x="570" y="303" font-size="9.5" fill="var(--crit)" font-weight="650">&#10007; blocked until merge</text>
+          <text x="570" y="319" font-size="9.5" fill="var(--ok)" font-weight="650">&#10003; passes iff all dismissed</text>
+          <text x="570" y="333" font-size="8.5" fill="var(--muted)">report + logs uploaded</text>
+          <line x1="516" y1="303" x2="554" y2="303" stroke="var(--crit)" stroke-width="1.5" marker-end="url(#arc)"/>
+        </svg>
+      </div>
+      <div class="callout note"><div class="ct">&#128737;&#65039; It proposes fixes &mdash; a human merges them</div><p>After confirming a finding is real, CodeMender <code class="inline">cm fix</code> generates and build-tests a patch, and the pipeline opens a <code class="inline">codemender/fix-*</code> <b>pull request</b> (it needs <code class="inline">contents: write</code> + <code class="inline">pull-requests: write</code>). It never merges on its own &mdash; you review the diff, and the Security Gate keeps the deploy blocked until the fix lands on <code class="inline">main</code>.</p></div>
+    </header>
+
+    <section id="launch">
+      <div class="step"><span class="num">&#9670;</span><h2>Open the Qwiklab</h2></div>
+      <p>The hands-on walkthrough &mdash; provisioned credentials, a live repo, and a graded environment &mdash; runs as a self-paced Qwiklab. The rest of this page explains the pipeline you'll be operating.</p>
+      <div class="launch">
+        <p style="margin:0 0 .2rem;font-weight:650;color:var(--ink)">CodeMender CI/CD Guardrail &mdash; GitHub Actions</p>
+        <a class="cta" href="https://gcpstaging.qwiklabs.com/focuses/33826?parent=catalog" target="_blank" rel="noopener">
+          Open the Qwiklab
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M17 7H9M17 7v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+      <p class="small">New to CodeMender? Run the <a href="/smoke">Smoke Test</a> on your laptop first &mdash; the pipeline just wraps those same <code class="inline">cm find</code> / <code class="inline">cm verify</code> commands.</p>
+    </section>
+
+    <section id="flow">
+      <div class="step"><span class="num">&#9670;</span><h2>How it works</h2></div>
+      <p>The whole guardrail is one GitHub Actions workflow (<code class="inline">.github/workflows/codemender-pipeline.yml</code>) plus two small Python helpers. CodeMender is a <b>cloud service with a local executor</b>: the <code class="inline">cm</code> binary uploads in-scope source and streams commands, but the reasoning &mdash; and the exploit reproduction &mdash; is driven server-side.</p>
+      <ul>
+        <li><b>Trigger</b> &mdash; every push to <code class="inline">main</code>, or a manual <b>Run workflow</b> with a <code class="inline">verify_limit</code> input. Doc-only changes (<code class="inline">**.md</code>, <code class="inline">lab/**</code>) are ignored so they don't kick off a long scan.</li>
+        <li><b>Authenticate</b> &mdash; a <b>service-account key</b> (the <code class="inline">GCP_SA_KEY</code> secret) is activated for <code class="inline">gcloud</code> and exported as <b>ADC</b>, authenticating both the binary download and CodeMender's Vertex&nbsp;AI calls; <code class="inline">CM_PROJECT</code> selects the entitled project.</li>
+        <li><b>Install cm</b> &mdash; <code class="inline">gcloud artifacts generic download</code> pulls the <code class="inline">cm</code> binary from Google's <b>Artifact Registry</b>.</li>
+        <li><b>Install the app</b> &mdash; <code class="inline">actions/setup-node</code> + <code class="inline">npm install</code>, so <code class="inline">cm verify</code> can actually <em>build and run</em> Juice Shop later.</li>
+        <li><b>Scan</b> &mdash; <code class="inline">cm find "$(realpath routes)" -y</code> uploads the in-scope source to CodeMender on <b>Vertex&nbsp;AI</b>; a server-side agent reasons about vulnerabilities and records the findings. The <b>absolute</b> scan path makes findings carry absolute file paths so verify can resolve them.</li>
+        <li><b>Triage</b> &mdash; <code class="inline">cm_triage.py</code> parses <code class="inline">cm report -f json</code>, counts HIGH/CRITICAL, ranks them, and selects the top <b>N</b> (<code class="inline">VERIFY_LIMIT</code>, default 1) to verify.</li>
+        <li><b>Verify</b> &mdash; <code class="inline">cm verify &lt;id&gt; --bypass-warning</code>, looped over the triaged findings, <b>starts the app and fires a proof-of-concept exploit</b>. Each finding becomes <span class="chip ok">VERIFIED</span> <span class="chip crit">DISMISSED</span> or inconclusive (time-boxed).</li>
+        <li><b>Fix</b> &mdash; <code class="inline">cm fix &lt;id&gt; --bypass-warning</code>, looped over every <b>un-dismissed</b> finding, <b>generates + build-tests a patch</b> and writes it into the working tree (<code class="inline">PER_FIX_TIMEOUT</code> per finding).</li>
+        <li><b>Open PR</b> &mdash; the patched files are committed to a <code class="inline">codemender/fix-&lt;run id&gt;</code> branch and <code class="inline">gh pr create</code> opens <b>one PR</b> whose body is CodeMender's report.</li>
+        <li><b>Gate</b> &mdash; the Security Gate step turns the run <b>red</b> and blocks the deployment on any HIGH/CRITICAL that verify did not explicitly dismiss &mdash; until the fix PR is merged.</li>
+      </ul>
+      <div class="callout note"><div class="ct">&#128273; What authenticates</div><p>A <b>service account</b> (the <code class="inline">GCP_SA_KEY</code> secret) is CodeMender's credential: it authorizes the Artifact Registry binary download <em>and</em>, exported as ADC, CodeMender's calls to <b>Vertex&nbsp;AI</b> (<code class="inline">aiplatform.googleapis.com</code>). <code class="inline">CM_PROJECT</code> is the preview-entitled project it runs against. The built-in <code class="inline">GITHUB_TOKEN</code> is used only to push the remediation branch + open the PR.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; One-time repo setting for the PR</div><p>Opening a PR with <code class="inline">GITHUB_TOKEN</code> requires <b>Settings &rarr; Actions &rarr; General &rarr; Workflow permissions &rarr; "Allow GitHub Actions to create and approve pull requests."</b> Without it, the "Open Remediation PR" step fails with <em>"GitHub Actions is not permitted to create or approve pull requests."</em></p></div>
+      <div class="callout note"><div class="ct">&#127922; Verdicts vary &mdash; that's expected</div><p>Verification is a slow, server-side agent loop. A finding can have its exploit reproduced but not finalize a <code class="inline">VERIFIED</code> stamp within the time-box, landing <em>inconclusive</em>. The gate treats anything <b>not explicitly DISMISSED</b> as still-blocking, so an unfinished verify never lets a real vulnerability through.</p></div>
+    </section>
+
+    <section id="stages">
+      <div class="step"><span class="num">&#9670;</span><h2>Pipeline stages</h2></div>
+      <p>Each workflow step maps directly onto a real <code class="inline">cm</code> command:</p>
+      <table class="tbl">
+        <thead><tr><th>Stage</th><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+        <tr><td><b>Authenticate</b></td><td><code class="inline">gcloud auth activate-service-account</code></td><td>Activates the <code class="inline">GCP_SA_KEY</code> service account for <code class="inline">gcloud</code> + exports it as ADC for <code class="inline">cm</code> (Vertex&nbsp;AI)</td></tr>
+        <tr><td><b>Install cm</b></td><td><code class="inline">gcloud artifacts generic download</code></td><td>Pulls the <code class="inline">cm</code> binary from Google's Artifact Registry (<code class="inline">cmoc-prod</code>)</td></tr>
+        <tr><td><b>Install app</b></td><td><code class="inline">setup-node</code> + <code class="inline">npm install</code></td><td>Installs Juice Shop's deps so <code class="inline">cm verify</code> can run the app</td></tr>
+        <tr><td><b>Init</b></td><td><code class="inline">cm init</code></td><td>Mints the local CodeMender identity key</td></tr>
+        <tr><td><b>Scan</b></td><td><code class="inline">cm find "$(realpath routes)" -y</code></td><td>Uploads <code class="inline">routes/</code> (absolute path) and runs the server-side scan</td></tr>
+        <tr><td><b>Report</b></td><td><code class="inline">cm report -f json</code></td><td>Exports findings &rarr; uploaded as the <code class="inline">codemender-report</code> artifact</td></tr>
+        <tr><td><b>Triage</b></td><td><code class="inline">cm_triage.py</code></td><td>Counts HIGH/CRITICAL, ranks them, selects the top <b>N</b> (<code class="inline">VERIFY_LIMIT</code>)</td></tr>
+        <tr><td><b>Verify</b></td><td><code class="inline">cm verify &lt;id&gt; --bypass-warning</code> (looped)</td><td><b>Reproduces the exploit</b> against the running app; marks each VERIFIED / DISMISSED</td></tr>
+        <tr><td><b>Fix</b></td><td><code class="inline">cm fix &lt;id&gt;</code> (looped, un-dismissed)</td><td>Generates + build-tests a patch, writing the change into the working tree</td></tr>
+        <tr><td><b>Open PR</b></td><td><code class="inline">git push</code> + <code class="inline">gh pr create</code></td><td>Commits the patches to a <code class="inline">codemender/fix-*</code> branch and opens <b>one PR</b> for review</td></tr>
+        <tr><td><b>Gate</b></td><td>exit 1 if un-dismissed HIGH/CRITICAL</td><td>Turns the run <b>red</b> and blocks deployment until the fix is merged</td></tr>
+        </tbody>
+      </table>
+      <div class="callout note"><div class="ct">&#9888; Why there's no <code class="inline">--fail-on=high,critical</code> flag</div><p>The real <code class="inline">cm</code> has no such flag &mdash; a scan exits <code class="inline">0</code> whether or not it finds bugs. <b>The gate is something you build</b>: parse <code class="inline">cm report -f json</code> and fail the job yourself. That's the transferable pattern for wiring any scanner into a pipeline.</p></div>
+      <div class="callout sec"><div class="ct">&#128680; How the gate decides &mdash; and why it stays red</div><p>The gate is a fail-safe. It computes <code class="inline">BLOCK = high_critical &minus; dismissed</code> and fails the run <b>red</b> whenever <code class="inline">BLOCK &gt; 0</code> &mdash; i.e. unless <b>every</b> HIGH/CRITICAL finding was explicitly <b>DISMISSED</b> by verify (a <span class="chip ok">VERIFIED</span> or an inconclusive verdict still blocks; the verified count is informational only). Two things follow:</p><ul><li><code class="inline">high_critical</code> is the <b>whole scan's</b> count, but <code class="inline">dismissed</code> only reflects the top-<b>N</b> that verify examined (<code class="inline">VERIFY_LIMIT</code>, default <b>1</b>). So with ~9&ndash;13 findings the gate <b>essentially always blocks</b> in the default lab &mdash; green requires verifying <em>and</em> dismissing them all.</li><li>Opening the fix PR does <b>not</b> turn the gate green &mdash; <code class="inline">main</code> stays vulnerable until you review and <b>merge</b> it, then re-run. The gate only appends a hint pointing at the PR.</li></ul></div>
+    </section>
+
+    <section id="steps">
+      <div class="step"><span class="num">&#9670;</span><h2>What you'll do in the lab</h2></div>
+      <p>The Qwiklab provisions a repo (a Juice Shop fork with the pipeline already wired) and the credentials. Your job is to operate the guardrail and review what it proposes:</p>
+      <ol>
+        <li><b>Open the Qwiklab</b> &mdash; it hands you the lab repo and (from your instructor) a service-account key + project id.</li>
+        <li><b>Add the secrets</b> &mdash; under <b>Settings &rarr; Secrets and variables &rarr; Actions</b>, add <code class="inline">GCP_SA_KEY</code> (the service-account JSON) and <code class="inline">CM_PROJECT</code> (the entitled project id) &mdash; <b>ask your instructor</b> for both.</li>
+        <li><b>Enable PR creation</b> &mdash; <b>Settings &rarr; Actions &rarr; General &rarr; Workflow permissions &rarr; "Allow GitHub Actions to create and approve pull requests."</b></li>
+        <li><b>Trigger the pipeline</b> &mdash; push to <code class="inline">main</code>, or <b>Actions &rarr; Run workflow</b> and (optionally) set <code class="inline">verify_limit</code>.</li>
+        <li><b>Watch scan &rarr; verify &rarr; fix &rarr; PR</b> &mdash; the <b>Verify Findings</b> and <b>Remediate Findings</b> logs show the app booting and the exploit / fix attempts against <code class="inline">localhost:3000</code>.</li>
+        <li><b>Review the PR &amp; results</b> &mdash; open the <code class="inline">codemender/fix-*</code> pull request and read its diff; download the <code class="inline">codemender-report</code> artifact and the run <b>Summary</b> (Triage / Verify / Remediation), and confirm the <b>red Security Gate</b> blocked the deploy.</li>
+      </ol>
+    </section>
+
+    <section id="criteria">
+      <div class="step"><span class="num">&#9670;</span><h2>Success criteria</h2></div>
+      <p>One push (or dispatch) should produce all five:</p>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Criterion</th><th>Where the evidence is</th></tr></thead>
+        <tbody>
+        <tr><td>1</td><td><b>Workflow executes</b> &mdash; clean <code class="inline">cm</code> install + init</td><td>Actions log: "Install CodeMender CLI" + "Initialize CodeMender Workspace" steps green</td></tr>
+        <tr><td>2</td><td><b>Pipeline gating (fail-safe)</b> &mdash; a HIGH/CRITICAL turns the run red and blocks deploy</td><td>Run is <b>red</b>; "Security Gate" step shows <code class="inline">error::Deployment blocked</code></td></tr>
+        <tr><td>3</td><td><b>Artifact generation</b> &mdash; <code class="inline">codemender-report</code> with the JSON report</td><td>Run <b>Summary</b> &rarr; Artifacts &rarr; <code class="inline">codemender-report</code></td></tr>
+        <tr><td>4</td><td><b>Vulnerability verification</b> &mdash; <code class="inline">cm verify</code> reproduces the exploit against the running app</td><td>"Verify Findings" log shows the app booting + exploit attempts; <b>Summary &rarr; "CodeMender Verify"</b> reports the verdict</td></tr>
+        <tr><td>5</td><td><b>Autonomous remediation</b> &mdash; <code class="inline">cm fix</code> patches the finding and a PR is opened</td><td>A <code class="inline">codemender/fix-*</code> branch + open <b>pull request</b> with a real diff; <b>Summary &rarr; "CodeMender Remediation"</b> links it</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p><b>CodeMender CI Lab &mdash; GitHub Actions Guardrail</b> &middot; public preview. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for lab use only.</p>
+      <p class="small">No secrets appear in this guide. <code class="inline">cm</code> authenticates via the <code class="inline">GCP_SA_KEY</code> service-account secret (ADC / Vertex&nbsp;AI); the built-in <code class="inline">GITHUB_TOKEN</code> only opens the remediation PR.</p>
+    </footer>
+   </div></main>
 </div>
+<script>
+(function(){
+  "use strict";
+  var root=document.documentElement, btn=document.getElementById('themebtn'), lbl=document.getElementById('themelbl');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('cm-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function curDark(){var t=root.getAttribute('data-theme');return t?t==='dark':sysDark();}
+  function syncLbl(){lbl.textContent=curDark()?'Light':'Dark';}
+  syncLbl();
+  btn.addEventListener('click',function(){var next=curDark()?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('cm-theme',next);}catch(e){}syncLbl();});
+  document.querySelectorAll('figure.code').forEach(function(fig){
+    var b=fig.querySelector('.copy'), pre=fig.querySelector('pre'); if(!b||!pre)return;
+    b.addEventListener('click',function(){navigator.clipboard.writeText(pre.innerText).then(function(){var o=b.textContent;b.textContent='Copied';b.classList.add('done');setTimeout(function(){b.textContent=o;b.classList.remove('done');},1400);}).catch(function(){});});
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('.railnav a')), map={};
+  links.forEach(function(a){var id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)map[id]=a;});
+  var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
+  Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
+})();
+</script>
 
 </body>
 </html>
