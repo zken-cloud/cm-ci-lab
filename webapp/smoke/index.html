@@ -238,7 +238,6 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <span class="pill">&#9729; <b>cloud-llm-preview1</b> or your Argolis</span>
         <span class="pill">&#128196; <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener"><b>Public preview docs</b></a></span>
       </div>
-      <div class="callout note"><div class="ct">&#10003; This is the verified path</div><p>Everything here has been run for real with a <code class="inline">@google.com</code> identity against <code class="inline">cloud-llm-preview1</code>. If a step fails, fix it here before touching CI &mdash; the pipelines just wrap these same commands.</p></div>
     </header>
 
     <section id="s1">
@@ -327,7 +326,10 @@ cm verify "$FID" -y</pre></figure>
 cm vcs status
 cm vcs diff           <span class="c"># the parameterized-query fix</span></pre></figure>
       <div class="callout note"><div class="ct">&#10003; That's the whole loop</div><p>find &rarr; verify &rarr; fix, running as you, billed to your entitled project. The CI labs automate exactly this.</p></div>
-      <div class="callout note"><div class="ct">&#9881;&#65039; Handy flags (find / verify / fix)</div><p><code class="inline">--model &lt;name&gt;</code> picks the model &mdash; a fast flash model by default; a <code class="inline">pro</code> model reasons deeper (see the <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener">preview docs</a> for the current list). <code class="inline">-c "&lt;extra context&gt;"</code> passes additional context to the agent. Both work on all three commands, e.g. <code class="inline">cm find routes/login.ts -y -c "prioritize auth bypass" --model gemini-3.1-pro-preview</code>.</p></div>
+      <div class="callout note"><div class="ct">&#9881;&#65039; Handy flags (find / verify / fix)</div><p><code class="inline">--model &lt;name&gt;</code> picks the model &mdash; a fast flash model by default; a <code class="inline">pro</code> model reasons deeper (see the <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener">preview docs</a> for the current list). <code class="inline">-c "&lt;extra context&gt;"</code> passes additional context to the agent. <code class="inline">--sandbox=true|false</code> toggles execution sandboxing. All three work on all three commands, e.g. <code class="inline">cm find routes/login.ts -y -c "prioritize auth bypass" --model gemini-3.1-pro-preview</code>.</p></div>
+      <div class="callout note"><div class="ct">&#128274; Execution sandboxing (<code class="inline">--sandbox</code>)</div><p>The CLI runs <b>inside an OS-level sandbox by default</b> &mdash; the agent may only read and write files in allowed directories, and outbound network access is blocked. It uses kernel namespaces + <code class="inline">seccomp</code> on Linux and <code class="inline">sandbox-exec</code> (Seatbelt) on macOS; Windows AppContainer isolation is experimental. <b>No Docker or container runtime is required</b> and there is zero startup overhead, so leave it on.</p><figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>cm find routes/login.ts -y <span class="k">--sandbox=true</span>   <span class="c"># the default</span>
+cm verify "$FID" -y <span class="k">--sandbox=false</span>          <span class="c"># opt out for this run</span>
+cm fix "$FID" -y <span class="k">--unrestricted</span>              <span class="c"># bypass the sandbox entirely</span></pre></figure><p class="small">Details: <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender/set-up-environment#execution-sandboxing" target="_blank" rel="noopener">Execution sandboxing</a> in the public docs.</p></div>
     </section>
 
     <section id="next">
