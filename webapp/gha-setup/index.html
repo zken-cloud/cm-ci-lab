@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CodeMender CI Lab — GitHub Actions Setup (WIF)</title>
+<style>
+/* ============================ Design tokens ============================ */
+:root{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b;
+  --code-ink:#dbe7e6; --code-muted:#7f9a99; --code-add:#7fdcae; --code-del:#f09195;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+  --maxw:820px;
+  --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+    --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+    --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+    --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be;
+    --code-ink:#d6e5e3; --code-muted:#6f8a89; --code-add:#7fdcae; --code-del:#f09195;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f8f8; --surface:#ffffff; --surface-2:#eef3f3; --code-bg:#0e1a1d;
+  --ink:#0f1c1e; --ink-2:#33474a; --muted:#5f7376; --hair:#dbe5e5; --hair-strong:#c3d3d3;
+  --accent:#0c9c8b; --accent-ink:#0a7d70; --accent-soft:#d3f0eb;
+  --crit:#d83a3f; --high:#e07b12; --med:#b7930b; --ok:#0c9c8b; --code-ink:#dbe7e6; --code-muted:#7f9a99;
+  --shadow:0 1px 2px rgba(15,28,30,.05),0 8px 24px -12px rgba(15,28,30,.16);
+}
+:root[data-theme="dark"]{
+  --bg:#0a1214; --surface:#0f1a1c; --surface-2:#152325; --code-bg:#0a1416;
+  --ink:#e9f1f0; --ink-2:#c2d2d1; --muted:#8aa09f; --hair:#1e2f31; --hair-strong:#2a3d3f;
+  --accent:#2ad4be; --accent-ink:#54e0cd; --accent-soft:#123430;
+  --crit:#ff6166; --high:#f6a23b; --med:#e8c245; --ok:#2ad4be; --code-ink:#d6e5e3; --code-muted:#6f8a89;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ============================ Layout ============================ */
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:1.6rem 1.1rem 2rem;border-right:1px solid var(--hair)}
+.main{min-width:0;padding:0 clamp(1.1rem,4vw,3rem) 6rem}
+.col{max-width:var(--maxw)}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--hair)}
+  .rail-scroll{max-height:none}
+}
+
+/* ============================ Rail nav ============================ */
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.2rem}
+.brand svg{width:22px;height:22px;flex:none}
+.brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.railnav{margin-top:1.4rem;font-size:.86rem}
+.railnav a{display:block;color:var(--ink-2);padding:.28rem .5rem;border-radius:7px;
+  border-left:2px solid transparent}
+.railnav a:hover{background:var(--surface-2);text-decoration:none}
+.railnav a.active{color:var(--accent-ink);border-left-color:var(--accent);background:var(--surface-2);font-weight:600}
+.railnav .grp{margin:1rem .5rem .3rem;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.railnav a .n{display:inline-block;width:1.5em;color:var(--muted);font-variant-numeric:tabular-nums}
+.themebtn{margin-top:1.5rem;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2);
+  border-radius:8px;padding:.4rem .7rem;font:inherit;font-size:.8rem;cursor:pointer;display:inline-flex;gap:.4rem;align-items:center}
+.themebtn:hover{border-color:var(--accent)}
+
+/* ============================ Hero ============================ */
+.hero{padding:2.6rem 0 1.4rem}
+.eyebrow{font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+h1{font-size:clamp(1.9rem,4.4vw,2.75rem);line-height:1.08;letter-spacing:-.025em;
+  margin:.5rem 0 .4rem;text-wrap:balance;font-weight:750}
+.lede{font-size:1.12rem;color:var(--ink-2);max-width:60ch;margin:.2rem 0 1.3rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem}
+.pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:500;
+  padding:.3rem .7rem;border-radius:999px;background:var(--surface);border:1px solid var(--hair-strong);color:var(--ink-2)}
+.pill b{color:var(--ink);font-weight:650}
+
+/* ============================ Diagram ============================ */
+.diagram{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:1.1rem;
+  margin:1.4rem 0;box-shadow:var(--shadow);overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:640px;height:auto}
+
+/* ============================ Sections ============================ */
+section{padding:1.7rem 0;border-top:1px solid var(--hair)}
+section:first-of-type{border-top:none}
+h2{font-size:1.5rem;letter-spacing:-.02em;margin:.2rem 0 .3rem;font-weight:700;scroll-margin-top:1rem}
+h2 .kicker{display:block;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin-bottom:.35rem}
+h3{font-size:1.08rem;margin:1.6rem 0 .4rem;letter-spacing:-.01em}
+p{margin:.6rem 0}
+ul,ol{margin:.6rem 0;padding-left:1.3rem}
+li{margin:.3rem 0}
+.small{font-size:.9rem;color:var(--muted)}
+
+/* Step header */
+.step{display:flex;gap:.8rem;align-items:baseline;margin:0 0 .2rem}
+.step .num{flex:none;width:2rem;height:2rem;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:700;font-size:.95rem;font-variant-numeric:tabular-nums;transform:translateY(.25rem)}
+.step h2{margin:0}
+
+/* ============================ Code blocks ============================ */
+figure.code{margin:1rem 0;border:1px solid var(--hair-strong);border-radius:11px;overflow:hidden;background:var(--code-bg)}
+figure.code figcaption{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.5rem .5rem .5rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07)}
+figcaption .lbl{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;color:var(--code-muted);text-transform:uppercase}
+.copy{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--code-ink);
+  font:inherit;font-size:.74rem;padding:.28rem .6rem;border-radius:7px;cursor:pointer;display:inline-flex;gap:.35rem;align-items:center}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
+figure.code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.6;color:var(--code-ink)}
+pre .c{color:var(--code-muted)}      /* comment */
+pre .k{color:#7fd7c8}                 /* keyword/cmd */
+pre .v{color:#e9c17a}                 /* value/string */
+pre .p{color:#c99be0}                 /* placeholder */
+pre .add{color:var(--code-add)}
+pre .del{color:var(--code-del)}
+code.inline{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);
+  border:1px solid var(--hair);padding:.08em .38em;border-radius:5px;color:var(--ink);word-break:break-word}
+
+/* ============================ Callouts ============================ */
+.callout{margin:1.1rem 0;padding:.85rem 1rem .85rem 1.05rem;border-radius:10px;border:1px solid var(--hair);
+  background:var(--surface);border-left:3px solid var(--muted);box-shadow:var(--shadow)}
+.callout .ct{font-weight:650;font-size:.82rem;letter-spacing:.02em;display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem}
+.callout p{margin:.2rem 0}
+.callout.note{border-left-color:var(--accent)}
+.callout.note .ct{color:var(--accent-ink)}
+.callout.warn{border-left-color:var(--high)}
+.callout.warn .ct{color:var(--high)}
+.callout.sec{border-left-color:var(--crit);background:linear-gradient(0deg,var(--surface),var(--surface))}
+.callout.sec .ct{color:var(--crit)}
+
+/* ============================ Chips / table ============================ */
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:650;padding:.12rem .5rem;
+  border-radius:6px;letter-spacing:.02em;text-transform:uppercase;font-family:var(--f-mono)}
+.chip.crit{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}
+.chip.high{background:color-mix(in srgb,var(--high) 18%,transparent);color:var(--high)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;overflow-x:auto;display:block}
+.tbl thead th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--hair-strong);padding:.5rem .6rem;font-weight:600}
+.tbl td{padding:.5rem .6rem;border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl code{font-family:var(--f-mono);font-size:.85em}
+
+/* ============================ Launch CTA ============================ */
+.launch{margin:1.2rem 0 .4rem;padding:1.6rem;border-radius:14px;border:1px solid var(--accent);
+  background:var(--accent-soft);box-shadow:var(--shadow);text-align:center}
+.cta{display:inline-flex;align-items:center;gap:.6rem;background:var(--accent);color:#fff;
+  font-weight:650;font-size:1.02rem;padding:.85rem 1.5rem;border-radius:11px;box-shadow:var(--shadow);margin-top:.4rem}
+.cta:hover{text-decoration:none;filter:brightness(1.05)}
+.cta svg{width:18px;height:18px}
+
+/* site top nav */
+.topnav{display:flex;align-items:center;gap:1rem;padding:.65rem clamp(1rem,4vw,2rem);background:var(--surface);border-bottom:1px solid var(--hair-strong)}
+.topnav .home{display:flex;align-items:center;gap:.5rem;font-weight:750;color:var(--ink);letter-spacing:-.01em;font-size:.98rem}
+.topnav .home svg{width:20px;height:20px;color:var(--accent)}
+.topnav .links{display:flex;gap:.4rem;margin-left:auto}
+.topnav .links a{padding:.5rem 1rem;border-radius:9px;font-size:.92rem;font-weight:650;color:var(--ink-2)}
+.topnav .links a:hover{background:var(--surface-2);text-decoration:none}
+.topnav .links a.active{background:var(--accent);color:#fff}
+@media(max-width:560px){.topnav{flex-wrap:wrap;gap:.5rem}.topnav .links{margin-left:0;width:100%}.topnav .links a{flex:1;text-align:center;padding:.5rem .35rem;font-size:.84rem}}
+
+footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
+  <div class="links">
+    <a href="/smoke">Smoke Test</a>
+    <a href="/gha">GitHub Actions</a>
+    <a href="/gha-setup" class="active">GHA Setup</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="color:var(--accent)"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"/></svg>
+      <div>CodeMender Lab<small>Setup &middot; Workload Identity</small></div>
+    </div>
+    <nav class="railnav" aria-label="Setup contents">
+      <a href="#overview"><span class="n">&#9670;</span>Overview</a>
+      <a href="#inputs"><span class="n">&#9670;</span>What you're given</a>
+      <div class="grp">Instructor &middot; once</div>
+      <a href="#instructor"><span class="n">&#9670;</span>Set up WIF in zken-genai</a>
+      <div class="grp">Participant</div>
+      <a href="#secrets"><span class="n">1</span>Secret &amp; variables</a>
+      <a href="#perms"><span class="n">2</span>Repo permissions</a>
+      <a href="#workflow"><span class="n">3</span>The workflow file</a>
+      <a href="#run"><span class="n">4</span>Run the setup check</a>
+      <a href="#pipeline"><span class="n">5</span>Wire the real pipeline</a>
+      <div class="grp">Reference</div>
+      <a href="#trouble"><span class="n">&#9670;</span>Troubleshooting</a>
+      <a href="#why"><span class="n">&#9670;</span>Why WIF, not a key</a>
+</nav>
+    <button class="themebtn" id="themebtn" type="button" aria-label="Toggle color theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span id="themelbl">Theme</span>
+    </button>
+  </aside>
+  <main class="main"><div class="col">
+
+    <header class="hero" id="overview">
+      <div class="eyebrow">Internal CE Enablement &middot; GitHub Actions &middot; setup</div>
+      <h1>GitHub Actions Lab &mdash; Setup with Workload Identity</h1>
+      <p class="lede">Wire the CodeMender pipeline to Google Cloud with <b>no long-lived service-account key</b>. GitHub mints a short-lived OIDC token, Google's STS federates it against a <b>Workload Identity</b> provider, and the run impersonates a service account in <code class="inline">zken-genai</code>. This page is the step-by-step setup; the <a href="/gha">GitHub Actions guide</a> explains what the pipeline then does.</p>
+      <div class="meta">
+        <span class="pill">&#9201; <b>~15&nbsp;min</b></span>
+        <span class="pill">&#9729;&#65039; <b>zken-genai</b></span>
+        <span class="pill">&#128273; <b>WIF</b> &middot; keyless</span>
+        <span class="pill">&#9881;&#65039; <b>ubuntu-22.04</b> &middot; container <b>ubuntu:20.04</b></span>
+      </div>
+
+      <div class="diagram" role="img" aria-label="Trust chain: a GitHub Actions job running on an ubuntu-22.04 runner inside an ubuntu 20.04 container requests an OIDC JWT, which requires the id-token write permission. The JWT goes to Google STS, which validates the issuer and the attribute condition on the cm-lab-provider in the github-pool. STS returns a federated token, which is exchanged via iamcredentials to impersonate the cm-lab-gha service account in zken-genai, granted through roles slash iam dot workloadIdentityUser. The resulting short-lived access token authorizes CodeMender's calls to Vertex AI with zken-genai as the quota project. No long-lived JSON key exists anywhere in the chain.">
+        <svg viewBox="0 0 720 300" font-family="var(--f-sans)">
+          <defs>
+            <marker id="sa" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
+          </defs>
+
+          <rect x="10" y="58" width="168" height="118" rx="11" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="24" y="80" font-size="11.5" font-weight="700" fill="var(--ink)">GitHub Actions</text>
+          <text x="24" y="97" font-size="9" fill="var(--ink-2)" font-family="var(--f-mono)">runs-on: ubuntu-22.04</text>
+          <text x="24" y="110" font-size="9" fill="var(--ink-2)" font-family="var(--f-mono)">container: ubuntu:20.04</text>
+          <text x="24" y="130" font-size="9.5" fill="var(--accent-ink)" font-weight="650">permissions:</text>
+          <text x="24" y="143" font-size="9" fill="var(--accent-ink)" font-family="var(--f-mono)">id-token: write</text>
+          <text x="24" y="162" font-size="8.5" fill="var(--muted)">mints the OIDC JWT</text>
+
+          <line x1="178" y1="117" x2="194" y2="117" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#sa)"/>
+          <text x="186" y="108" font-size="8" fill="var(--accent-ink)" text-anchor="middle" font-family="var(--f-mono)">JWT</text>
+
+          <rect x="196" y="58" width="160" height="118" rx="11" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="210" y="80" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Google STS</text>
+          <text x="210" y="97" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">sts.googleapis.com</text>
+          <text x="210" y="116" font-size="9" fill="var(--ink)" font-weight="650">github-pool</text>
+          <text x="210" y="129" font-size="9" fill="var(--ink-2)" font-family="var(--f-mono)">cm-lab-provider</text>
+          <text x="210" y="148" font-size="8.5" fill="var(--muted)">checks issuer +</text>
+          <text x="210" y="160" font-size="8.5" fill="var(--muted)">repository_owner</text>
+
+          <line x1="356" y1="117" x2="372" y2="117" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#sa)"/>
+          <text x="364" y="108" font-size="8" fill="var(--accent-ink)" text-anchor="middle" font-family="var(--f-mono)">fed. token</text>
+
+          <rect x="374" y="58" width="160" height="118" rx="11" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="388" y="80" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Impersonate SA</text>
+          <text x="388" y="97" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">iamcredentials</text>
+          <text x="388" y="116" font-size="9" fill="var(--ink)" font-family="var(--f-mono)">cm-lab-gha@</text>
+          <text x="388" y="128" font-size="9" fill="var(--ink)" font-family="var(--f-mono)">zken-genai</text>
+          <text x="388" y="148" font-size="8.5" fill="var(--muted)">roles/iam.</text>
+          <text x="388" y="160" font-size="8.5" fill="var(--muted)">workloadIdentityUser</text>
+
+          <line x1="534" y1="117" x2="550" y2="117" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#sa)"/>
+          <text x="542" y="108" font-size="8" fill="var(--accent-ink)" text-anchor="middle" font-family="var(--f-mono)">access tok</text>
+
+          <rect x="552" y="58" width="158" height="118" rx="11" fill="var(--surface-2)" stroke="var(--hair-strong)"/>
+          <text x="566" y="80" font-size="11.5" font-weight="700" fill="var(--ink)">Vertex AI</text>
+          <text x="566" y="97" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">aiplatform</text>
+          <text x="566" y="109" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">.googleapis.com</text>
+          <text x="566" y="129" font-size="9" fill="var(--ink)">CodeMender agent</text>
+          <text x="566" y="148" font-size="8.5" fill="var(--muted)">quota project:</text>
+          <text x="566" y="160" font-size="8.5" fill="var(--muted)" font-family="var(--f-mono)">zken-genai</text>
+
+          <rect x="10" y="200" width="700" height="34" rx="9" fill="color-mix(in srgb,var(--ok) 10%,transparent)" stroke="var(--ok)"/>
+          <text x="24" y="222" font-size="10.5" fill="var(--ok)" font-weight="650">&#10003; No long-lived JSON key anywhere &mdash; the token is minted per run and expires in about an hour.</text>
+
+          <text x="24" y="258" font-size="9.5" font-weight="700" fill="var(--muted)">DISTRIBUTED BY YOUR INSTRUCTOR</text>
+          <text x="24" y="276" font-size="9" fill="var(--ink-2)" font-family="var(--f-mono)">secret: WIF_AUDIENCE</text>
+          <text x="220" y="276" font-size="9" fill="var(--ink-2)" font-family="var(--f-mono)">vars: WIF_PROVIDER &middot; SA_EMAIL &middot; QUOTA_PROJECT</text>
+        </svg>
+      </div>
+      <div class="callout note"><div class="ct">&#9881;&#65039; Why a container instead of a runner label</div><p>GitHub <b>retired the <code class="inline">ubuntu-20.04</code> hosted-runner label</b>, so <code class="inline">runs-on: ubuntu-20.04</code> no longer schedules a job. To get a real Ubuntu&nbsp;20.04 userland the lab pins a supported runner and runs the job <b>inside a <code class="inline">ubuntu:20.04</code> container</b>. The runner mounts its own Node for JavaScript actions, and Ubuntu&nbsp;20.04's glibc&nbsp;2.31 is new enough to run it &mdash; so <code class="inline">actions/checkout</code> and the auth action work normally.</p></div>
+    </header>
+
+    <section id="inputs">
+      <div class="step"><span class="num">&#9670;</span><h2>What you're given</h2></div>
+      <p>Your instructor hands you <b>four values</b>. Exactly one is a <b>secret</b>; the other three are <b>variables</b>, because they are ordinary resource names rather than credentials.</p>
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Kind</th><th>Looks like</th></tr></thead>
+        <tbody>
+        <tr><td><code>WIF_AUDIENCE</code></td><td><span class="chip high">Secret</span></td><td><code>//iam.googleapis.com/projects/163236863044/locations/global/workloadIdentityPools/github-pool/providers/cm-lab-provider</code></td></tr>
+        <tr><td><code>WIF_PROVIDER</code></td><td><span class="chip ok">Variable</span></td><td><code>projects/163236863044/locations/global/workloadIdentityPools/github-pool/providers/cm-lab-provider</code></td></tr>
+        <tr><td><code>SA_EMAIL</code></td><td><span class="chip ok">Variable</span></td><td><code>cm-lab-gha@zken-genai.iam.gserviceaccount.com</code></td></tr>
+        <tr><td><code>QUOTA_PROJECT</code></td><td><span class="chip ok">Variable</span></td><td><code>zken-genai</code></td></tr>
+        </tbody>
+      </table>
+      <div class="callout note"><div class="ct">&#128161; <code class="inline">WIF_AUDIENCE</code> and <code class="inline">WIF_PROVIDER</code> are the same resource</div><p>The audience is just the provider path with an <code class="inline">//iam.googleapis.com/</code> prefix &mdash; <code class="inline">google-github-actions/auth</code> derives it automatically when you omit it. The lab distributes both so the audience can be overridden centrally without editing every fork's workflow. Neither value is sensitive on its own: <b>what actually gates access is the provider's attribute condition plus the IAM binding on the service account</b>, so a leaked provider path grants nothing.</p></div>
+    </section>
+
+    <section id="instructor">
+      <div class="step"><span class="num">&#9670;</span><h2>Instructor &mdash; one-time setup in <code class="inline">zken-genai</code></h2></div>
+      <p>Run once, before the session. Participants do <b>not</b> need any of this &mdash; skip to <a href="#secrets">step&nbsp;1</a> if you were handed the four values.</p>
+
+      <h3>1 &middot; Service account and APIs</h3>
+      <figure class="code"><figcaption><span class="lbl">instructor &middot; cloud shell</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">export</span> PROJECT_ID=<span class="v">zken-genai</span>
+<span class="k">export</span> PROJECT_NUMBER=<span class="v">163236863044</span>
+<span class="k">export</span> POOL=<span class="v">github-pool</span>
+<span class="k">export</span> PROVIDER=<span class="v">cm-lab-provider</span>
+<span class="k">export</span> SA=<span class="v">cm-lab-gha</span>
+<span class="k">export</span> GH_ORG=<span class="p">zken-cloud</span>        <span class="c"># org/user that owns the participant forks</span>
+
+gcloud config set project <span class="v">$PROJECT_ID</span>
+
+gcloud services enable \
+  iamcredentials.googleapis.com sts.googleapis.com aiplatform.googleapis.com
+
+gcloud iam service-accounts create <span class="v">$SA</span> \
+  --display-name=<span class="v">"CodeMender CI Lab (GitHub Actions)"</span>
+
+<span class="c"># Vertex AI for the CodeMender agent, + quota-project attribution</span>
+<span class="k">for</span> ROLE <span class="k">in</span> roles/aiplatform.user roles/serviceusage.serviceUsageConsumer; <span class="k">do</span>
+  gcloud projects add-iam-policy-binding <span class="v">$PROJECT_ID</span> \
+    --member=<span class="v">"serviceAccount:$SA@$PROJECT_ID.iam.gserviceaccount.com"</span> \
+    --role=<span class="v">"$ROLE"</span> --condition=None
+<span class="k">done</span></pre></figure>
+
+      <h3>2 &middot; Workload Identity provider</h3>
+      <p>The <code class="inline">github-pool</code> already exists in <code class="inline">zken-genai</code>. Add a <b>dedicated provider for the lab</b> rather than reusing an existing one &mdash; providers carry their own attribute condition, and the lab's condition must admit every participant fork.</p>
+      <figure class="code"><figcaption><span class="lbl">instructor &middot; create the provider</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud iam workload-identity-pools providers create-oidc <span class="v">$PROVIDER</span> \
+  --project=<span class="v">$PROJECT_ID</span> --location=<span class="v">global</span> \
+  --workload-identity-pool=<span class="v">$POOL</span> \
+  --display-name=<span class="v">"CodeMender CI Lab"</span> \
+  --issuer-uri=<span class="v">"https://token.actions.githubusercontent.com"</span> \
+  --attribute-mapping=<span class="v">"google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner"</span> \
+  --attribute-condition=<span class="v">"assertion.repository_owner=='$GH_ORG'"</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; The attribute condition is the security boundary</div><p>Without <code class="inline">--attribute-condition</code>, <b>any GitHub repository on the internet</b> can federate into your pool. Scope it to the org that owns the participant forks. If forks live under personal accounts instead of one org, either list them (<code class="inline">assertion.repository in ['ownerA/juice-shop','ownerB/juice-shop']</code>) or create one provider per participant.</p></div>
+
+      <h3>3 &middot; Let the pool impersonate the service account</h3>
+      <figure class="code"><figcaption><span class="lbl">instructor &middot; bind workloadIdentityUser</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud iam service-accounts add-iam-policy-binding \
+  <span class="v">"$SA@$PROJECT_ID.iam.gserviceaccount.com"</span> \
+  --project=<span class="v">$PROJECT_ID</span> \
+  --role=<span class="v">"roles/iam.workloadIdentityUser"</span> \
+  --member=<span class="v">"principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL/attribute.repository_owner/$GH_ORG"</span></pre></figure>
+      <div class="callout note"><div class="ct">&#128204; <code class="inline">principalSet</code> must match the mapped attribute</div><p>The member path uses <code class="inline">attribute.repository_owner/&lt;org&gt;</code>, which only resolves because step&nbsp;2 mapped <code class="inline">attribute.repository_owner</code>. To bind a single fork instead, map and use <code class="inline">attribute.repository/&lt;owner&gt;/&lt;repo&gt;</code>. Use the project <b>number</b> here, never the project id.</p></div>
+
+      <h3>4 &middot; Print the four values to distribute</h3>
+      <figure class="code"><figcaption><span class="lbl">instructor &middot; hand these out</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">export</span> WIF_PROVIDER=<span class="v">"projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL/providers/$PROVIDER"</span>
+
+<span class="k">echo</span> <span class="v">"SECRET   WIF_AUDIENCE  = //iam.googleapis.com/$WIF_PROVIDER"</span>
+<span class="k">echo</span> <span class="v">"VARIABLE WIF_PROVIDER   = $WIF_PROVIDER"</span>
+<span class="k">echo</span> <span class="v">"VARIABLE SA_EMAIL       = $SA@$PROJECT_ID.iam.gserviceaccount.com"</span>
+<span class="k">echo</span> <span class="v">"VARIABLE QUOTA_PROJECT  = $PROJECT_ID"</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; CodeMender CLI access is a separate entitlement</div><p>The <code class="inline">cm</code> binary is downloaded from Google's <code class="inline">cmoc-prod</code> Artifact Registry. Read access there is granted by your <b>CodeMender preview contact</b>, not by anything in this page. Confirm the lab service account can download the CLI before the session &mdash; that grant is the most common day-of blocker.</p></div>
+    </section>
+
+    <section id="secrets">
+      <div class="step"><span class="num">1</span><h2>Add the secret and the variables</h2></div>
+      <p>In your lab repo, go to <b>Settings &rarr; Secrets and variables &rarr; Actions</b>. The page has two tabs &mdash; put each value on the right one, or the workflow will read an empty string and fail with a confusing auth error.</p>
+      <ul>
+        <li><b>Secrets</b> tab &rarr; <b>New repository secret</b> &rarr; name <code class="inline">WIF_AUDIENCE</code>.</li>
+        <li><b>Variables</b> tab &rarr; <b>New repository variable</b> &rarr; add <code class="inline">WIF_PROVIDER</code>, <code class="inline">SA_EMAIL</code>, and <code class="inline">QUOTA_PROJECT</code>.</li>
+      </ul>
+      <p>Or with the <a href="https://cli.github.com/" target="_blank" rel="noopener">GitHub CLI</a>, from a clone of the repo:</p>
+      <figure class="code"><figcaption><span class="lbl">participant &middot; gh cli</span><button class="copy" type="button">Copy</button></figcaption><pre>gh secret set <span class="v">WIF_AUDIENCE</span>  --body <span class="p">'&lt;audience from your instructor&gt;'</span>
+
+gh variable set <span class="v">WIF_PROVIDER</span>  --body <span class="p">'&lt;provider from your instructor&gt;'</span>
+gh variable set <span class="v">SA_EMAIL</span>      --body <span class="p">'&lt;service account email&gt;'</span>
+gh variable set <span class="v">QUOTA_PROJECT</span> --body <span class="v">'zken-genai'</span>
+
+<span class="c"># confirm — secrets show names only, variables show values</span>
+gh secret list
+gh variable list</pre></figure>
+      <div class="callout note"><div class="ct">&#128161; Secrets are masked, variables are not</div><p>Values in the <b>Variables</b> tab appear in plain text in logs. That is intentional here &mdash; they are resource names, and seeing them in the log is what makes a typo debuggable. Never move the audience or provider into the workflow file itself; keep them in repo settings so the instructor can rotate the provider without a commit.</p></div>
+    </section>
+
+    <section id="perms">
+      <div class="step"><span class="num">2</span><h2>Let Actions open pull requests</h2></div>
+      <p>The pipeline pushes a <code class="inline">codemender/fix-*</code> branch and opens a PR with the built-in <code class="inline">GITHUB_TOKEN</code>. That is off by default.</p>
+      <ul>
+        <li><b>Settings &rarr; Actions &rarr; General &rarr; Workflow permissions</b></li>
+        <li>Select <b>Read and write permissions</b>, and tick <b>Allow GitHub Actions to create and approve pull requests</b>.</li>
+      </ul>
+      <div class="callout warn"><div class="ct">&#9888; Symptom if you skip this</div><p>Everything runs green until the last step, which fails with <em>&ldquo;GitHub Actions is not permitted to create or approve pull requests.&rdquo;</em> The scan and fix work is already done and lost &mdash; set this before the first run.</p></div>
+    </section>
+
+    <section id="workflow">
+      <div class="step"><span class="num">3</span><h2>The workflow file</h2></div>
+      <p>Create <code class="inline">.github/workflows/codemender-setup-check.yml</code>. This proves the whole trust chain end to end &mdash; federate, impersonate, install <code class="inline">cm</code>, and reach the CodeMender backend &mdash; before you spend 30&nbsp;minutes on a real scan.</p>
+      <figure class="code"><figcaption><span class="lbl">.github/workflows/codemender-setup-check.yml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">name</span>: codemender-setup-check
+
+<span class="k">on</span>:
+  workflow_dispatch:
+
+<span class="c"># id-token: write is what lets the job mint the OIDC JWT. Without it,</span>
+<span class="c"># google-github-actions/auth fails before it ever contacts Google.</span>
+<span class="k">permissions</span>:
+  contents: read
+  id-token: <span class="v">write</span>
+
+<span class="k">jobs</span>:
+  check:
+    <span class="c"># ubuntu-20.04 as a RUNNER LABEL was retired by GitHub. Pin a supported</span>
+    <span class="c"># runner and get the 20.04 userland from a container instead.</span>
+    runs-on: <span class="v">ubuntu-22.04</span>
+    container:
+      image: <span class="v">ubuntu:20.04</span>
+    env:
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      <span class="c"># The stock ubuntu:20.04 image has no curl, git, unzip or python3.</span>
+      <span class="c"># gcloud needs python3; actions/checkout needs git.</span>
+      - <span class="k">name</span>: Base tooling
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ca-certificates curl git gnupg jq python3 unzip
+
+      - <span class="k">uses</span>: actions/checkout@v4
+
+      <span class="c"># The container runs as root while the checkout is owned by another</span>
+      <span class="c"># uid, so git refuses to operate until the path is marked safe.</span>
+      - <span class="k">name</span>: Trust the workspace
+        run: git config --global --add safe.directory <span class="v">"$GITHUB_WORKSPACE"</span>
+
+      - <span class="k">id</span>: auth
+        <span class="k">uses</span>: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: <span class="v">${{ vars.WIF_PROVIDER }}</span>
+          service_account:            <span class="v">${{ vars.SA_EMAIL }}</span>
+          audience:                   <span class="v">${{ secrets.WIF_AUDIENCE }}</span>
+
+      - <span class="k">uses</span>: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: <span class="v">${{ vars.QUOTA_PROJECT }}</span>
+
+      <span class="c"># CodeMender bills Vertex AI to the quota project, not to the SA's own.</span>
+      - <span class="k">name</span>: Pin the quota project
+        run: |
+          gcloud config set billing/quota_project <span class="v">"${{ vars.QUOTA_PROJECT }}"</span>
+          echo <span class="v">"GOOGLE_CLOUD_QUOTA_PROJECT=${{ vars.QUOTA_PROJECT }}"</span> &gt;&gt; <span class="v">"$GITHUB_ENV"</span>
+
+      - <span class="k">name</span>: Who am I
+        run: |
+          gcloud auth list
+          gcloud config list
+
+      - <span class="k">name</span>: Install the CodeMender CLI
+        run: |
+          gcloud artifacts generic download --project=cmoc-prod --location=us \
+            --repository=codemender-cli-production --package=cm --version=stable \
+            --name=cm-linux-amd64.zip --destination=./
+          unzip -o -q cm-linux-amd64.zip
+          chmod +x cm &amp;&amp; mv cm /usr/local/bin/cm
+          cm --version
+
+      <span class="c"># cm init --verify checks config, identity and BACKEND CONNECTIVITY.</span>
+      <span class="c"># If this is green, the whole credential chain works.</span>
+      - <span class="k">name</span>: Verify the CodeMender environment
+        run: |
+          cm init
+          cm init --verify</pre></figure>
+      <div class="callout note"><div class="ct">&#128273; The three inputs to <code class="inline">auth</code></div><p><code class="inline">workload_identity_provider</code> names the provider to federate against, <code class="inline">service_account</code> is who you impersonate afterwards, and <code class="inline">audience</code> must match what the provider expects. Drop the <code class="inline">audience</code> line and the action derives the default &mdash; keep it only because the lab distributes it explicitly.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; Pin <code class="inline">actions/checkout@v4</code>, not v5</div><p><code class="inline">v4</code> runs on Node&nbsp;20, which Ubuntu&nbsp;20.04's glibc&nbsp;2.31 supports. Newer action majors move to newer Node runtimes; if one ever requires a glibc past 2.31 it will fail inside this container with a loader error rather than a clear message. Pinning majors keeps the 20.04 container predictable.</p></div>
+    </section>
+
+    <section id="run">
+      <div class="step"><span class="num">4</span><h2>Run the setup check</h2></div>
+      <p><b>Actions &rarr; codemender-setup-check &rarr; Run workflow</b>. It should finish in about two minutes. Look for these three things in the log:</p>
+      <table class="tbl">
+        <thead><tr><th>Step</th><th>What proves it worked</th></tr></thead>
+        <tbody>
+        <tr><td><b>auth</b></td><td>Green, with <code>Created credentials file at /github/workspace/gha-creds-*.json</code>. That file holds a <b>short-lived</b> token, not a key.</td></tr>
+        <tr><td><b>Who am I</b></td><td><code>gcloud auth list</code> shows your <code>SA_EMAIL</code> as <code>ACTIVE</code>, and <code>gcloud config list</code> shows <code>project = zken-genai</code>.</td></tr>
+        <tr><td><b>Verify the CodeMender environment</b></td><td><code>cm init --verify</code> prints <span class="chip ok">Server connectivity</span> and <code>All critical checks passed</code>. An empty <code>build command</code> warning is expected and harmless.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout note"><div class="ct">&#9989; What green means here</div><p>A passing check confirms federation, impersonation, quota attribution, CLI entitlement and backend reachability. It does <b>not</b> yet confirm the pipeline can open a PR &mdash; that needs step&nbsp;2's repo setting, which the real workflow exercises on its last step.</p></div>
+    </section>
+
+    <section id="pipeline">
+      <div class="step"><span class="num">5</span><h2>Wire it into the real pipeline</h2></div>
+      <p>Once the check is green, carry the same three blocks into the lab's pipeline workflow. Everything else &mdash; scan, triage, verify, fix, PR, gate &mdash; is unchanged and described in the <a href="/gha">GitHub Actions guide</a>.</p>
+      <figure class="code"><figcaption><span class="lbl">the only parts that change for WIF</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># 1 · the job needs to mint an OIDC token, and still write the PR</span>
+<span class="k">permissions</span>:
+  contents: <span class="v">write</span>
+  pull-requests: <span class="v">write</span>
+  id-token: <span class="v">write</span>
+
+<span class="k">jobs</span>:
+  codemender:
+    <span class="c"># 2 · pinned runner + the Ubuntu 20.04 userland as a container</span>
+    runs-on: <span class="v">ubuntu-22.04</span>
+    container:
+      image: <span class="v">ubuntu:20.04</span>
+
+    steps:
+      <span class="c"># 3 · replace the GCP_SA_KEY activation with keyless federation</span>
+      - <span class="k">uses</span>: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: <span class="v">${{ vars.WIF_PROVIDER }}</span>
+          service_account:            <span class="v">${{ vars.SA_EMAIL }}</span>
+          audience:                   <span class="v">${{ secrets.WIF_AUDIENCE }}</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; Delete the old key secret when you migrate</div><p>If the repo still has a <code class="inline">GCP_SA_KEY</code> secret, remove it (<code class="inline">gh secret delete GCP_SA_KEY</code>) and ask your instructor to delete the corresponding key in IAM. A migration that leaves the key in place keeps every risk WIF was adopted to remove.</p></div>
+      <div class="callout note"><div class="ct">&#128736; Node and npm inside the container</div><p>The pipeline installs Juice&nbsp;Shop's dependencies so <code class="inline">cm verify</code> can build and run the app. In a bare <code class="inline">ubuntu:20.04</code> container the distro's Node is far too old, so add <code class="inline">actions/setup-node@v4</code> with <code class="inline">node-version: 20</code> before <code class="inline">npm install</code> &mdash; it downloads its own Node and ignores the distro package.</p></div>
+    </section>
+
+    <section id="trouble">
+      <div class="step"><span class="num">&#9670;</span><h2>Troubleshooting</h2></div>
+      <p>Nearly every WIF failure is one of these six. The error text is the fastest way in.</p>
+      <table class="tbl">
+        <thead><tr><th>Error</th><th>Cause &amp; fix</th></tr></thead>
+        <tbody>
+        <tr><td><code>Unable to get ACTIONS_ID_TOKEN_REQUEST_URL</code></td><td>The job is missing <code>id-token: write</code>. Note that declaring <code>permissions</code> at job level <b>replaces</b> the workflow-level block &mdash; if you set it in both places, the job block must list every permission you need.</td></tr>
+        <tr><td><code>Permission 'iam.serviceAccounts.getAccessToken' denied</code></td><td>The <code>principalSet</code> binding doesn't match the token. Usually the repo owner differs from <code>GH_ORG</code>, or the binding used the project <b>id</b> where it needs the project <b>number</b>.</td></tr>
+        <tr><td><code>The given credential is rejected by the attribute condition</code></td><td>The provider's condition excludes this repository. Check the fork's owner against <code>assertion.repository_owner</code> in the condition &mdash; a fork under a personal account will not match an org-scoped condition.</td></tr>
+        <tr><td><code>Invalid value for "audience"</code> / audience mismatch</td><td><code>WIF_AUDIENCE</code> is wrong or was pasted into the Variables tab. It must start with <code>//iam.googleapis.com/projects/</code> and use the project number.</td></tr>
+        <tr><td><code>PERMISSION_DENIED</code> on <code>aiplatform.googleapis.com</code></td><td>Federation worked, authorization didn't. The service account is missing <code>roles/aiplatform.user</code>, or the API isn't enabled in <code>zken-genai</code>.</td></tr>
+        <tr><td><code>detected dubious ownership in repository</code></td><td>The container runs as root over a checkout owned by another uid. That is what the <b>Trust the workspace</b> step fixes &mdash; confirm it runs after <code>checkout</code>.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout note"><div class="ct">&#128269; Read the claims the runner actually sent</div><p>When a condition rejects you and it isn't obvious why, print the token's claims. Add a temporary step before <code class="inline">auth</code> &mdash; it reveals the exact <code class="inline">repository</code>, <code class="inline">repository_owner</code> and <code class="inline">sub</code> your provider is matching against.</p></div>
+      <figure class="code"><figcaption><span class="lbl">temporary debug step &middot; remove after use</span><button class="copy" type="button">Copy</button></figcaption><pre>- <span class="k">name</span>: Show OIDC claims
+  run: |
+    TOKEN=$(curl -sS -H <span class="v">"Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"</span> \
+      <span class="v">"$ACTIONS_ID_TOKEN_REQUEST_URL&amp;audience=https://github.com"</span> | jq -r .value)
+    echo <span class="v">"$TOKEN"</span> | cut -d. -f2 | base64 -d 2&gt;/dev/null | jq <span class="v">'{sub,repository,repository_owner,ref}'</span></pre></figure>
+      <div class="callout warn"><div class="ct">&#9888; It prints an identity token &mdash; keep it out of shared logs</div><p>The decoded payload is claims only, but the raw <code class="inline">$TOKEN</code> is a live credential for its audience. Don't <code class="inline">echo</code> the token itself, and delete this step once the condition matches.</p></div>
+    </section>
+
+    <section id="why">
+      <div class="step"><span class="num">&#9670;</span><h2>Why WIF instead of a service-account key</h2></div>
+      <p>The lab's earlier form used a <code class="inline">GCP_SA_KEY</code> secret &mdash; a JSON private key pasted into repo settings. It works, and it is the thing most CE conversations end up being about. The difference is worth being able to state precisely:</p>
+      <table class="tbl">
+        <thead><tr><th></th><th>Service-account key</th><th>Workload Identity</th></tr></thead>
+        <tbody>
+        <tr><td><b>Lifetime</b></td><td>Valid until manually deleted &mdash; often years</td><td>Minted per run, expires in about an hour</td></tr>
+        <tr><td><b>If it leaks</b></td><td>Usable by anyone, anywhere, immediately</td><td>Useless &mdash; a token is bound to the run that requested it</td></tr>
+        <tr><td><b>Scope</b></td><td>Whoever holds the file is the service account</td><td>Only repos matching the attribute condition can federate</td></tr>
+        <tr><td><b>Rotation</b></td><td>Manual, per repo, easy to forget</td><td>None to do &mdash; there is nothing stored to rotate</td></tr>
+        <tr><td><b>Revocation</b></td><td>Delete the key, then chase every copy</td><td>Edit one attribute condition or IAM binding</td></tr>
+        <tr><td><b>Audit</b></td><td>All runs look like the same principal</td><td>Logs carry the repository and subject that federated</td></tr>
+        </tbody>
+      </table>
+      <div class="callout sec"><div class="ct">&#128680; The part people get wrong</div><p>WIF removes the stored credential, not the authorization. The service account still holds real permissions in <code class="inline">zken-genai</code>, and <b>the attribute condition is the only thing standing between your project and any repository on GitHub</b>. A provider created without <code class="inline">--attribute-condition</code> is strictly worse than a key: it is an open door with no file to delete. Scope the condition first, grant roles second.</p></div>
+    </section>
+
+    <footer>
+      <p><b>CodeMender CI Lab &mdash; GitHub Actions setup</b> &middot; public preview. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for lab use only.</p>
+      <p class="small">No credentials appear in this guide. The values shown are resource names for <code class="inline">zken-genai</code>; access is granted by the provider's attribute condition plus the <code class="inline">roles/iam.workloadIdentityUser</code> binding, both of which live in Google Cloud IAM.</p>
+    </footer>
+   </div></main>
+</div>
+<script>
+(function(){
+  "use strict";
+  var root=document.documentElement, btn=document.getElementById('themebtn'), lbl=document.getElementById('themelbl');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('cm-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function curDark(){var t=root.getAttribute('data-theme');return t?t==='dark':sysDark();}
+  function syncLbl(){lbl.textContent=curDark()?'Light':'Dark';}
+  syncLbl();
+  btn.addEventListener('click',function(){var next=curDark()?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('cm-theme',next);}catch(e){}syncLbl();});
+  document.querySelectorAll('figure.code').forEach(function(fig){
+    var b=fig.querySelector('.copy'), pre=fig.querySelector('pre'); if(!b||!pre)return;
+    b.addEventListener('click',function(){navigator.clipboard.writeText(pre.innerText).then(function(){var o=b.textContent;b.textContent='Copied';b.classList.add('done');setTimeout(function(){b.textContent=o;b.classList.remove('done');},1400);}).catch(function(){});});
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('.railnav a')), map={};
+  links.forEach(function(a){var id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)map[id]=a;});
+  var obs=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[en.target.id];if(a)a.classList.add('active');}});},{rootMargin:'-10% 0px -78% 0px',threshold:0});
+  Object.keys(map).forEach(function(id){obs.observe(document.getElementById(id));});
+})();
+</script>
+
+</body>
+</html>

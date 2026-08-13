@@ -178,7 +178,7 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
 <body>
 
 <div class="topnav">
-  <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
+  <a class="home" href="/"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
   <div class="links">
     <a href="/smoke">Smoke Test</a>
     <a href="/gha" class="active">GitHub Actions</a>
@@ -215,6 +215,7 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
         <span class="pill">&#9670; <b>Intermediate</b></span>
         <span class="pill">&#9881;&#65039; <b>GitHub Actions</b> &middot; ubuntu-latest</span>
         <span class="pill">&#128737;&#65039; <b>scan &middot; verify &middot; fix &middot; PR</b></span>
+        <span class="pill">&#128196; <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener"><b>Public preview docs</b></a></span>
       </div>
 
       <div class="diagram" role="img" aria-label="A push to main (or a manual Run workflow with verify_limit) triggers a GitHub-hosted ubuntu-latest runner. The runner checks out the code and runs npm install, authenticates a service account, downloads the cm binary from Google Artifact Registry and runs cm init, then cm find scans routes/ by uploading source to CodeMender on Vertex AI where a server-side agent reasons about vulnerabilities. A triage step ranks the HIGH/CRITICAL findings and selects the top N. cm verify builds and runs the app and fires a proof-of-concept exploit; cm fix then generates and build-tests a patch for each un-dismissed finding, and the pipeline opens a codemender/fix pull request for a human to review and merge. Finally the Security Gate fails the run red and blocks the deployment until the fix is merged.">
@@ -280,7 +281,7 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
       <p>The hands-on walkthrough &mdash; provisioned credentials, a live repo, and a graded environment &mdash; runs as a self-paced Qwiklab. The rest of this page explains the pipeline you'll be operating.</p>
       <div class="launch">
         <p style="margin:0 0 .2rem;font-weight:650;color:var(--ink)">CodeMender CI/CD Guardrail &mdash; GitHub Actions</p>
-        <a class="cta" href="https://gcpstaging.qwiklabs.com/focuses/33826?parent=catalog" target="_blank" rel="noopener">
+        <a class="cta" href="https://explore.qwiklabs.com/focuses/9855?parent=catalog" target="_blank" rel="noopener">
           Open the Qwiklab
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M17 7H9M17 7v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
@@ -306,6 +307,7 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
       <div class="callout note"><div class="ct">&#128273; What authenticates</div><p>A <b>service account</b> (the <code class="inline">GCP_SA_KEY</code> secret) is CodeMender's credential: it authorizes the Artifact Registry binary download <em>and</em>, exported as ADC, CodeMender's calls to <b>Vertex&nbsp;AI</b> (<code class="inline">aiplatform.googleapis.com</code>). <code class="inline">CM_PROJECT</code> is the preview-entitled project it runs against. The built-in <code class="inline">GITHUB_TOKEN</code> is used only to push the remediation branch + open the PR.</p></div>
       <div class="callout warn"><div class="ct">&#9888; One-time repo setting for the PR</div><p>Opening a PR with <code class="inline">GITHUB_TOKEN</code> requires <b>Settings &rarr; Actions &rarr; General &rarr; Workflow permissions &rarr; "Allow GitHub Actions to create and approve pull requests."</b> Without it, the "Open Remediation PR" step fails with <em>"GitHub Actions is not permitted to create or approve pull requests."</em></p></div>
       <div class="callout note"><div class="ct">&#127922; Verdicts vary &mdash; that's expected</div><p>Verification is a slow, server-side agent loop. A finding can have its exploit reproduced but not finalize a <code class="inline">VERIFIED</code> stamp within the time-box, landing <em>inconclusive</em>. The gate treats anything <b>not explicitly DISMISSED</b> as still-blocking, so an unfinished verify never lets a real vulnerability through.</p></div>
+      <div class="callout note"><div class="ct">&#9881;&#65039; Tuning the agent: <code class="inline">--model</code> and <code class="inline">-c</code></div><p>The pipeline's <code class="inline">cm find</code> / <code class="inline">cm verify</code> / <code class="inline">cm fix</code> calls accept <code class="inline">--model &lt;name&gt;</code> (pick a faster flash or a deeper <code class="inline">pro</code> model &mdash; see the <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener">preview docs</a> for the current list) and <code class="inline">-c "&lt;context&gt;"</code> (pass extra context to the agent). To customize, edit those command lines in the workflow &mdash; or wire them as <code class="inline">workflow_dispatch</code> inputs.</p></div>
     </section>
 
     <section id="stages">

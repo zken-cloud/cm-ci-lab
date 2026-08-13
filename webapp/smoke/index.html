@@ -196,7 +196,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
 <body>
 
 <div class="topnav">
-  <a class="home" href="/smoke"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
+  <a class="home" href="/"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 11 4.6-2.7 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4L15.8 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>CodeMender Lab</a>
   <div class="links">
     <a href="/smoke" class="active">Smoke Test</a>
     <a href="/gha">GitHub Actions</a>
@@ -231,11 +231,12 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
     <header class="hero" id="overview">
       <div class="eyebrow">Internal CE Enablement &middot; public preview</div>
       <h1>CodeMender Smoke Test</h1>
-      <p class="lede">Run CodeMender on your own machine first &mdash; download the CLI, scan OWASP Juice&nbsp;Shop, verify a real vulnerability, and generate the fix. Ten minutes, no CI. Once this works for you, automate it with <a href="/gha">GitHub Actions</a>.</p>
+      <p class="lede"><b>This smoke test is optional.</b> Run it on your own machine to see CodeMender's <code class="inline">find &rarr; verify &rarr; fix</code> loop firsthand &mdash; a good way to spend the wait while your <a href="/gha">GitHub Actions</a> lab pipeline runs, or do it any time in your own time. It's the same commands the CI labs wrap.</p>
       <div class="meta">
-        <span class="pill">&#9201; <b>~10&nbsp;min</b></span>
-        <span class="pill">&#9729; <b>@google.com</b> &middot; cloud-llm-preview1</span>
-        <span class="pill">&#128421;&#65039; <b>your laptop</b></span>
+        <span class="pill">&#9989; <b>Optional</b></span>
+        <span class="pill">&#9201; <b>~10&nbsp;min</b> &middot; your laptop</span>
+        <span class="pill">&#9729; <b>cloud-llm-preview1</b> or your Argolis</span>
+        <span class="pill">&#128196; <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener"><b>Public preview docs</b></a></span>
       </div>
       <div class="callout note"><div class="ct">&#10003; This is the verified path</div><p>Everything here has been run for real with a <code class="inline">@google.com</code> identity against <code class="inline">cloud-llm-preview1</code>. If a step fails, fix it here before touching CI &mdash; the pipelines just wrap these same commands.</p></div>
     </header>
@@ -272,12 +273,18 @@ unzip cm-linux-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local
 
     <section id="s2">
       <div class="step"><span class="num">2</span><h2>Authenticate &amp; init</h2></div>
-      <p>Sign in as your <code class="inline">@google.com</code> identity and bill CodeMender to the entitled project.</p>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com
+      <p>Sign in and bill CodeMender to an <b>entitled</b> project &mdash; either the shared preview project, or <b>your own Argolis project if it has been allowlisted</b> for the CodeMender preview (via the internal access request).</p>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Option A &mdash; shared preview project (default)</span>
+gcloud auth application-default login <span class="p">ldap</span>@google.com
 gcloud auth application-default set-quota-project cloud-llm-preview1
+
+<span class="c"># Option B &mdash; your OWN Argolis account + project (only if allowlisted)</span>
+gcloud auth application-default login <span class="p">you</span>@<span class="p">your-argolis-domain</span>
+gcloud auth application-default set-quota-project <span class="p">your-argolis-project</span>
 
 cm init            <span class="c"># creates ~/.codemender state files</span>
 cm init --verify   <span class="c"># checks config &amp; backend connectivity</span></pre></figure>
+      <div class="callout note"><div class="ct">&#128273; Using your own Argolis project?</div><p>It must be <b>allowlisted for the CodeMender preview first</b> &mdash; submit the internal access request and wait for confirmation. Once allowlisted it's identical to Option A; just point <code class="inline">set-quota-project</code> at your project.</p></div>
       <p style="margin-top:1rem"><b>Point CodeMender at git.</b> Add a <code class="inline">vcs</code> block to your config so <code class="inline">cm verify</code>, <code class="inline">cm fix</code>, and <code class="inline">cm vcs</code> can read your working tree:</p>
       <figure class="code"><figcaption><span class="lbl">~/.codemender/config.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">vcs</span>:
   <span class="k">type</span>: <span class="v">git</span>
@@ -285,7 +292,7 @@ cm init --verify   <span class="c"># checks config &amp; backend connectivity</s
     <span class="k">diff</span>: <span class="v">"git diff"</span>
     <span class="k">status</span>: <span class="v">"git status"</span></pre></figure>
       <p class="small">Without this, <code class="inline">cm vcs status</code> / <code class="inline">cm vcs diff</code> in Step&nbsp;6 have no VCS backend to call.</p>
-      <div class="callout warn"><div class="ct">&#9888; If you see <code class="inline">Unsupported agent interaction</code> later</div><p>Your identity or quota project isn't entitled to the preview agent. Confirm you signed in as <code class="inline">@google.com</code> and the quota project is <code class="inline">cloud-llm-preview1</code>, then ask the facilitator.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; If you see <code class="inline">Unsupported agent interaction</code> later</div><p>Your identity or quota project isn't entitled to the preview agent. Confirm the quota project is an allowlisted one (<code class="inline">cloud-llm-preview1</code>, or your allowlisted Argolis project), then ask the facilitator.</p></div>
     </section>
 
     <section id="s3">
@@ -319,7 +326,8 @@ cm verify "$FID" -y</pre></figure>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>cm fix "$FID" -y      <span class="c"># patches, rebuilds, re-runs the exploit</span>
 cm vcs status
 cm vcs diff           <span class="c"># the parameterized-query fix</span></pre></figure>
-      <div class="callout note"><div class="ct">&#10003; That's the whole loop</div><p>find &rarr; verify &rarr; fix, running as you, billed to <code class="inline">cloud-llm-preview1</code>. The CI labs automate exactly this.</p></div>
+      <div class="callout note"><div class="ct">&#10003; That's the whole loop</div><p>find &rarr; verify &rarr; fix, running as you, billed to your entitled project. The CI labs automate exactly this.</p></div>
+      <div class="callout note"><div class="ct">&#9881;&#65039; Handy flags (find / verify / fix)</div><p><code class="inline">--model &lt;name&gt;</code> picks the model &mdash; a fast flash model by default; a <code class="inline">pro</code> model reasons deeper (see the <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener">preview docs</a> for the current list). <code class="inline">-c "&lt;extra context&gt;"</code> passes additional context to the agent. Both work on all three commands, e.g. <code class="inline">cm find routes/login.ts -y -c "prioritize auth bypass" --model gemini-3.1-pro-preview</code>.</p></div>
     </section>
 
     <section id="next">
