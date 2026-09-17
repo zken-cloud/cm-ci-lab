@@ -26,8 +26,8 @@ no bucket, and no secret store — this is the laptop path.
    this OS/arch into `~/.local/bin`.
 2. **Authenticated ADC**, entitled to the preview:
    ```bash
-   gcloud auth application-default login <ldap>@google.com
-   gcloud auth application-default set-quota-project cloud-llm-preview1
+   gcloud auth application-default login <your-account>
+   gcloud auth application-default set-quota-project <CM_PROJECT>   # a project entitled to CodeMender
    ```
 3. **`git`, `jq`, `unzip`** on PATH; the target is a **git** repo.
 4. **Sandbox runtime:**

@@ -1,14 +1,15 @@
 # --- Token gate --------------------------------------------------------------
 # Second access layer, on top of IAP. A request must present the shared token,
-# either as ?token=imjustatoken (which then sets a cookie so navigation keeps
+# either as ?token=<SITE_TOKEN> (which then sets a cookie so navigation keeps
 # working) or via the site_token cookie. Without a valid token, everything 403s.
-# Net effect: a viewer needs BOTH a @google.com IAP login AND the token.
+# Net effect: a viewer needs BOTH an IAP login AND the token. The token value is
+# substituted from the SITE_TOKEN env var at container start (see Dockerfile).
 map $arg_token $token_from_query {
-    "imjustatoken" 1;
+    "${SITE_TOKEN}" 1;
     default        0;
 }
 map $cookie_site_token $token_from_cookie {
-    "imjustatoken" 1;
+    "${SITE_TOKEN}" 1;
     default        0;
 }
 map "$token_from_query$token_from_cookie" $token_ok {
@@ -17,7 +18,7 @@ map "$token_from_query$token_from_cookie" $token_ok {
 }
 # Set the cookie only when a valid ?token= is presented (empty => header skipped).
 map $arg_token $token_set_cookie {
-    "imjustatoken" "site_token=imjustatoken; Path=/; Max-Age=43200; HttpOnly; Secure; SameSite=Lax";
+    "${SITE_TOKEN}" "site_token=${SITE_TOKEN}; Path=/; Max-Age=43200; HttpOnly; Secure; SameSite=Lax";
     default        "";
 }
 
@@ -79,7 +80,7 @@ server {
     }
 
     # Cloud Build guide is HIDDEN for the shared-project preview — the shared
-    # cloud-llm-preview1 project lacks the GCS / Secret Manager access that
+    # entitled project (<CM_PROJECT>) lacks the GCS / Secret Manager access that
     # `gcloud builds submit` and the pipeline need. The webapp/index.html file is
     # kept in the repo for later revival; it is just not routed here.
 

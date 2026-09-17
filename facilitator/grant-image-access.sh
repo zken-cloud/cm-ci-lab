@@ -14,7 +14,7 @@
 # Auth: uses your active gcloud account (see the note in preflight below).
 set -euo pipefail
 
-CENTRAL_PROJECT="${CENTRAL_PROJECT:-zken-genai}"
+CENTRAL_PROJECT="${CENTRAL_PROJECT:?set CENTRAL_PROJECT (the project that hosts the codemender repo)}"
 REPO="${REPO:-codemender}"
 REGION="${REGION:-us-central1}"
 ROLE="roles/artifactregistry.reader"
@@ -58,7 +58,7 @@ say "  as      : ${ACCOUNT}"
 case "$ACCOUNT" in
   *@google.com)
     say "${ylw}⚠ ${ACCOUNT} is a @google.com identity.${off}"
-    say "${ylw}  The central project is Argolis; Domain Restricted Sharing blocks these."
+    say "${ylw}  The central project lives in a sandboxed GCP org; Domain Restricted Sharing blocks these."
     say "  Run: gcloud auth login YOUR_LDAP@gcp.altostrat.com${off}" ;;
 esac
 

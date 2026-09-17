@@ -229,13 +229,13 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <main class="main"><div class="col">
 
     <header class="hero" id="overview">
-      <div class="eyebrow">Internal CE Enablement &middot; public preview</div>
+      <div class="eyebrow">For cloud security engineers &middot; public preview</div>
       <h1>CodeMender Smoke Test</h1>
       <p class="lede"><b>This smoke test is optional.</b> Run it on your own machine to see CodeMender's <code class="inline">find &rarr; verify &rarr; fix</code> loop firsthand &mdash; a good way to spend the wait while your <a href="/gha">GitHub Actions</a> lab pipeline runs, or do it any time in your own time. It's the same commands the CI labs wrap.</p>
       <div class="meta">
         <span class="pill">&#9989; <b>Optional</b></span>
         <span class="pill">&#9201; <b>~10&nbsp;min</b> &middot; your laptop</span>
-        <span class="pill">&#9729; <b>cloud-llm-preview1</b> or your Argolis</span>
+        <span class="pill">&#9729; <b>&lt;CM_PROJECT&gt;</b> or your GCP sandbox project</span>
         <span class="pill">&#128196; <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender" target="_blank" rel="noopener"><b>Public preview docs</b></a></span>
       </div>
     </header>
@@ -272,18 +272,18 @@ unzip cm-linux-arm64.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local
 
     <section id="s2">
       <div class="step"><span class="num">2</span><h2>Authenticate &amp; init</h2></div>
-      <p>Sign in and bill CodeMender to an <b>entitled</b> project &mdash; either the shared preview project, or <b>your own Argolis project if it has been allowlisted</b> for the CodeMender preview (via the internal access request).</p>
+      <p>Sign in and bill CodeMender to an <b>entitled</b> project &mdash; either the shared entitled project (<code class="inline">&lt;CM_PROJECT&gt;</code>), or <b>your own GCP sandbox project if it has been allowlisted</b> for the CodeMender preview.</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="c"># Option A &mdash; shared preview project (default)</span>
-gcloud auth application-default login <span class="p">ldap</span>@google.com
-gcloud auth application-default set-quota-project cloud-llm-preview1
+gcloud auth application-default login <span class="p">your-account</span>
+gcloud auth application-default set-quota-project <span class="p">&lt;CM_PROJECT&gt;</span>
 
-<span class="c"># Option B &mdash; your OWN Argolis account + project (only if allowlisted)</span>
-gcloud auth application-default login <span class="p">you</span>@<span class="p">your-argolis-domain</span>
-gcloud auth application-default set-quota-project <span class="p">your-argolis-project</span>
+<span class="c"># Option B &mdash; your OWN GCP sandbox account + project (only if allowlisted)</span>
+gcloud auth application-default login <span class="p">you</span>@<span class="p">your-domain</span>
+gcloud auth application-default set-quota-project <span class="p">your-sandbox-project</span>
 
 cm init            <span class="c"># creates ~/.codemender state files</span>
 cm init --verify   <span class="c"># checks config &amp; backend connectivity</span></pre></figure>
-      <div class="callout note"><div class="ct">&#128273; Using your own Argolis project?</div><p>It must be <b>allowlisted for the CodeMender preview first</b> &mdash; submit the internal access request and wait for confirmation. Once allowlisted it's identical to Option A; just point <code class="inline">set-quota-project</code> at your project.</p></div>
+      <div class="callout note"><div class="ct">&#128273; Using your own GCP sandbox project?</div><p>It must be <b>allowlisted for the CodeMender preview first</b> &mdash; request access and wait for confirmation. Once allowlisted it's identical to Option A; just point <code class="inline">set-quota-project</code> at your project.</p></div>
       <p style="margin-top:1rem"><b>Point CodeMender at git.</b> Add a <code class="inline">vcs</code> block to your config so <code class="inline">cm verify</code>, <code class="inline">cm fix</code>, and <code class="inline">cm vcs</code> can read your working tree:</p>
       <figure class="code"><figcaption><span class="lbl">~/.codemender/config.yaml</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">vcs</span>:
   <span class="k">type</span>: <span class="v">git</span>
@@ -291,7 +291,7 @@ cm init --verify   <span class="c"># checks config &amp; backend connectivity</s
     <span class="k">diff</span>: <span class="v">"git diff"</span>
     <span class="k">status</span>: <span class="v">"git status"</span></pre></figure>
       <p class="small">Without this, <code class="inline">cm vcs status</code> / <code class="inline">cm vcs diff</code> in Step&nbsp;6 have no VCS backend to call.</p>
-      <div class="callout warn"><div class="ct">&#9888; If you see <code class="inline">Unsupported agent interaction</code> later</div><p>Your identity or quota project isn't entitled to the preview agent. Confirm the quota project is an allowlisted one (<code class="inline">cloud-llm-preview1</code>, or your allowlisted Argolis project), then ask the facilitator.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; If you see <code class="inline">Unsupported agent interaction</code> later</div><p>Your identity or quota project isn't entitled to the preview agent. Confirm the quota project is an allowlisted one (<code class="inline">&lt;CM_PROJECT&gt;</code>, or your allowlisted GCP sandbox project), then ask the facilitator.</p></div>
     </section>
 
     <section id="s3">
@@ -342,7 +342,7 @@ cm fix "$FID" -y <span class="k">--unrestricted</span>              <span class=
 
     <footer>
       <p><b>CodeMender Smoke Test</b> &middot; public preview. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for lab use only.</p>
-      <p class="small">No secrets appear here. <code class="inline">cm</code> authenticates as your own <code class="inline">@google.com</code> identity via Application Default Credentials.</p>
+      <p class="small">No secrets appear here. <code class="inline">cm</code> authenticates as your own identity via Application Default Credentials.</p>
     </footer>
    </div></main>
 </div>

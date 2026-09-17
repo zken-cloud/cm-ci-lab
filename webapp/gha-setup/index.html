@@ -196,7 +196,7 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
       <a href="#overview"><span class="n">&#9670;</span>Overview</a>
       <a href="#inputs"><span class="n">&#9670;</span>What you're given</a>
       <div class="grp">Instructor &middot; once</div>
-      <a href="#instructor"><span class="n">&#9670;</span>Set up WIF in zken-genai</a>
+      <a href="#instructor"><span class="n">&#9670;</span>Set up WIF in &lt;PROJECT_ID&gt;</a>
       <div class="grp">Participant</div>
       <a href="#secrets"><span class="n">1</span>Secret &amp; variables</a>
       <a href="#perms"><span class="n">2</span>Repo permissions</a>
@@ -215,17 +215,17 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
   <main class="main"><div class="col">
 
     <header class="hero" id="overview">
-      <div class="eyebrow">Internal CE Enablement &middot; GitHub Actions &middot; setup</div>
+      <div class="eyebrow">For cloud security engineers &middot; GitHub Actions &middot; setup</div>
       <h1>GitHub Actions Lab &mdash; Setup with Workload Identity</h1>
-      <p class="lede">Wire the CodeMender pipeline to Google Cloud with <b>no long-lived service-account key</b>. GitHub mints a short-lived OIDC token, Google's STS federates it against a <b>Workload Identity</b> provider, and the run impersonates a service account in <code class="inline">zken-genai</code>. This page is the step-by-step setup; the <a href="/gha">GitHub Actions guide</a> explains what the pipeline then does.</p>
+      <p class="lede">Wire the CodeMender pipeline to Google Cloud with <b>no long-lived service-account key</b>. GitHub mints a short-lived OIDC token, Google's STS federates it against a <b>Workload Identity</b> provider, and the run impersonates a service account in <code class="inline">&lt;PROJECT_ID&gt;</code>. This page is the step-by-step setup; the <a href="/gha">GitHub Actions guide</a> explains what the pipeline then does.</p>
       <div class="meta">
         <span class="pill">&#9201; <b>~15&nbsp;min</b></span>
-        <span class="pill">&#9729;&#65039; <b>zken-genai</b></span>
+        <span class="pill">&#9729;&#65039; <b>&lt;PROJECT_ID&gt;</b></span>
         <span class="pill">&#128273; <b>WIF</b> &middot; keyless</span>
         <span class="pill">&#9881;&#65039; <b>ubuntu-22.04</b> &middot; container <b>ubuntu:20.04</b></span>
       </div>
 
-      <div class="diagram" role="img" aria-label="Trust chain: a GitHub Actions job running on an ubuntu-22.04 runner inside an ubuntu 20.04 container requests an OIDC JWT, which requires the id-token write permission. The JWT goes to Google STS, which validates the issuer and the attribute condition on the cm-lab-provider in the github-pool. STS returns a federated token, which is exchanged via iamcredentials to impersonate the cm-lab-gha service account in zken-genai, granted through roles slash iam dot workloadIdentityUser. The resulting short-lived access token authorizes CodeMender's calls to Vertex AI with zken-genai as the quota project. No long-lived JSON key exists anywhere in the chain.">
+      <div class="diagram" role="img" aria-label="Trust chain: a GitHub Actions job running on an ubuntu-22.04 runner inside an ubuntu 20.04 container requests an OIDC JWT, which requires the id-token write permission. The JWT goes to Google STS, which validates the issuer and the attribute condition on the cm-lab-provider in the github-pool. STS returns a federated token, which is exchanged via iamcredentials to impersonate the cm-lab-gha service account in &lt;PROJECT_ID&gt;, granted through roles slash iam dot workloadIdentityUser. The resulting short-lived access token authorizes CodeMender's calls to Vertex AI with &lt;PROJECT_ID&gt; as the quota project. No long-lived JSON key exists anywhere in the chain.">
         <svg viewBox="0 0 720 300" font-family="var(--f-sans)">
           <defs>
             <marker id="sa" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--accent)"/></marker>
@@ -257,7 +257,7 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
           <text x="388" y="80" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Impersonate SA</text>
           <text x="388" y="97" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">iamcredentials</text>
           <text x="388" y="116" font-size="9" fill="var(--ink)" font-family="var(--f-mono)">cm-lab-gha@</text>
-          <text x="388" y="128" font-size="9" fill="var(--ink)" font-family="var(--f-mono)">zken-genai</text>
+          <text x="388" y="128" font-size="9" fill="var(--ink)" font-family="var(--f-mono)">&lt;PROJECT_ID&gt;</text>
           <text x="388" y="148" font-size="8.5" fill="var(--muted)">roles/iam.</text>
           <text x="388" y="160" font-size="8.5" fill="var(--muted)">workloadIdentityUser</text>
 
@@ -270,7 +270,7 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
           <text x="566" y="109" font-size="8.5" fill="var(--ink-2)" font-family="var(--f-mono)">.googleapis.com</text>
           <text x="566" y="129" font-size="9" fill="var(--ink)">CodeMender agent</text>
           <text x="566" y="148" font-size="8.5" fill="var(--muted)">quota project:</text>
-          <text x="566" y="160" font-size="8.5" fill="var(--muted)" font-family="var(--f-mono)">zken-genai</text>
+          <text x="566" y="160" font-size="8.5" fill="var(--muted)" font-family="var(--f-mono)">&lt;PROJECT_ID&gt;</text>
 
           <rect x="10" y="200" width="700" height="34" rx="9" fill="color-mix(in srgb,var(--ok) 10%,transparent)" stroke="var(--ok)"/>
           <text x="24" y="222" font-size="10.5" fill="var(--ok)" font-weight="650">&#10003; No long-lived JSON key anywhere &mdash; the token is minted per run and expires in about an hour.</text>
@@ -289,22 +289,22 @@ footer{border-top:1px solid var(--hair);margin-top:2rem;padding:1.6rem 0;color:v
       <table class="tbl">
         <thead><tr><th>Name</th><th>Kind</th><th>Looks like</th></tr></thead>
         <tbody>
-        <tr><td><code>WIF_AUDIENCE</code></td><td><span class="chip high">Secret</span></td><td><code>//iam.googleapis.com/projects/163236863044/locations/global/workloadIdentityPools/github-pool/providers/cm-lab-provider</code></td></tr>
-        <tr><td><code>WIF_PROVIDER</code></td><td><span class="chip ok">Variable</span></td><td><code>projects/163236863044/locations/global/workloadIdentityPools/github-pool/providers/cm-lab-provider</code></td></tr>
-        <tr><td><code>SA_EMAIL</code></td><td><span class="chip ok">Variable</span></td><td><code>cm-lab-gha@zken-genai.iam.gserviceaccount.com</code></td></tr>
-        <tr><td><code>QUOTA_PROJECT</code></td><td><span class="chip ok">Variable</span></td><td><code>zken-genai</code></td></tr>
+        <tr><td><code>WIF_AUDIENCE</code></td><td><span class="chip high">Secret</span></td><td><code>//iam.googleapis.com/projects/&lt;PROJECT_NUMBER&gt;/locations/global/workloadIdentityPools/github-pool/providers/cm-lab-provider</code></td></tr>
+        <tr><td><code>WIF_PROVIDER</code></td><td><span class="chip ok">Variable</span></td><td><code>projects/&lt;PROJECT_NUMBER&gt;/locations/global/workloadIdentityPools/github-pool/providers/cm-lab-provider</code></td></tr>
+        <tr><td><code>SA_EMAIL</code></td><td><span class="chip ok">Variable</span></td><td><code>cm-lab-gha@&lt;PROJECT_ID&gt;.iam.gserviceaccount.com</code></td></tr>
+        <tr><td><code>QUOTA_PROJECT</code></td><td><span class="chip ok">Variable</span></td><td><code>&lt;PROJECT_ID&gt;</code></td></tr>
         </tbody>
       </table>
       <div class="callout note"><div class="ct">&#128161; <code class="inline">WIF_AUDIENCE</code> and <code class="inline">WIF_PROVIDER</code> are the same resource</div><p>The audience is just the provider path with an <code class="inline">//iam.googleapis.com/</code> prefix &mdash; <code class="inline">google-github-actions/auth</code> derives it automatically when you omit it. The lab distributes both so the audience can be overridden centrally without editing every fork's workflow. Neither value is sensitive on its own: <b>what actually gates access is the provider's attribute condition plus the IAM binding on the service account</b>, so a leaked provider path grants nothing.</p></div>
     </section>
 
     <section id="instructor">
-      <div class="step"><span class="num">&#9670;</span><h2>Instructor &mdash; one-time setup in <code class="inline">zken-genai</code></h2></div>
+      <div class="step"><span class="num">&#9670;</span><h2>Instructor &mdash; one-time setup in <code class="inline">&lt;PROJECT_ID&gt;</code></h2></div>
       <p>Run once, before the session. Participants do <b>not</b> need any of this &mdash; skip to <a href="#secrets">step&nbsp;1</a> if you were handed the four values.</p>
 
       <h3>1 &middot; Service account and APIs</h3>
-      <figure class="code"><figcaption><span class="lbl">instructor &middot; cloud shell</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">export</span> PROJECT_ID=<span class="v">zken-genai</span>
-<span class="k">export</span> PROJECT_NUMBER=<span class="v">163236863044</span>
+      <figure class="code"><figcaption><span class="lbl">instructor &middot; cloud shell</span><button class="copy" type="button">Copy</button></figcaption><pre><span class="k">export</span> PROJECT_ID=<span class="p">&lt;PROJECT_ID&gt;</span>
+<span class="k">export</span> PROJECT_NUMBER=<span class="p">&lt;PROJECT_NUMBER&gt;</span>
 <span class="k">export</span> POOL=<span class="v">github-pool</span>
 <span class="k">export</span> PROVIDER=<span class="v">cm-lab-provider</span>
 <span class="k">export</span> SA=<span class="v">cm-lab-gha</span>
@@ -326,7 +326,7 @@ gcloud iam service-accounts create <span class="v">$SA</span> \
 <span class="k">done</span></pre></figure>
 
       <h3>2 &middot; Workload Identity provider</h3>
-      <p>The <code class="inline">github-pool</code> already exists in <code class="inline">zken-genai</code>. Add a <b>dedicated provider for the lab</b> rather than reusing an existing one &mdash; providers carry their own attribute condition, and the lab's condition must admit every participant fork.</p>
+      <p>The <code class="inline">github-pool</code> already exists in <code class="inline">&lt;PROJECT_ID&gt;</code>. Add a <b>dedicated provider for the lab</b> rather than reusing an existing one &mdash; providers carry their own attribute condition, and the lab's condition must admit every participant fork.</p>
       <figure class="code"><figcaption><span class="lbl">instructor &middot; create the provider</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud iam workload-identity-pools providers create-oidc <span class="v">$PROVIDER</span> \
   --project=<span class="v">$PROJECT_ID</span> --location=<span class="v">global</span> \
   --workload-identity-pool=<span class="v">$POOL</span> \
@@ -366,7 +366,7 @@ gcloud iam service-accounts create <span class="v">$SA</span> \
 
 gh variable set <span class="v">WIF_PROVIDER</span>  --body <span class="p">'&lt;provider from your instructor&gt;'</span>
 gh variable set <span class="v">SA_EMAIL</span>      --body <span class="p">'&lt;service account email&gt;'</span>
-gh variable set <span class="v">QUOTA_PROJECT</span> --body <span class="v">'zken-genai'</span>
+gh variable set <span class="v">QUOTA_PROJECT</span> --body <span class="p">'&lt;PROJECT_ID&gt;'</span>
 
 <span class="c"># confirm — secrets show names only, variables show values</span>
 gh secret list
@@ -472,7 +472,7 @@ gh variable list</pre></figure>
         <thead><tr><th>Step</th><th>What proves it worked</th></tr></thead>
         <tbody>
         <tr><td><b>auth</b></td><td>Green, with <code>Created credentials file at /github/workspace/gha-creds-*.json</code>. That file holds a <b>short-lived</b> token, not a key.</td></tr>
-        <tr><td><b>Who am I</b></td><td><code>gcloud auth list</code> shows your <code>SA_EMAIL</code> as <code>ACTIVE</code>, and <code>gcloud config list</code> shows <code>project = zken-genai</code>.</td></tr>
+        <tr><td><b>Who am I</b></td><td><code>gcloud auth list</code> shows your <code>SA_EMAIL</code> as <code>ACTIVE</code>, and <code>gcloud config list</code> shows <code>project = &lt;PROJECT_ID&gt;</code>.</td></tr>
         <tr><td><b>Verify the CodeMender environment</b></td><td><code>cm init --verify</code> prints <span class="chip ok">Server connectivity</span> and <code>All critical checks passed</code>. An empty <code>build command</code> warning is expected and harmless.</td></tr>
         </tbody>
       </table>
@@ -516,7 +516,7 @@ gh variable list</pre></figure>
         <tr><td><code>Permission 'iam.serviceAccounts.getAccessToken' denied</code></td><td>The <code>principalSet</code> binding doesn't match the token. Usually the repo owner differs from <code>GH_ORG</code>, or the binding used the project <b>id</b> where it needs the project <b>number</b>.</td></tr>
         <tr><td><code>The given credential is rejected by the attribute condition</code></td><td>The provider's condition excludes this repository. Check the fork's owner against <code>assertion.repository_owner</code> in the condition &mdash; a fork under a personal account will not match an org-scoped condition.</td></tr>
         <tr><td><code>Invalid value for "audience"</code> / audience mismatch</td><td><code>WIF_AUDIENCE</code> is wrong or was pasted into the Variables tab. It must start with <code>//iam.googleapis.com/projects/</code> and use the project number.</td></tr>
-        <tr><td><code>PERMISSION_DENIED</code> on <code>aiplatform.googleapis.com</code></td><td>Federation worked, authorization didn't. The service account is missing <code>roles/aiplatform.user</code>, or the API isn't enabled in <code>zken-genai</code>.</td></tr>
+        <tr><td><code>PERMISSION_DENIED</code> on <code>aiplatform.googleapis.com</code></td><td>Federation worked, authorization didn't. The service account is missing <code>roles/aiplatform.user</code>, or the API isn't enabled in <code>&lt;PROJECT_ID&gt;</code>.</td></tr>
         <tr><td><code>detected dubious ownership in repository</code></td><td>The container runs as root over a checkout owned by another uid. That is what the <b>Trust the workspace</b> step fixes &mdash; confirm it runs after <code>checkout</code>.</td></tr>
         </tbody>
       </table>
@@ -543,12 +543,12 @@ gh variable list</pre></figure>
         <tr><td><b>Audit</b></td><td>All runs look like the same principal</td><td>Logs carry the repository and subject that federated</td></tr>
         </tbody>
       </table>
-      <div class="callout sec"><div class="ct">&#128680; The part people get wrong</div><p>WIF removes the stored credential, not the authorization. The service account still holds real permissions in <code class="inline">zken-genai</code>, and <b>the attribute condition is the only thing standing between your project and any repository on GitHub</b>. A provider created without <code class="inline">--attribute-condition</code> is strictly worse than a key: it is an open door with no file to delete. Scope the condition first, grant roles second.</p></div>
+      <div class="callout sec"><div class="ct">&#128680; The part people get wrong</div><p>WIF removes the stored credential, not the authorization. The service account still holds real permissions in <code class="inline">&lt;PROJECT_ID&gt;</code>, and <b>the attribute condition is the only thing standing between your project and any repository on GitHub</b>. A provider created without <code class="inline">--attribute-condition</code> is strictly worse than a key: it is an open door with no file to delete. Scope the condition first, grant roles second.</p></div>
     </section>
 
     <footer>
       <p><b>CodeMender CI Lab &mdash; GitHub Actions setup</b> &middot; public preview. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for lab use only.</p>
-      <p class="small">No credentials appear in this guide. The values shown are resource names for <code class="inline">zken-genai</code>; access is granted by the provider's attribute condition plus the <code class="inline">roles/iam.workloadIdentityUser</code> binding, both of which live in Google Cloud IAM.</p>
+      <p class="small">No credentials appear in this guide. The values shown are resource names for <code class="inline">&lt;PROJECT_ID&gt;</code>; access is granted by the provider's attribute condition plus the <code class="inline">roles/iam.workloadIdentityUser</code> binding, both of which live in Google Cloud IAM.</p>
     </footer>
    </div></main>
 </div>

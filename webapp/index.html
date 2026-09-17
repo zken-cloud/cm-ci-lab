@@ -215,7 +215,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <a href="#flow"><span class="n">&#9670;</span>How it works</a>
       <a href="#access"><span class="n">&#9670;</span>Access model</a>
       <div class="grp">The lab</div>
-      <a href="#s1"><span class="n">1</span>Sign in (@google.com)</a>
+      <a href="#s1"><span class="n">1</span>Sign in</a>
       <a href="#s2"><span class="n">2</span>Fork &amp; clone Juice Shop</a>
       <a href="#s3"><span class="n">3</span>Namespace your workspace</a>
       <a href="#s4"><span class="n">4</span>GitHub token</a>
@@ -236,9 +236,9 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <main class="main"><div class="col">
 
     <header class="hero" id="overview">
-      <div class="eyebrow">Internal CE Enablement &middot; Cloud Build &middot; public preview</div>
+      <div class="eyebrow">For cloud security engineers &middot; Cloud Build &middot; public preview</div>
       <h1>CodeMender CI Lab &mdash; Public Preview (Cloud Build)</h1>
-      <p class="lede">Scan OWASP Juice&nbsp;Shop, verify a real vulnerability, fix it, and open a PR &mdash; driven by the <b>public-preview</b> CodeMender CLI in a Cloud Build pipeline. No baked image credential: <code class="inline">cm</code> authenticates as the pipeline's own identity and runs against the shared, preview-entitled project <code class="inline">cloud-llm-preview1</code>.</p>
+      <p class="lede">Scan OWASP Juice&nbsp;Shop, verify a real vulnerability, fix it, and open a PR &mdash; driven by the <b>public-preview</b> CodeMender CLI in a Cloud Build pipeline. No baked image credential: <code class="inline">cm</code> authenticates as the pipeline's own identity and runs against a shared project entitled to CodeMender, <code class="inline">&lt;CM_PROJECT&gt;</code>.</p>
       <div class="meta">
         <span class="pill">&#9201; <b>~40&nbsp;min</b></span>
         <span class="pill">&#9670; <b>Intermediate</b></span>
@@ -246,7 +246,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <span class="pill">&#9095; <b>GitHub</b></span>
       </div>
 
-      <div class="diagram" role="img" aria-label="Five Cloud Build steps in cloud-llm-preview1: clone the fork, cm find across many files, cm verify fanned out across the found vulnerabilities, cm fix fanned out across the verified ones, then open one PR. Steps share CodeMender state through Cloud Build's persisted /workspace volume and open a PR on the GitHub fork.">
+      <div class="diagram" role="img" aria-label="Five Cloud Build steps in the entitled project: clone the fork, cm find across many files, cm verify fanned out across the found vulnerabilities, cm fix fanned out across the verified ones, then open one PR. Steps share CodeMender state through Cloud Build's persisted /workspace volume and open a PR on the GitHub fork.">
         <svg viewBox="0 0 720 336" font-family="var(--f-sans)">
           <defs>
             <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="var(--muted)"/></marker>
@@ -258,7 +258,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
           <text x="26" y="185" font-size="10" fill="var(--ink-2)">findings state.db</text>
           <text x="26" y="200" font-size="9" fill="var(--muted)">persists across steps</text>
           <rect x="196" y="34" width="360" height="272" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>
-          <text x="216" y="56" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Cloud Build &mdash; cloud-llm-preview1</text>
+          <text x="216" y="56" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Cloud Build &mdash; &lt;CM_PROJECT&gt;</text>
           <text x="216" y="70" font-size="9" fill="var(--muted)">runs as the entitled build service account</text>
           <g font-size="11" text-anchor="middle">
             <g><rect x="216" y="80" width="320" height="28" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/><text x="376" y="98" fill="var(--ink)">0 &middot; clone your fork</text></g>
@@ -282,7 +282,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
 
     <section id="flow">
       <div class="step"><span class="num">&#9670;</span><h2>How it works</h2></div>
-      <p>Five Cloud Build steps in <code class="inline">cloud-llm-preview1</code>, one script each &mdash; a fifth, <code class="inline">cm-env.sh</code>, is <em>sourced</em> by the others so they share one setup and one finding-selector. CodeMender is <b>local-first</b>: a hosted agent reasons; the <code class="inline">cm</code> client reads files, builds, and runs proof-of-concept exploits locally.</p>
+      <p>Five Cloud Build steps in <code class="inline">&lt;CM_PROJECT&gt;</code>, one script each &mdash; a fifth, <code class="inline">cm-env.sh</code>, is <em>sourced</em> by the others so they share one setup and one finding-selector. CodeMender is <b>local-first</b>: a hosted agent reasons; the <code class="inline">cm</code> client reads files, builds, and runs proof-of-concept exploits locally.</p>
       <ul>
         <li><code class="inline">find.sh</code> &mdash; <code class="inline">cm find</code> scans <b>many files</b> (a directory or a list) and records every finding.</li>
         <li><code class="inline">verify.sh</code> &mdash; <b>fans out</b> <code class="inline">cm verify</code> across the found vulnerabilities, <code class="inline">_VERIFY_FANOUT</code> at a time.</li>
@@ -350,22 +350,22 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
       <table class="tbl">
         <thead><tr><th>Piece</th><th>Who / what</th></tr></thead>
         <tbody>
-        <tr><td><b>Entitled project</b></td><td><code class="inline">cloud-llm-preview1</code> &mdash; already on the preview allowlist and entitled to the <code class="inline">codemender-preview</code> agent. Everyone shares it; there is no per-participant GCP project.</td></tr>
-        <tr><td><b>You sign in as</b></td><td>Your <code class="inline"><span class="p">ldap</span>@google.com</code> identity &mdash; for the laptop steps (fork, image build, submitting the build).</td></tr>
-        <tr><td><b>Pipeline caller</b></td><td>The <b>Cloud Build service account of <code class="inline">cloud-llm-preview1</code></b>. The build runs <em>inside</em> the entitled project, so <code class="inline">cm</code> authenticates as that SA via the metadata server &mdash; no keys, no injected credentials, no quota-project override.</td></tr>
+        <tr><td><b>Entitled project</b></td><td><code class="inline">&lt;CM_PROJECT&gt;</code> &mdash; a project entitled to CodeMender (the <code class="inline">codemender-preview</code> agent). Everyone shares it; there is no per-participant GCP project.</td></tr>
+        <tr><td><b>You sign in as</b></td><td>Your own Google Cloud identity (<code class="inline"><span class="p">your-account</span></code>) &mdash; for the laptop steps (fork, image build, submitting the build).</td></tr>
+        <tr><td><b>Pipeline caller</b></td><td>The <b>Cloud Build service account of <code class="inline">&lt;CM_PROJECT&gt;</code></b>. The build runs <em>inside</em> the entitled project, so <code class="inline">cm</code> authenticates as that SA via the metadata server &mdash; no keys, no injected credentials, no quota-project override.</td></tr>
         <tr><td><b>Self-grants</b></td><td><b>None.</b> Entitlement is inherited from the shared project; you don't grant yourself anything. The facilitator grants you permission to submit builds and to <code class="inline">actAs</code> the build SA.</td></tr>
         </tbody>
       </table>
-      <div class="callout note"><div class="ct">&#10003; Cloud Build here already runs as the entitled SA</div><p>In <code class="inline">cloud-llm-preview1</code>, <code class="inline">gcloud builds submit</code> runs your build as the project's <b>compute service account</b> (<code class="inline">PROJNUM-compute@developer.gserviceaccount.com</code>) &mdash; the identity that carries the AI roles and can call the Interaction API. So a plain submit just works; <b>no <code class="inline">--service-account</code> needed</b>. (In a project whose Cloud Build default is instead the legacy <code class="inline">PROJNUM@cloudbuild</code> SA &mdash; which lacks the AI roles &mdash; you'd pin the compute SA explicitly.)</p></div>
+      <div class="callout note"><div class="ct">&#10003; Cloud Build here already runs as the entitled SA</div><p>In <code class="inline">&lt;CM_PROJECT&gt;</code>, <code class="inline">gcloud builds submit</code> runs your build as the project's <b>compute service account</b> (<code class="inline">PROJNUM-compute@developer.gserviceaccount.com</code>) &mdash; the identity that carries the AI roles and can call the Interaction API. So a plain submit just works; <b>no <code class="inline">--service-account</code> needed</b>. (In a project whose Cloud Build default is instead the legacy <code class="inline">PROJNUM@cloudbuild</code> SA &mdash; which lacks the AI roles &mdash; you'd pin the compute SA explicitly.)</p></div>
       <div class="callout note"><div class="ct">&#8505; Because the project is shared, namespace everything</div><p>Everything you create lives in one project for the whole cohort, so bind names to your <b>ldap</b> &mdash; not the project id (same for everyone) or region. Image tag <code class="inline">cm-ci-preview:<span class="p">ldap</span></code> in the shared <code class="inline">codemender</code> repo, PR branch <code class="inline">codemender/fix-<span class="p">ldap</span></code>. Your Juice Shop fork is on your own GitHub, so PRs never collide.</p></div>
     </section>
 
     <section id="s1">
-      <div class="step"><span class="num">1</span><h2>Sign in with your <code class="inline">@google.com</code> identity</h2></div>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth login <span class="p">ldap</span>@google.com
-gcloud config set project cloud-llm-preview1
-gcloud config get-value account   <span class="c"># must print ldap@google.com</span></pre></figure>
-      <p class="small">Preview access is tied to your <code class="inline">@google.com</code> identity and the shared project's entitlement. No <code class="inline">serviceUsageConsumer</code> or quota-project setup &mdash; you operate inside the entitled project.</p>
+      <div class="step"><span class="num">1</span><h2>Sign in with your Google Cloud identity</h2></div>
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth login <span class="p">your-account</span>
+gcloud config set project <span class="p">&lt;CM_PROJECT&gt;</span>
+gcloud config get-value account   <span class="c"># must print your account</span></pre></figure>
+      <p class="small">Preview access is tied to your identity and the shared project's entitlement. No <code class="inline">serviceUsageConsumer</code> or quota-project setup &mdash; you operate inside the entitled project.</p>
     </section>
 
     <section id="s2">
@@ -378,7 +378,7 @@ git remote -v    <span class="c"># origin -&gt; your fork; upstream -&gt; juice-
     <section id="s3">
       <div class="step"><span class="num">3</span><h2>Namespace your workspace</h2></div>
       <p>One shared project for the cohort &mdash; pin your names once and reuse them.</p>
-      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export CM_PROJECT=cloud-llm-preview1
+      <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export CM_PROJECT=<span class="p">&lt;CM_PROJECT&gt;</span>
 export REGION=us-central1
 export LDAP="$(gcloud config get-value account | cut -d@ -f1)"
 export GH_OWNER="$(gh api user --jq .login)"
@@ -389,7 +389,7 @@ echo "project=$CM_PROJECT  ldap=$LDAP  owner=$GH_OWNER"</pre></figure>
       <div class="step"><span class="num">4</span><h2>Prepare your GitHub token</h2></div>
       <p>A <b>fine-grained</b> PAT scoped to your fork &mdash; <b>Contents: R/W</b> and <b>Pull requests: R/W</b>. Participants have no Secret Manager in the shared project, so you pass it to the build at submit time (Step&nbsp;8) rather than storing it.</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>export GH_PAT=<span class="p">&lt;your fine-grained github PAT&gt;</span>   <span class="c"># Contents R/W + Pull requests R/W, your fork</span></pre></figure>
-      <div class="callout warn"><div class="ct">&#9888; The PAT lands in build metadata</div><p>Passed as a substitution, the token is stored in the build's config in the shared <code class="inline">cloud-llm-preview1</code> project &mdash; readable by anyone who can view builds there. Keep it <b>fine-grained, scoped to your own fork, and short-lived</b>, and <b>revoke it</b> after the lab (see Cleanup).</p></div>
+      <div class="callout warn"><div class="ct">&#9888; The PAT lands in build metadata</div><p>Passed as a substitution, the token is stored in the build's config in the shared <code class="inline">&lt;CM_PROJECT&gt;</code> project &mdash; readable by anyone who can view builds there. Keep it <b>fine-grained, scoped to your own fork, and short-lived</b>, and <b>revoke it</b> after the lab (see Cleanup).</p></div>
     </section>
 
     <section id="s5">
@@ -508,7 +508,7 @@ shopt -s nullglob; PATCHES=("$WORKSPACE"/patches/*.patch)
 (( ${#PATCHES[@]} )) || { echo "no patches - no PR"; exit 0; }
 
 BRANCH="codemender/fix-${LDAP}-${STATE_ID}"
-git config user.email "<span class="p">ldap</span>@google.com"; git config user.name "<span class="p">ldap</span>"
+git config user.email "<span class="p">you@example.com</span>"; git config user.name "<span class="p">your-name</span>"
 git checkout -q -b "$BRANCH"
 for p in "${PATCHES[@]}"; do
   git apply "$p" 2&gt;/dev/null || git apply --3way "$p" 2&gt;/dev/null \
@@ -584,9 +584,9 @@ timeout: 3600s</pre></figure>
       <div class="step"><span class="num">8</span><h2>Run it</h2></div>
       <p>Submit into the shared project. Cloud Build runs it as the compute SA (the entitled one), so a plain submit is all you need:</p>
       <figure class="code"><figcaption><span class="lbl">bash</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud builds submit . --config cloudbuild.yaml \
-  --project=cloud-llm-preview1 --region=global \
+  --project="$CM_PROJECT" --region=global \
   --substitutions=_CM_IMAGE="$CM_IMAGE",_GH_OWNER="$GH_OWNER",_LDAP="$LDAP",_GH_TOKEN="$GH_PAT",_GH_REPO=juice-shop,_BASE_BRANCH=master,_SCAN_PATH=routes/,_VERIFY_FANOUT=1,_FIX_FANOUT=1</pre></figure>
-      <div class="callout warn"><div class="ct">&#9888; If it fails, read the error precisely</div><p><b><code class="inline">Unsupported agent interaction: codemender-preview</code></b> &rarr; the <em>build SA</em> isn't entitled to the agent even though the project is. Tell the facilitator; the fix is server-side. &nbsp;<b><code class="inline">aiplatform.interactions.create denied</code></b> &rarr; the build ran as an SA without the AI roles (e.g. the legacy <code class="inline">@cloudbuild</code> one). In <code class="inline">cloud-llm-preview1</code> the default is the compute SA; if you hit this, the project's build-SA default may be off &mdash; tell the facilitator. &nbsp;<b><code class="inline">Resource setup has just started</code></b> &rarr; first-use provisioning; just re-run in a couple of minutes.</p></div>
+      <div class="callout warn"><div class="ct">&#9888; If it fails, read the error precisely</div><p><b><code class="inline">Unsupported agent interaction: codemender-preview</code></b> &rarr; the <em>build SA</em> isn't entitled to the agent even though the project is. Tell the facilitator; the fix is server-side. &nbsp;<b><code class="inline">aiplatform.interactions.create denied</code></b> &rarr; the build ran as an SA without the AI roles (e.g. the legacy <code class="inline">@cloudbuild</code> one). In <code class="inline">&lt;CM_PROJECT&gt;</code> the default is the compute SA; if you hit this, the project's build-SA default may be off &mdash; tell the facilitator. &nbsp;<b><code class="inline">Resource setup has just started</code></b> &rarr; first-use provisioning; just re-run in a couple of minutes.</p></div>
       <div class="callout note"><div class="ct">&#9201; Expect ~20&ndash;30 minutes</div><p>Verification dominates &mdash; CodeMender builds Juice Shop and runs a PoC exploit. State lives in the build's <code class="inline">/workspace</code>, so a failed build restarts from a clean scan rather than resuming.</p></div>
     </section>
 

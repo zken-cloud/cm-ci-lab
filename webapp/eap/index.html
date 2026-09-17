@@ -219,7 +219,7 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <main class="main"><div class="col">
 
     <header class="hero" id="overview">
-      <div class="eyebrow">Internal Customer Engineer Enablement</div>
+      <div class="eyebrow">For cloud security engineers</div>
       <h1>Build a CodeMender remediation pipeline on Cloud Build</h1>
       <p class="lede">You'll package CodeMender into a container, wire up GCS-backed state, and hand-write a Cloud Build pipeline that scans OWASP Juice&nbsp;Shop, <em>verifies</em> a real vulnerability, <em>fixes</em> it, and opens a Pull Request on your own fork &mdash; which you review, approve, and merge.</p>
       <div class="meta">
@@ -401,7 +401,7 @@ git --version && gh --version && gcloud --version | head -1</pre></figure>
       <h2><span class="kicker">Provided for you</span>The CodeMender image</h2>
       <div class="callout note"><div class="ct">&#128230; Your facilitator provides the image &mdash; you don't build it</div>
         <p>The facilitator publishes the container to Artifact Registry. <b>The image URL is already filled in for you</b> in Step&nbsp;9 &mdash; nothing to paste:</p>
-        <figure class="code"><figcaption><span class="lbl">the image (digest-pinned)</span><button class="copy" type="button">Copy</button></figcaption><pre>us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci@sha256:a1c470e44353c8e09c53fb4e661be9d624a3d32afcaeb3066e58c2f8d1aa6fe3</pre></figure>
+        <figure class="code"><figcaption><span class="lbl">the image (digest-pinned)</span><button class="copy" type="button">Copy</button></figcaption><pre>us-central1-docker.pkg.dev/&lt;PROJECT_ID&gt;/codemender/codemender-ci@sha256:&lt;DIGEST&gt;</pre></figure>
         <p><b>Knowing the URL is not access.</b> The repo is IAM-gated, so you still need the facilitator to grant your project's build service accounts <em>read</em> &mdash; that's why <b>Step&nbsp;6</b> has you submit your <b>project number</b>. Until that grant lands, the pipeline's image pull fails with <code class="inline">denied</code>. Once it does, your Cloud Build pulls the image automatically.</p></div>
       <p>For reference, this is exactly how that image is built &mdash; a deliberately minimal toolbox: the <code class="inline">cm</code> client plus the build/runtime tools the pipeline needs (node/npm so <code class="inline">cm find verify</code> can build &amp; run Juice Shop, git, jq, and gcsfuse for state).</p>
       <details class="fac"><summary>Dockerfile &mdash; reference only <span class="tw">&#9656;</span></summary><div class="body"><figure class="code"><figcaption><span class="lbl">container/Dockerfile</span><button class="copy" type="button">Copy</button></figcaption><pre># CodeMender CI toolbox image.
@@ -915,7 +915,7 @@ fi
 #   gcloud builds submit . \
 #     --config cloudbuild.yaml \
 #     --substitutions=\
-#   _CM_IMAGE=us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci@sha256:a1c470e4…,\
+#   _CM_IMAGE=us-central1-docker.pkg.dev/&lt;PROJECT_ID&gt;/codemender/codemender-ci@sha256:&lt;DIGEST&gt;,\
 #   _CM_STATE_BUCKET=YOUR_PROJECT-cm-state,\
 #   _GH_OWNER=YOUR_GITHUB_USERNAME,_GH_REPO=juice-shop,_BASE_BRANCH=master,\
 #   _SCAN_PATH=routes/login.ts
@@ -1015,7 +1015,7 @@ grep -q /pulls scripts/open-pr.sh && echo "✅ scripts look right" ||
 echo "⚠️ a script has the wrong content -- re-copy that file from Step 7"
 
 <span class="c"># Run in THIS shell -- these exports don't survive a new shell / Cloud Shell reconnect.</span>
-export CM_IMAGE="<span class="v">us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci@sha256:a1c470e44353c8e09c53fb4e661be9d624a3d32afcaeb3066e58c2f8d1aa6fe3</span>"
+export CM_IMAGE="<span class="v">us-central1-docker.pkg.dev/&lt;PROJECT_ID&gt;/codemender/codemender-ci@sha256:&lt;DIGEST&gt;</span>"
 export CM_STATE_BUCKET="$(gcloud config get-value project)-cm-state"    <span class="c"># the bucket from Step 4</span>
 export GH_OWNER="$(gh api user --jq .login)"                            <span class="c"># your GitHub username</span>
 echo "bucket=$CM_STATE_BUCKET  owner=$GH_OWNER"    <span class="c"># eyeball these before the build runs</span>
@@ -1141,7 +1141,7 @@ gh pr merge <span class="p">N</span> --repo "$GH_OWNER/juice-shop" --squash</pre
     </section>
 
     <footer>
-      <p><b>CodeMender CI Lab</b> &middot; Internal CE enablement. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for training only.</p>
+      <p><b>CodeMender CI Lab</b> &middot; For cloud security engineers. Juice Shop is &copy; OWASP, MIT-licensed, and intentionally vulnerable &mdash; for training only.</p>
       <p class="small">No secrets appear in this guide. Tokens live in Secret Manager; the CodeMender credential is baked into the IAM-gated image. Replace every <code class="inline" style="color:var(--muted)">placeholder</code> with your own values.</p>
     </footer>
    </div></main>

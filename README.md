@@ -1,6 +1,6 @@
 # CodeMender CI Lab
 
-A hands-on, **guided** lab that teaches internal Customer Engineers (CEs) to run
+A hands-on, **guided** lab that teaches cloud security engineers to run
 **CodeMender** (`cm`) as a Cloud Build pipeline: scan OWASP **Juice Shop**,
 **verify** a real vulnerability, generate & apply the **fix**, and open a Pull
 Request on the participant's own GitHub fork — with a human approving the merge.
@@ -111,7 +111,7 @@ Manager.
 
 ## Production hardening & EAP caveats
 
-The lab is intentionally transparent (bash + `cm` CLI) so CEs see every step.
+The lab is intentionally transparent (bash + `cm` CLI) so engineers see every step.
 This CodeMender build is **Early Access**; some scripting exists only to work
 around current gaps, and the guide surfaces both to participants (see its
 *Production hardening & EAP caveats* section).
@@ -147,50 +147,36 @@ the Dockerfile is the reproducible recipe.
 
 `webapp/` is an **nginx container on Cloud Run**, fronted by an external HTTPS Load
 Balancer and gated by **IAP** (all paths require Google sign-in), in project
-`zken-genai`. It contains only placeholders — no secrets.
-
-> **Note:** hosting moved from a public GCS bucket to Cloud Run + IAP. The bucket
-> `gs://zken-genai-cm-lab-site` is legacy and no longer serves the site.
+`<PROJECT_ID>`. It contains only placeholders — no secrets.
 
 - **URL:** https://cm-ci-lab.cedemo.app — the Cloud Build guide.
-  **`/gha`** — the GitHub Actions variant (staged; see `webapp/nginx.conf` routing).
+  **`/gha`** — the GitHub Actions variant (staged; see `webapp/nginx.conf.template` routing).
 - **Cloud Run:** service `cm-lab-site` (region `us-central1`), nginx serving
   `webapp/index.html` at `/` and `webapp/gha/index.html` at `/gha`.
-- **Static IP:** `136.68.201.46` (`cm-lab-ip`) · DNS `A cm-ci-lab.cedemo.app`
-  in Cloud DNS zone `cedemo-app` (project `waap-demo-323809`).
 - **LB:** serverless NEG `cm-lab-neg` → backend-service `cm-lab-run-backend`
   (**IAP enabled**) → url-map `cm-lab-urlmap` → https-proxy `cm-lab-https-proxy`
   (managed cert `cm-lab-cert-cedemo`) → forwarding rule `cm-lab-https-fr`;
   HTTP `cm-lab-http-fr` redirects to HTTPS.
+- **Token gate:** on top of IAP, nginx requires a shared access token
+  (`?token=…` once, then a cookie). The value is **not in the repo** — it is read
+  from the `SITE_TOKEN` env var at container start (`envsubst` renders
+  `webapp/nginx.conf.template`), and the container refuses to start without it.
 
 Deploy after editing `webapp/` (builds the Dockerfile via Cloud Build, rolls out a
 new revision — traffic switches automatically):
 ```bash
 gcloud run deploy cm-lab-site --source webapp/ \
-  --region us-central1 --project zken-genai
-```
-
-Teardown (removes the LB + Cloud Run service; the legacy bucket is separate):
-```bash
-P=zken-genai
-for r in forwarding-rules/cm-lab-https-fr forwarding-rules/cm-lab-http-fr; do
-  gcloud compute ${r%/*} delete ${r#*/} --global --project=$P --quiet; done
-gcloud compute target-https-proxies delete cm-lab-https-proxy --global --project=$P --quiet
-gcloud compute target-http-proxies  delete cm-lab-http-proxy  --global --project=$P --quiet
-gcloud compute url-maps delete cm-lab-urlmap cm-lab-redirect --global --project=$P --quiet
-gcloud compute backend-services delete cm-lab-run-backend --global --project=$P --quiet
-gcloud compute network-endpoint-groups delete cm-lab-neg --region=us-central1 --project=$P --quiet
-gcloud run services delete cm-lab-site --region=us-central1 --project=$P --quiet
-gcloud compute ssl-certificates delete cm-lab-cert-cedemo cm-lab-cert --global --project=$P --quiet
-gcloud compute addresses delete cm-lab-ip --global --project=$P --quiet
-gcloud dns record-sets delete cm-ci-lab.cedemo.app. --type=A --zone=cedemo-app --project=waap-demo-323809
-# legacy, if cleaning up the old bucket path too:
-gcloud compute backend-buckets delete cm-lab-backend --project=$P --quiet 2>/dev/null || true
-gcloud storage rm -r gs://zken-genai-cm-lab-site --project=$P 2>/dev/null || true
+  --region us-central1 --project <PROJECT_ID> \
+  --set-env-vars SITE_TOKEN=<SITE_TOKEN>
 ```
 
 ## Validation
-Built and validated end-to-end in project `zken-genai`: image published to
+Built and validated end-to-end in project `<PROJECT_ID>`: image published to
 Artifact Registry, full pipeline run opened a real PR on a Juice Shop fork with
 the correct parameterized-query fix; CodeMender state persisted in GCS across the
 separate steps; guide served over HTTPS at the URL above.
+
+## License
+
+Apache-2.0 — see [`LICENSE`](LICENSE). OWASP Juice Shop (the scan target) is
+MIT-licensed and is fetched separately at run time; it is not vendored here.

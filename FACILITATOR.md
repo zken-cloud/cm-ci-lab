@@ -6,11 +6,11 @@
 > Participants use the web guide at **https://cm-ci-lab.cedemo.app** and never
 > see this file.
 
-> **⚠ Use your `@gcp.altostrat.com` identity — not `@google.com`.** The central
-> project lives in **Argolis**, which enforces Domain Restricted Sharing: an
-> `@google.com` principal **cannot hold an IAM binding there**. Your access is
+> **⚠ Use your `@gcp.altostrat.com` identity — not your corporate account.** The central
+> project lives in a **sandboxed GCP org** that enforces Domain Restricted Sharing: a
+> principal from any other domain **cannot hold an IAM binding there**. Your access is
 > granted to `ldap@gcp.altostrat.com` (e.g. `zken@gcp.altostrat.com`). Signing in
-> as `@google.com` will fail every command below with `PERMISSION_DENIED`, even
+> with any other account will fail every command below with `PERMISSION_DENIED`, even
 > though you are "on the lab team" — the account simply isn't in the policy.
 
 Your job during delivery is small: **grant each participant's Cloud Build service
@@ -40,10 +40,10 @@ You're ready to deliver once all of these are true:
   image check below fails, you're likely not granted yet.
 - **`gcloud` is authenticated as your `@gcp.altostrat.com` account** and pointed
   at the central project. Log in explicitly — if you've used `gcloud` with a
-  `@google.com` account before, it may still be the active one:
+  different account before, it may still be the active one:
   ```bash
   gcloud auth login zken@gcp.altostrat.com   # ◀ your own ldap@gcp.altostrat.com
-  export CENTRAL_PROJECT=zken-genai   # the project that hosts the codemender repo
+  export CENTRAL_PROJECT=<PROJECT_ID>   # the project that hosts the codemender repo
   export REGION=us-central1
   gcloud config set project "$CENTRAL_PROJECT"
 
@@ -88,7 +88,7 @@ even if a tag is later re-pushed:
 gcloud artifacts docker images describe \
   "$REGION-docker.pkg.dev/$CENTRAL_PROJECT/codemender/codemender-ci:v0.2.0" \
   --format='value(image_summary.fully_qualified_digest)'
-# -> us-central1-docker.pkg.dev/zken-genai/codemender/codemender-ci@sha256:a1c470…
+# -> us-central1-docker.pkg.dev/<PROJECT_ID>/codemender/codemender-ci@sha256:<DIGEST>
 ```
 
 To see which tags exist first (e.g. after a rotation), list them with digests:
@@ -212,7 +212,7 @@ Done. 1 granted, 1 already had access, 0 failed.
 - **Fails fast, before prompting.** It verifies it can read the repo IAM policy
   first, so a wrong account or a missing facilitator grant surfaces immediately
   instead of halfway through a cohort. It also warns if you're signed in as
-  `@google.com`, which Argolis will reject.
+  an account outside the sandbox domain, which Domain Restricted Sharing will reject.
 - **Safe to re-run.** Bindings are idempotent — re-drain the sheet as often as
   you like as new rows arrive.
 - **Exit status** is non-zero if any grant failed, so it drops into a `watch` or a
@@ -315,13 +315,13 @@ worse than per-SA at scale.
 
 Facilitators are bound **individually**, by `ldap@gcp.altostrat.com` identity.
 A group (`cm-ci-lab-admin`) is still bound on the repo for historical reasons,
-but **don't add new facilitators to it** — Argolis blocks adding `@google.com`
+but **don't add new facilitators to it** — the sandboxed org blocks adding outside-domain
 members, and the group itself lives in a different domain, so direct bindings are
 the supported path.
 
 ```bash
-P=zken-genai
-M="user:newperson@gcp.altostrat.com"   # ◀ ldap@gcp.altostrat.com — never @google.com
+P=<PROJECT_ID>
+M="user:newperson@gcp.altostrat.com"   # ◀ ldap@gcp.altostrat.com — never an outside-domain account
 
 # grant-participants power, scoped to the repo
 gcloud artifacts repositories add-iam-policy-binding codemender \
@@ -384,7 +384,7 @@ it happens, your only action is to re-share the URL:
   (facilitators only *grant readers*), but there's no predefined "grant-only"
   role — it is at least scoped to the repo, not the project.
 - **Facilitator identities are `ldap@gcp.altostrat.com`, bound directly.** The
-  central project is Argolis, and Domain Restricted Sharing bars `@google.com`
+  central project lives in a sandboxed GCP org, and Domain Restricted Sharing bars outside-domain
   principals from its IAM policy entirely. Bindings are made per-identity on the
   repo and the project (see below) rather than via a group.
 - **The web guide is sign-in gated** — an nginx container on **Cloud Run** behind

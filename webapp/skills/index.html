@@ -214,12 +214,12 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
   <main class="main"><div class="col">
 
     <header class="hero" id="overview">
-      <div class="eyebrow">Internal CE Enablement &middot; Antigravity &middot; public preview</div>
+      <div class="eyebrow">For cloud security engineers &middot; Antigravity &middot; public preview</div>
       <h1>CodeMender Skills for Antigravity</h1>
       <p class="lede">An <b>Agent Skill</b> that drives CodeMender across a whole directory from Antigravity &mdash; <b>find</b> many vulnerabilities, <b>verify</b> them in parallel, <b>fix</b> the verified ones in parallel &mdash; each parallel worker isolated so the single-writer SQLite state never corrupts, and every <code class="inline">cm</code> run wrapped in an OS-native sandbox. All local, as you. No CI, no bucket, no secret store.</p>
       <div class="meta">
         <span class="pill">&#129520; <b>Agent Skill</b> &middot; SKILL.md</span>
-        <span class="pill">&#9729; <b>@google.com</b> &middot; cloud-llm-preview1</span>
+        <span class="pill">&#9729; <b>&lt;CM_PROJECT&gt;</b> &middot; a project entitled to CodeMender</span>
         <span class="pill">&#128421;&#65039; <b>macOS</b> &middot; <b>Linux</b></span>
         <span class="pill">&#9670; AGY <b>CLI &middot; 2.0 &middot; IDE</b></span>
       </div>
@@ -264,8 +264,8 @@ hr.soft{border:none;border-top:1px dashed var(--hair-strong);margin:1.4rem 0}
         <li><b><code class="inline">git</code>, <code class="inline">jq</code>, <code class="inline">unzip</code></b> on PATH; the target is a <b>git</b> repo.</li>
         <li><b>Sandbox runtime</b> &mdash; macOS <code class="inline">sandbox-exec</code> is built in; Linux needs gVisor <code class="inline">runsc</code>.</li>
       </ul>
-      <figure class="code"><figcaption><span class="lbl">bash &middot; auth once</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">ldap</span>@google.com
-gcloud auth application-default set-quota-project cloud-llm-preview1</pre></figure>
+      <figure class="code"><figcaption><span class="lbl">bash &middot; auth once</span><button class="copy" type="button">Copy</button></figcaption><pre>gcloud auth application-default login <span class="p">your-account</span>
+gcloud auth application-default set-quota-project <span class="p">&lt;CM_PROJECT&gt;</span></pre></figure>
       <div class="callout note"><div class="ct">&#128273; ADC survives the sandbox</div><p>Fan-out workers each run with a private <code class="inline">HOME</code> (for an isolated <code class="inline">state.db</code>), which would normally hide your ADC. The skill pins <code class="inline">GOOGLE_APPLICATION_CREDENTIALS</code> to your real ADC file up front, so auth keeps working &mdash; nothing to configure.</p></div>
       <p class="small"><b>Linux only</b> &mdash; install gVisor (rootless, no Docker; works without KVM via the <code class="inline">systrap</code> platform):</p>
       <figure class="code"><figcaption><span class="lbl">bash &middot; linux: install gVisor</span><button class="copy" type="button">Copy</button></figcaption><pre>curl -fsSL "https://storage.googleapis.com/gvisor/releases/release/latest/$(uname -m)/runsc" -o runsc
@@ -385,7 +385,7 @@ gh pr create --fill</pre></figure>
 
     <footer>
       <p><b>CodeMender Skills for Antigravity</b> &middot; public preview. Skill format is the portable <code class="inline">SKILL.md</code> spec &mdash; the same one Antigravity, the AGY CLI, and the AGY IDE read.</p>
-      <p class="small">No secrets appear here. <code class="inline">cm</code> authenticates as your own <code class="inline">@google.com</code> identity via Application Default Credentials.</p>
+      <p class="small">No secrets appear here. <code class="inline">cm</code> authenticates as your own identity via Application Default Credentials.</p>
     </footer>
    </div></main>
 </div>
